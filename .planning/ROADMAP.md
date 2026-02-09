@@ -32,10 +32,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Delta state synchronization works (only changed properties transmitted)
   4. Server validates all client input and rejects impossible values
   5. Latency simulation tools configured for testing at 100ms+
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 01-01: TBD during planning
+- [ ] 01-01-PLAN.md — Server foundation (Express + Colyseus + Schema state + 60Hz GameRoom)
+- [ ] 01-02-PLAN.md — Client foundation (Vite + Phaser + Tiled test arena map)
+- [ ] 01-03-PLAN.md — Integration (client-server connection, input validation, latency simulation)
 
 ### Phase 2: Core Movement
 **Goal**: Players can move characters with responsive acceleration-based physics
@@ -139,7 +141,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Server Architecture | 0/TBD | Not started | - |
+| 1. Foundation & Server Architecture | 0/3 | Planned | - |
 | 2. Core Movement | 0/TBD | Not started | - |
 | 3. Combat System | 0/TBD | Not started | - |
 | 4. Match Lifecycle & Maps | 0/TBD | Not started | - |
