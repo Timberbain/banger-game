@@ -54,7 +54,7 @@ export class BootScene extends Phaser.Scene {
     const statusText = this.add.text(
       this.cameras.main.centerX,
       this.cameras.main.centerY,
-      'Waiting for server connection...',
+      'Loading...',
       {
         fontSize: '16px',
         color: '#ffffff',
@@ -64,5 +64,10 @@ export class BootScene extends Phaser.Scene {
     statusText.setOrigin(0.5);
 
     console.log('BootScene loaded, map rendered');
+
+    // Transition to GameScene after a brief delay
+    this.time.delayedCall(500, () => {
+      this.scene.start('GameScene');
+    });
   }
 }
