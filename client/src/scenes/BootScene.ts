@@ -6,10 +6,63 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Will be implemented in Task 2
+    // Load tileset image
+    this.load.image('tiles', 'tilesets/placeholder.png');
+
+    // Load tilemap JSON
+    this.load.tilemapTiledJSON('test_arena', 'maps/test_arena.json');
   }
 
   create() {
-    // Will be implemented in Task 2
+    // Create tilemap from JSON
+    const map = this.make.tilemap({ key: 'test_arena' });
+
+    // Add tileset to the map
+    const tileset = map.addTilesetImage('placeholder', 'tiles');
+
+    if (!tileset) {
+      console.error('Failed to load tileset');
+      return;
+    }
+
+    // Create layers
+    const groundLayer = map.createLayer('Ground', tileset, 0, 0);
+    const wallsLayer = map.createLayer('Walls', tileset, 0, 0);
+
+    if (!groundLayer || !wallsLayer) {
+      console.error('Failed to create layers');
+      return;
+    }
+
+    // Set collision for wall tiles (all non-empty tiles in the Walls layer)
+    wallsLayer.setCollisionByExclusion([-1, 0]);
+
+    // Add title text
+    const titleText = this.add.text(
+      this.cameras.main.centerX,
+      20,
+      'Banger - Test Arena',
+      {
+        fontSize: '24px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+      }
+    );
+    titleText.setOrigin(0.5, 0);
+
+    // Add connection status text
+    const statusText = this.add.text(
+      this.cameras.main.centerX,
+      this.cameras.main.centerY,
+      'Waiting for server connection...',
+      {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+      }
+    );
+    statusText.setOrigin(0.5);
+
+    console.log('BootScene loaded, map rendered');
   }
 }
