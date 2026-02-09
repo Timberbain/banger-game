@@ -6,6 +6,35 @@ export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
   patchRate = SERVER_CONFIG.patchRate; // 1000/60 - must match tick rate for 60Hz sync
 
+  /**
+   * Validate input structure and types
+   * Rejects non-object inputs, unknown keys, and non-boolean values
+   */
+  private isValidInput(input: any): boolean {
+    // Must be an object
+    if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+      return false;
+    }
+
+    const validKeys = ['left', 'right', 'up', 'down'];
+
+    // Check for unknown keys
+    for (const key of Object.keys(input)) {
+      if (!validKeys.includes(key)) {
+        return false;
+      }
+    }
+
+    // All values must be booleans
+    for (const key of validKeys) {
+      if (key in input && typeof input[key] !== 'boolean') {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   onCreate(options: any) {
     this.setState(new GameState());
     this.autoDispose = true;
@@ -25,13 +54,33 @@ export class GameRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
+      // Validate input structure and types
+      if (!this.isValidInput(message)) {
+        console.warn(`Invalid input from ${client.sessionId}:`, message);
+        return; // Silently reject -- don't kick (could be a bug, not necessarily cheating)
+      }
+
+      // Check for WebSocket latency simulation
+      const wsLatency = parseInt(process.env.SIMULATE_LATENCY || '0', 10);
+      if (wsLatency > 0) {
+        // Delay input queuing to simulate round-trip latency
+        setTimeout(() => {
+          // Rate limit: cap queue at 10 to prevent memory abuse
+          if (player.inputQueue.length >= 10) {
+            player.inputQueue.shift(); // Drop oldest
+          }
+          player.inputQueue.push(message);
+        }, wsLatency);
+        return;
+      }
+
+      // Rate limit: cap queue at 10 to prevent memory abuse
+      if (player.inputQueue.length >= 10) {
+        player.inputQueue.shift(); // Drop oldest
+      }
+
       // Queue input for processing in fixedTick
       player.inputQueue.push(message);
-
-      // Cap queue length to prevent memory abuse
-      if (player.inputQueue.length > 10) {
-        player.inputQueue.shift();
-      }
     });
 
     console.log(`GameRoom created with roomId: ${this.roomId}`);
