@@ -109,13 +109,56 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| GAME-01 | Phase 2 | Pending |
+| GAME-02 | Phase 2 | Pending |
+| GAME-03 | Phase 3 | Pending |
+| GAME-04 | Phase 3 | Pending |
+| GAME-05 | Phase 3 | Pending |
+| GAME-06 | Phase 3 | Pending |
+| GAME-07 | Phase 3 | Pending |
+| GAME-08 | Phase 3 | Pending |
+| GAME-09 | Phase 4 | Pending |
+| GAME-10 | Phase 2 | Pending |
+| NET-01 | Phase 1 | Pending |
+| NET-02 | Phase 2 | Pending |
+| NET-03 | Phase 2 | Pending |
+| NET-04 | Phase 1 | Pending |
+| NET-05 | Phase 1 | Pending |
+| NET-06 | Phase 1 | Pending |
+| NET-07 | Phase 2 | Pending |
+| NET-08 | Phase 2 | Pending |
+| NET-09 | Phase 5 | Pending |
+| MULT-01 | Phase 5 | Pending |
+| MULT-02 | Phase 5 | Pending |
+| MULT-03 | Phase 5 | Pending |
+| MULT-04 | Phase 5 | Pending |
+| MULT-05 | Phase 5 | Pending |
+| FLOW-01 | Phase 5 | Pending |
+| FLOW-02 | Phase 5 | Pending |
+| FLOW-03 | Phase 4 | Pending |
+| FLOW-04 | Phase 4 | Pending |
+| FLOW-05 | Phase 4 | Pending |
+| MAP-01 | Phase 4 | Pending |
+| MAP-02 | Phase 1 | Pending |
+| MAP-03 | Phase 3 | Pending |
+| MAP-04 | Phase 4 | Pending |
+| ACCT-01 | Phase 6 | Pending |
+| ACCT-02 | Phase 6 | Pending |
+| ACCT-03 | Phase 6 | Pending |
+| ACCT-04 | Phase 6 | Pending |
+| UX-01 | Phase 7 | Pending |
+| UX-02 | Phase 7 | Pending |
+| UX-03 | Phase 7 | Pending |
+| UX-04 | Phase 7 | Pending |
+| UX-05 | Phase 7 | Pending |
+| UX-06 | Phase 4 | Pending |
+| UX-07 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38
+- v1 requirements: 44 total
+- Mapped to phases: 44
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after initial definition*
+*Last updated: 2026-02-09 after roadmap creation*
