@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Server Architecture** - Establish infrastructure and authority model
 - [x] **Phase 2: Core Movement** - Acceleration-based physics with client prediction
-- [ ] **Phase 3: Combat System** - Projectiles, collision detection, damage system
+- [x] **Phase 3: Combat System** - Projectiles, collision detection, damage system
 - [ ] **Phase 4: Match Lifecycle & Maps** - Win conditions, multiple arenas, spectator mode
 - [ ] **Phase 5: Multiplayer Lobbies** - Room codes, matchmaking, character selection
 - [ ] **Phase 6: Accounts & Stats** - Light accounts, stat tracking, match history
@@ -63,14 +63,14 @@ Plans:
   1. Players fire projectiles in their facing direction
   2. Projectiles deal damage on hit; characters die at zero health
   3. Faran and Baran have distinct stats (low health, high agility, rapid weak attacks)
-  4. Paran has distinct stats (high health, slow acceleration, powerful attacks, instant turning)
-  5. Paran loses all speed on collision with walls or obstacles
+  4. Paran has distinct stats (high health, slow acceleration, powerful attacks, Pac-Man cardinal movement with instant direction change)
+  5. Paran loses all speed on collision with walls
   6. Arena edges block all players
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Server combat: character stats, projectile lifecycle, collision detection, Paran wall penalty
-- [ ] 03-02-PLAN.md -- Client combat: fire input, projectile rendering, health display, role differentiation + human verify
+- [x] 03-01-PLAN.md -- Server combat: character stats, projectile lifecycle, collision detection, Paran wall penalty
+- [x] 03-02-PLAN.md -- Client combat: fire input, projectile rendering, health display, role differentiation + human verify
 
 ### Phase 4: Match Lifecycle & Maps
 **Goal**: Complete matches with win conditions on multiple hand-crafted maps
@@ -145,7 +145,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Foundation & Server Architecture | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. Core Movement | 2/2 | ✓ Complete | 2026-02-10 |
-| 3. Combat System | 0/TBD | Not started | - |
+| 3. Combat System | 2/2 | ✓ Complete | 2026-02-10 |
 | 4. Match Lifecycle & Maps | 0/TBD | Not started | - |
 | 5. Multiplayer Lobbies | 0/TBD | Not started | - |
 | 6. Accounts & Stats | 0/TBD | Not started | - |
@@ -153,4 +153,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-10 (Phase 2 complete)*
+*Last updated: 2026-02-10 (Phase 3 complete)*
