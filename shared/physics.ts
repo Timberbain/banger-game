@@ -27,6 +27,7 @@ export interface InputState {
   right: boolean;
   up: boolean;
   down: boolean;
+  fire?: boolean;
 }
 
 /**
@@ -36,20 +37,27 @@ export interface InputState {
  * @param player - Object with { x, y, vx, vy, angle }
  * @param input - InputState with direction keys
  * @param dt - Delta time in seconds (e.g., 1/60)
+ * @param stats - Optional character-specific stats to override PHYSICS defaults
  */
 export function applyMovementPhysics(
   player: { x: number; y: number; vx: number; vy: number; angle: number },
   input: InputState,
-  dt: number
+  dt: number,
+  stats?: { acceleration: number; drag: number; maxVelocity: number }
 ): void {
+  // Use character-specific stats or fallback to PHYSICS defaults
+  const acceleration = stats?.acceleration ?? PHYSICS.acceleration;
+  const drag = stats?.drag ?? PHYSICS.drag;
+  const maxVelocity = stats?.maxVelocity ?? PHYSICS.maxVelocity;
+
   // Calculate acceleration from input
   let ax = 0;
   let ay = 0;
 
-  if (input.left) ax -= PHYSICS.acceleration;
-  if (input.right) ax += PHYSICS.acceleration;
-  if (input.up) ay -= PHYSICS.acceleration;
-  if (input.down) ay += PHYSICS.acceleration;
+  if (input.left) ax -= acceleration;
+  if (input.right) ax += acceleration;
+  if (input.up) ay -= acceleration;
+  if (input.down) ay += acceleration;
 
   // Normalize diagonal movement (divide by sqrt(2) when both axes active)
   if (ax !== 0 && ay !== 0) {
@@ -63,8 +71,8 @@ export function applyMovementPhysics(
   player.vy += ay * dt;
 
   // Apply drag (exponential damping)
-  player.vx *= Math.pow(PHYSICS.drag, dt);
-  player.vy *= Math.pow(PHYSICS.drag, dt);
+  player.vx *= Math.pow(drag, dt);
+  player.vy *= Math.pow(drag, dt);
 
   // Snap to 0 if below minVelocity threshold
   if (Math.abs(player.vx) < PHYSICS.minVelocity) player.vx = 0;
@@ -72,8 +80,8 @@ export function applyMovementPhysics(
 
   // Clamp to maxVelocity
   const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
-  if (speed > PHYSICS.maxVelocity) {
-    const scale = PHYSICS.maxVelocity / speed;
+  if (speed > maxVelocity) {
+    const scale = maxVelocity / speed;
     player.vx *= scale;
     player.vy *= scale;
   }

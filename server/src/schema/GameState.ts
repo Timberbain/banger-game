@@ -1,5 +1,6 @@
-import { Schema, type, MapSchema } from "@colyseus/schema";
+import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema";
 import { InputState } from "../../../shared/physics";
+import { Projectile } from "./Projectile";
 
 export class Player extends Schema {
   @type("number") x: number = 0;
@@ -14,10 +15,12 @@ export class Player extends Schema {
 
   // NOT decorated with @type -- server-only, not synced to clients
   inputQueue: Array<{ seq: number } & InputState> = [];
+  lastFireTime: number = 0; // server-only cooldown tracking
 }
 
 export class GameState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
+  @type([Projectile]) projectiles = new ArraySchema<Projectile>();
   @type("number") serverTime: number = 0;
   @type("string") mapName: string = "test_arena";
   @type("number") tickCount: number = 0;
