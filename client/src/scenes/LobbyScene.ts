@@ -344,7 +344,11 @@ export class LobbyScene extends Phaser.Scene {
   private async joinMatchmaking(preferredRole: string) {
     this.clearUI();
 
-    const statusText = this.add.text(400, 300, 'Searching for match...', {
+    // Background
+    const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+    this.uiElements.push(bg);
+
+    const statusText = this.add.text(400, 280, 'Searching for match...', {
       fontSize: '22px',
       color: '#ffff00'
     }).setOrigin(0.5);
@@ -361,16 +365,110 @@ export class LobbyScene extends Phaser.Scene {
       loop: true
     });
 
+    // Queue size display
+    const queueText = this.add.text(400, 330, '', {
+      fontSize: '16px',
+      color: '#aaaaaa'
+    }).setOrigin(0.5);
+    this.uiElements.push(queueText);
+
+    // Cancel button
+    const cancelButton = this.add.text(400, 420, 'Cancel', {
+      fontSize: '20px',
+      color: '#ffffff',
+      backgroundColor: '#aa0000',
+      padding: { x: 24, y: 10 }
+    })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    cancelButton.on('pointerdown', () => {
+      spinnerInterval.destroy();
+      if (this.room) {
+        this.room.leave();
+        this.room = null;
+      }
+      this.showMainMenu();
+    });
+    this.uiElements.push(cancelButton);
+
     try {
-      this.room = await this.client.joinOrCreate('lobby_room', {
-        matchmaking: true,
+      // Join the matchmaking room (shared instance for all queuing players)
+      const matchmakingRoom = await this.client.joinOrCreate('matchmaking_room', {
         preferredRole,
         name: this.playerName
       });
 
-      spinnerInterval.destroy();
-      console.log('Joined matchmaking lobby:', this.room.id);
-      this.showLobbyView();
+      // Track queue sizes from state
+      (matchmakingRoom.state as any).listen('paranCount', (value: number) => {
+        const guardianCount = (matchmakingRoom.state as any).guardianCount || 0;
+        queueText.setText(`In queue: ${value} Paran, ${guardianCount} Guardian`);
+      });
+      (matchmakingRoom.state as any).listen('guardianCount', (value: number) => {
+        const paranCount = (matchmakingRoom.state as any).paranCount || 0;
+        queueText.setText(`In queue: ${paranCount} Paran, ${value} Guardian`);
+      });
+
+      // Listen for match found
+      matchmakingRoom.onMessage('matchFound', async (data: { lobbyRoomId: string; assignedRole: string }) => {
+        console.log('Match found! Joining lobby:', data.lobbyRoomId);
+        spinnerInterval.destroy();
+
+        // Leave matchmaking room
+        matchmakingRoom.leave();
+
+        // Show transition message
+        this.clearUI();
+        const transitionBg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+        this.uiElements.push(transitionBg);
+        const transitionText = this.add.text(400, 300, 'Match found! Joining lobby...', {
+          fontSize: '22px',
+          color: '#00ff00'
+        }).setOrigin(0.5);
+        this.uiElements.push(transitionText);
+
+        try {
+          // Join the lobby that matchmaking created
+          this.room = await this.client.joinById(data.lobbyRoomId, {
+            name: this.playerName,
+            fromMatchmaking: true,
+            preferredRole: data.assignedRole
+          });
+
+          // Pre-select the assigned role
+          this.selectedRole = data.assignedRole;
+
+          console.log('Joined matchmaking lobby:', this.room.id);
+          this.showLobbyView();
+
+          // Auto-select assigned role after lobby view loads
+          this.time.delayedCall(500, () => {
+            if (this.room && data.assignedRole) {
+              this.room.send('selectRole', { role: data.assignedRole });
+            }
+          });
+        } catch (e) {
+          console.error('Failed to join matchmaking lobby:', e);
+          this.clearUI();
+          const errBg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+          this.uiElements.push(errBg);
+          const errText = this.add.text(400, 300, 'Failed to join lobby', {
+            fontSize: '22px',
+            color: '#ff0000'
+          }).setOrigin(0.5);
+          this.uiElements.push(errText);
+          this.time.delayedCall(3000, () => this.showMainMenu());
+        }
+      });
+
+      // Update cancel to also leave matchmaking room
+      cancelButton.removeAllListeners('pointerdown');
+      cancelButton.on('pointerdown', () => {
+        spinnerInterval.destroy();
+        matchmakingRoom.leave();
+        this.showMainMenu();
+      });
+
     } catch (e) {
       console.error('Failed to join matchmaking:', e);
       spinnerInterval.destroy();
