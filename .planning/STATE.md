@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 2 of 7 (Core Movement) — IN PROGRESS
-Plan: 1 of 3
-Status: Shared physics and server velocity movement complete
-Last activity: 2026-02-10 — Completed 02-01-PLAN.md (Shared physics and server velocity movement)
+Plan: 2 of 3
+Status: Client prediction and interpolation complete
+Last activity: 2026-02-10 — Completed 02-02-PLAN.md (Client prediction and interpolation)
 
-Progress: [████░░░░░░] 40% (Phase 1: 3/3 done, Phase 2: 1/3 done)
+Progress: [█████░░░░░] 50% (Phase 1: 3/3 done, Phase 2: 2/3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 8.0 min
-- Total execution time: 0.97 hours
+- Total plans completed: 5
+- Average duration: 11.6 min
+- Total execution time: 1.93 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation-server-architecture | 3 | 26 min | 8.7 min |
-| 02-core-movement | 1 | 6 min | 6.3 min |
+| 02-core-movement | 2 | 29 min | 14.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (5 min), 01-02 (6 min), 01-03 (15 min), 02-01 (6 min)
-- Trend: Decreasing (02-01 faster - no human checkpoints)
+- Last 5 plans: 01-02 (6 min), 01-03 (15 min), 02-01 (6 min), 02-02 (23 min)
+- Trend: Increasing (02-02 had human checkpoint + bug fix)
 
 *Updated after each plan completion*
 
@@ -59,6 +59,9 @@ Recent decisions affecting current work:
 - 02-01: Relative imports for shared module — Simpler than path mapping, works with ts-node-dev without config
 - 02-01: Fixed timestep 1/60s not deltaTime — Ensures deterministic physics matching client prediction
 - 02-01: Clamp velocity at arena edges — Prevents wall sliding misprediction from accumulated velocity
+- 02-02: Send input every frame (not just on change) — Acceleration physics requires one input per tick to match server's 60Hz fixed timestep
+- 02-02: Apply drag physics on server when input queue empty — Player must decelerate when client stops sending input
+- 02-02: 100ms interpolation delay for remote players — Balances smoothness with visual latency
 
 ### Pending Todos
 
@@ -70,13 +73,14 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-10T10:11:00Z (plan execution)
-Stopped at: Completed 02-01-PLAN.md (Shared physics and server velocity movement)
-Resume file: .planning/phases/02-core-movement/02-01-SUMMARY.md
+Last session: 2026-02-10T10:37:24Z (plan execution)
+Stopped at: Completed 02-02-PLAN.md (Client prediction and interpolation)
+Resume file: .planning/phases/02-core-movement/02-02-SUMMARY.md
 
 **Phase 2 Progress:**
 - Shared physics module with acceleration/drag/maxVelocity
 - Server upgraded to velocity-based movement
-- Player schema includes vx, vy, lastProcessedSeq for client prediction
-- Input sequence tracking for reconciliation
-- Ready for Plan 02: Client-side prediction and reconciliation
+- Client-side prediction with input replay reconciliation
+- Entity interpolation for smooth remote player rendering
+- Movement feels responsive even at 150ms latency
+- Ready for Plan 03 (if exists) or progression to Phase 3 (Collision Detection)
