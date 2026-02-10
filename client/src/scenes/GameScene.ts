@@ -22,12 +22,6 @@ export class GameScene extends Phaser.Scene {
   // Client prediction and interpolation systems
   private prediction: PredictionSystem | null = null;
   private interpolation: InterpolationSystem = new InterpolationSystem();
-  private lastInput: InputState = {
-    left: false,
-    right: false,
-    up: false,
-    down: false,
-  };
   private remotePlayers: Set<string> = new Set();
 
   constructor() {
@@ -210,17 +204,16 @@ export class GameScene extends Phaser.Scene {
       down: this.cursors.down.isDown || this.wasd.S.isDown,
     };
 
-    // Send input if it changed (including key release)
-    // This is critical for drag physics — server needs to know when keys released
-    const inputChanged =
-      input.left !== this.lastInput.left ||
-      input.right !== this.lastInput.right ||
-      input.up !== this.lastInput.up ||
-      input.down !== this.lastInput.down;
+    // Send input every frame — acceleration physics needs one input per tick
+    // to match server simulation. Only skip if truly idle (no keys, no velocity).
+    const hasInput = input.left || input.right || input.up || input.down;
+    const hasVelocity = (() => {
+      const s = this.prediction!.getState();
+      return Math.abs(s.vx) > 0.01 || Math.abs(s.vy) > 0.01;
+    })();
 
-    if (inputChanged) {
+    if (hasInput || hasVelocity) {
       this.prediction.sendInput(input, this.room);
-      this.lastInput = { ...input };
     }
 
     // Update local player sprite from prediction state

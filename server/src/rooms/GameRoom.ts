@@ -135,8 +135,11 @@ export class GameRoom extends Room<GameState> {
     const FIXED_DT = 1 / 60; // seconds
 
     // Process all player inputs
+    const noInput: { left: boolean; right: boolean; up: boolean; down: boolean } = { left: false, right: false, up: false, down: false };
+
     this.state.players.forEach((player, sessionId) => {
       // Drain input queue
+      let processedAny = false;
       while (player.inputQueue.length > 0) {
         const { seq, ...input } = player.inputQueue.shift()!;
 
@@ -148,6 +151,13 @@ export class GameRoom extends Room<GameState> {
 
         // Track last processed input sequence for client reconciliation
         player.lastProcessedSeq = seq;
+        processedAny = true;
+      }
+
+      // If no inputs this tick, still apply physics (drag decelerates the player)
+      if (!processedAny) {
+        applyMovementPhysics(player, noInput, FIXED_DT);
+        updateFacingDirection(player);
       }
 
       // Clamp player position within arena bounds
