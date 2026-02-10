@@ -1,6 +1,7 @@
 import { Room, Client } from "colyseus";
 import { GameState, Player } from "../schema/GameState";
 import { SERVER_CONFIG, GAME_CONFIG } from "../config";
+import { applyMovementPhysics, updateFacingDirection, PHYSICS, ARENA } from "../../../shared/physics";
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
@@ -9,6 +10,7 @@ export class GameRoom extends Room<GameState> {
   /**
    * Validate input structure and types
    * Rejects non-object inputs, unknown keys, and non-boolean values
+   * Accepts optional seq field for client prediction
    */
   private isValidInput(input: any): boolean {
     // Must be an object
@@ -16,7 +18,7 @@ export class GameRoom extends Room<GameState> {
       return false;
     }
 
-    const validKeys = ['left', 'right', 'up', 'down'];
+    const validKeys = ['left', 'right', 'up', 'down', 'seq'];
 
     // Check for unknown keys
     for (const key of Object.keys(input)) {
@@ -25,11 +27,17 @@ export class GameRoom extends Room<GameState> {
       }
     }
 
-    // All values must be booleans
-    for (const key of validKeys) {
+    // All direction values must be booleans
+    const directionKeys = ['left', 'right', 'up', 'down'];
+    for (const key of directionKeys) {
       if (key in input && typeof input[key] !== 'boolean') {
         return false;
       }
+    }
+
+    // seq must be a number if present
+    if ('seq' in input && typeof input.seq !== 'number') {
+      return false;
     }
 
     return true;
@@ -60,6 +68,10 @@ export class GameRoom extends Room<GameState> {
         return; // Silently reject -- don't kick (could be a bug, not necessarily cheating)
       }
 
+      // Extract seq and input state
+      const { seq = 0, ...inputState } = message;
+      const queuedInput = { seq, ...inputState };
+
       // Check for WebSocket latency simulation
       const wsLatency = parseInt(process.env.SIMULATE_LATENCY || '0', 10);
       if (wsLatency > 0) {
@@ -69,7 +81,7 @@ export class GameRoom extends Room<GameState> {
           if (player.inputQueue.length >= 10) {
             player.inputQueue.shift(); // Drop oldest
           }
-          player.inputQueue.push(message);
+          player.inputQueue.push(queuedInput);
         }, wsLatency);
         return;
       }
@@ -80,7 +92,7 @@ export class GameRoom extends Room<GameState> {
       }
 
       // Queue input for processing in fixedTick
-      player.inputQueue.push(message);
+      player.inputQueue.push(queuedInput);
     });
 
     console.log(`GameRoom created with roomId: ${this.roomId}`);
@@ -90,14 +102,17 @@ export class GameRoom extends Room<GameState> {
     const player = new Player();
 
     // Set initial position (centered with small random offset to avoid overlap)
-    player.x = GAME_CONFIG.arenaWidth / 2 + (Math.random() - 0.5) * 100;
-    player.y = GAME_CONFIG.arenaHeight / 2 + (Math.random() - 0.5) * 100;
+    player.x = ARENA.width / 2 + (Math.random() - 0.5) * 100;
+    player.y = ARENA.height / 2 + (Math.random() - 0.5) * 100;
+    player.vx = 0;
+    player.vy = 0;
     player.health = GAME_CONFIG.playerStartHealth;
     player.name = options?.name
       ? String(options.name).substring(0, 20)
       : client.sessionId.substring(0, 20);
     player.angle = 0;
     player.role = "";
+    player.lastProcessedSeq = 0;
 
     this.state.players.set(client.sessionId, player);
 
@@ -116,22 +131,36 @@ export class GameRoom extends Room<GameState> {
     // Update server time
     this.state.serverTime += deltaTime;
 
+    // Fixed delta time for deterministic physics (must match client)
+    const FIXED_DT = 1 / 60; // seconds
+
     // Process all player inputs
     this.state.players.forEach((player, sessionId) => {
       // Drain input queue
       while (player.inputQueue.length > 0) {
-        const input = player.inputQueue.shift();
+        const { seq, ...input } = player.inputQueue.shift()!;
 
-        // Basic movement (will be replaced with acceleration physics in Phase 2)
-        if (input.left) player.x -= 2;
-        if (input.right) player.x += 2;
-        if (input.up) player.y -= 2;
-        if (input.down) player.y += 2;
+        // Apply acceleration-based physics
+        applyMovementPhysics(player, input, FIXED_DT);
+
+        // Update facing direction
+        updateFacingDirection(player);
+
+        // Track last processed input sequence for client reconciliation
+        player.lastProcessedSeq = seq;
       }
 
       // Clamp player position within arena bounds
-      player.x = Math.max(0, Math.min(GAME_CONFIG.arenaWidth, player.x));
-      player.y = Math.max(0, Math.min(GAME_CONFIG.arenaHeight, player.y));
+      player.x = Math.max(0, Math.min(ARENA.width, player.x));
+      player.y = Math.max(0, Math.min(ARENA.height, player.y));
+
+      // Clamp velocity to 0 if player is at arena edge (prevent sliding along walls)
+      if (player.x <= 0 || player.x >= ARENA.width) {
+        player.vx = 0;
+      }
+      if (player.y <= 0 || player.y >= ARENA.height) {
+        player.vy = 0;
+      }
     });
   }
 
