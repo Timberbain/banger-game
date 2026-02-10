@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 3 of 7 (Combat System)
-Plan: 1 of 2
-Status: In progress
-Last activity: 2026-02-10 — Completed 03-01-PLAN.md (Server Combat Core)
+Plan: 2 of 2
+Status: Complete
+Last activity: 2026-02-10 — Completed 03-02-PLAN.md (Client Combat Rendering)
 
-Progress: [████░░░░░░] 40% (Phases 1-2 complete, Phase 3: 1 of 2 plans done, total: 6 of 9 plans)
+Progress: [█████░░░░░] 50% (Phases 1-3 complete, total: 7 of 9 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 10.0 min
-- Total execution time: 2.0 hours
+- Total plans completed: 7
+- Average duration: 12.7 min
+- Total execution time: 2.75 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [████░░░░░░] 40% (Phases 1-2 complete, Phase 3: 1 
 |-------|-------|-------|----------|
 | 01-foundation-server-architecture | 3 | 26 min | 8.7 min |
 | 02-core-movement | 2 | 29 min | 14.5 min |
-| 03-combat-system | 1 | 3 min | 3.0 min |
+| 03-combat-system | 2 | 48 min | 24.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (15 min), 02-01 (6 min), 02-02 (23 min), 03-01 (3 min)
-- Trend: Decreasing (03-01 was fast, no checkpoints needed)
+- Last 5 plans: 02-01 (6 min), 02-02 (23 min), 03-01 (3 min), 03-02 (45 min)
+- Trend: Variable (03-02 included checkpoint iteration with 7 fix commits)
 
 *Updated after each plan completion*
 
@@ -67,6 +67,10 @@ Recent decisions affecting current work:
 - 03-01: Paran wall penalty (lose ALL velocity) — Core asymmetric mechanic for high-speed glass cannon role
 - 03-01: Fire input in queue (not separate handler) — Keeps fire synchronized with movement at 60Hz
 - 03-01: Server-only lastFireTime (no @type) — Cooldown enforcement is server-authoritative, reduces bandwidth
+- 03-02: Paran Pac-Man style cardinal movement — Last-key-wins, instant stop, speed redirects; simplifies high-speed control
+- 03-02: Guardian instant stop on input release — Zero velocity immediately (not gradual drag); more responsive control
+- 03-02: Guardian maxVelocity 160 (from 220) — Less floaty/slidey; balances mobility vs precise positioning
+- 03-02: Client-side projectile interpolation (not prediction) — Smooth rendering between server updates without prediction complexity
 
 ### Pending Todos
 
@@ -79,14 +83,15 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 03-01-PLAN.md (Server Combat Core) — Phase 3 plan 1 of 2 done
-Resume file: .planning/phases/03-combat-system/03-01-SUMMARY.md
+Stopped at: Completed 03-02-PLAN.md (Client Combat Rendering) — Phase 3 complete (2 of 2 plans)
+Resume file: .planning/phases/03-combat-system/03-02-SUMMARY.md
 
-**Phase 3 Progress:**
-- Server-authoritative combat system implemented
-- Character archetypes defined (faran/baran guardians, paran force)
-- Projectile spawning, simulation, and collision detection
-- Role-specific physics (acceleration, drag, maxVelocity per character)
+**Phase 3 Complete:**
+- Server-authoritative combat system with projectiles, collision, damage, death
+- Character archetypes: faran/baran guardians (50 HP, fast fire) vs paran force (150 HP, slow fire, high damage)
+- Client fire input (spacebar), projectile rendering with interpolation, health bar UI
+- Role-based visual differentiation (size, color) and gameplay (fire rate, damage, speed)
+- Paran Pac-Man style cardinal movement (last-key-wins, instant stop, speed redirects)
+- Guardian instant stop mechanic (zero velocity on input release)
 - Paran wall penalty mechanic (loses all velocity on wall collision)
-- Fire rate cooldown enforcement (200ms for guardians, 1000ms for Paran)
-- Ready for client combat implementation (03-02)
+- Combat loop verified by human — ready for Phase 4 (Server Reconciliation)
