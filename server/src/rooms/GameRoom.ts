@@ -1,7 +1,9 @@
 import { Room, Client } from "colyseus";
 import { GameState, Player } from "../schema/GameState";
+import { Projectile } from "../schema/Projectile";
 import { SERVER_CONFIG, GAME_CONFIG } from "../config";
 import { applyMovementPhysics, updateFacingDirection, PHYSICS, ARENA } from "../../../shared/physics";
+import { CHARACTERS, COMBAT } from "../../../shared/characters";
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
@@ -18,7 +20,7 @@ export class GameRoom extends Room<GameState> {
       return false;
     }
 
-    const validKeys = ['left', 'right', 'up', 'down', 'seq'];
+    const validKeys = ['left', 'right', 'up', 'down', 'fire', 'seq'];
 
     // Check for unknown keys
     for (const key of Object.keys(input)) {
@@ -27,8 +29,8 @@ export class GameRoom extends Room<GameState> {
       }
     }
 
-    // All direction values must be booleans
-    const directionKeys = ['left', 'right', 'up', 'down'];
+    // All direction and fire values must be booleans
+    const directionKeys = ['left', 'right', 'up', 'down', 'fire'];
     for (const key of directionKeys) {
       if (key in input && typeof input[key] !== 'boolean') {
         return false;
@@ -101,22 +103,36 @@ export class GameRoom extends Room<GameState> {
   onJoin(client: Client, options?: any) {
     const player = new Player();
 
+    // Assign character role based on join order
+    // First player = paran (force), second/third = guardians
+    const playerCount = this.state.players.size;
+    let role: string;
+    if (playerCount === 0) {
+      role = "paran";
+    } else if (playerCount === 1) {
+      role = "faran";
+    } else {
+      role = "baran";
+    }
+
+    const stats = CHARACTERS[role];
+
     // Set initial position (centered with small random offset to avoid overlap)
     player.x = ARENA.width / 2 + (Math.random() - 0.5) * 100;
     player.y = ARENA.height / 2 + (Math.random() - 0.5) * 100;
     player.vx = 0;
     player.vy = 0;
-    player.health = GAME_CONFIG.playerStartHealth;
+    player.health = stats.maxHealth;
     player.name = options?.name
       ? String(options.name).substring(0, 20)
       : client.sessionId.substring(0, 20);
     player.angle = 0;
-    player.role = "";
+    player.role = role;
     player.lastProcessedSeq = 0;
 
     this.state.players.set(client.sessionId, player);
 
-    console.log(`Player joined: ${client.sessionId} (${player.name})`);
+    console.log(`Player joined: ${client.sessionId} (${player.name}) as ${role} with ${stats.maxHealth} health`);
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -138,13 +154,40 @@ export class GameRoom extends Room<GameState> {
     const noInput: { left: boolean; right: boolean; up: boolean; down: boolean } = { left: false, right: false, up: false, down: false };
 
     this.state.players.forEach((player, sessionId) => {
+      // Get character stats
+      const stats = CHARACTERS[player.role];
+
       // Drain input queue
       let processedAny = false;
       while (player.inputQueue.length > 0) {
-        const { seq, ...input } = player.inputQueue.shift()!;
+        const { seq, fire, ...input } = player.inputQueue.shift()!;
 
-        // Apply acceleration-based physics
-        applyMovementPhysics(player, input, FIXED_DT);
+        // Handle fire input
+        if (fire && player.health > 0) {
+          // Check cooldown
+          if (this.state.serverTime - player.lastFireTime >= stats.fireRate) {
+            // Spawn projectile
+            const projectile = new Projectile();
+            projectile.x = player.x;
+            projectile.y = player.y;
+            projectile.vx = Math.cos(player.angle) * stats.projectileSpeed;
+            projectile.vy = Math.sin(player.angle) * stats.projectileSpeed;
+            projectile.ownerId = sessionId;
+            projectile.damage = stats.damage;
+            projectile.spawnTime = this.state.serverTime;
+            this.state.projectiles.push(projectile);
+
+            // Update cooldown
+            player.lastFireTime = this.state.serverTime;
+          }
+        }
+
+        // Apply character-specific physics
+        applyMovementPhysics(player, input, FIXED_DT, {
+          acceleration: stats.acceleration,
+          drag: stats.drag,
+          maxVelocity: stats.maxVelocity,
+        });
 
         // Update facing direction
         updateFacingDirection(player);
@@ -156,22 +199,83 @@ export class GameRoom extends Room<GameState> {
 
       // If no inputs this tick, still apply physics (drag decelerates the player)
       if (!processedAny) {
-        applyMovementPhysics(player, noInput, FIXED_DT);
+        applyMovementPhysics(player, noInput, FIXED_DT, {
+          acceleration: stats.acceleration,
+          drag: stats.drag,
+          maxVelocity: stats.maxVelocity,
+        });
         updateFacingDirection(player);
       }
+
+      // Store position before clamping for collision detection
+      const prevX = player.x;
+      const prevY = player.y;
 
       // Clamp player position within arena bounds
       player.x = Math.max(0, Math.min(ARENA.width, player.x));
       player.y = Math.max(0, Math.min(ARENA.height, player.y));
 
-      // Clamp velocity to 0 if player is at arena edge (prevent sliding along walls)
-      if (player.x <= 0 || player.x >= ARENA.width) {
+      // Check if wall collision occurred
+      const hitWallX = player.x !== prevX;
+      const hitWallY = player.y !== prevY;
+
+      // Paran-specific wall penalty: lose ALL velocity on wall collision
+      if (player.role === "paran" && (hitWallX || hitWallY)) {
         player.vx = 0;
-      }
-      if (player.y <= 0 || player.y >= ARENA.height) {
         player.vy = 0;
+      } else {
+        // Guardian behavior: only zero the axis that hit the wall
+        if (hitWallX) {
+          player.vx = 0;
+        }
+        if (hitWallY) {
+          player.vy = 0;
+        }
       }
     });
+
+    // Process projectiles (iterate backwards for safe removal)
+    for (let i = this.state.projectiles.length - 1; i >= 0; i--) {
+      const proj = this.state.projectiles[i];
+      if (!proj) continue; // Safety check for TypeScript strict null checking
+
+      // Move projectile
+      proj.x += proj.vx * FIXED_DT;
+      proj.y += proj.vy * FIXED_DT;
+
+      // Lifetime check
+      if (this.state.serverTime - proj.spawnTime > COMBAT.projectileLifetime) {
+        this.state.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Bounds check
+      if (proj.x < 0 || proj.x > ARENA.width || proj.y < 0 || proj.y > ARENA.height) {
+        this.state.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Collision with players
+      let hit = false;
+      this.state.players.forEach((target, targetId) => {
+        if (hit) return;
+        if (targetId === proj.ownerId) return; // No self-hit
+        if (target.health <= 0) return; // Skip dead
+
+        const dx = proj.x - target.x;
+        const dy = proj.y - target.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < COMBAT.playerRadius + COMBAT.projectileRadius) {
+          target.health = Math.max(0, target.health - proj.damage);
+          hit = true;
+        }
+      });
+
+      if (hit) {
+        this.state.projectiles.splice(i, 1);
+      }
+    }
   }
 
   onDispose() {
