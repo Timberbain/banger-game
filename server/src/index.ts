@@ -5,6 +5,7 @@ import { monitor } from "@colyseus/monitor";
 import cors from "cors";
 import { GameRoom } from "./rooms/GameRoom";
 import { LobbyRoom } from "./rooms/LobbyRoom";
+import { MatchmakingRoom } from "./rooms/MatchmakingRoom";
 import { SERVER_CONFIG } from "./config";
 
 const app = express();
@@ -30,6 +31,9 @@ const gameServer = new Server({
 
 // Register lobby room
 gameServer.define("lobby_room", LobbyRoom);
+
+// Register matchmaking room
+gameServer.define("matchmaking_room", MatchmakingRoom);
 
 // Register game room
 gameServer.define("game_room", GameRoom);
