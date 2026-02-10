@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 3 (Combat System)
+**Current focus:** Phase 4 (Match Lifecycle & Maps)
 
 ## Current Position
 
-Phase: 3 of 7 (Combat System)
-Plan: 2 of 2
-Status: Complete
-Last activity: 2026-02-10 — Completed 03-02-PLAN.md (Client Combat Rendering)
+Phase: 4 of 7 (Match Lifecycle & Maps)
+Plan: 1 of 3
+Status: In Progress
+Last activity: 2026-02-10 — Completed 04-01-PLAN.md (Server Match Lifecycle)
 
-Progress: [█████░░░░░] 50% (Phases 1-3 complete, total: 7 of 9 plans)
+Progress: [██████░░░░] 56% (8 of 12 plans complete: Phase 1-3 done, Phase 4: 1/3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 12.7 min
-- Total execution time: 2.75 hours
+- Total plans completed: 8
+- Average duration: 12.0 min
+- Total execution time: 2.92 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [█████░░░░░] 50% (Phases 1-3 complete, total: 7 of
 | 01-foundation-server-architecture | 3 | 26 min | 8.7 min |
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
+| 04-match-lifecycle-maps | 1 | 10 min | 10.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (6 min), 02-02 (23 min), 03-01 (3 min), 03-02 (45 min)
-- Trend: Variable (03-02 included checkpoint iteration with 7 fix commits)
+- Last 5 plans: 02-02 (23 min), 03-01 (3 min), 03-02 (45 min), 04-01 (10 min)
+- Trend: Variable (03-02 included checkpoint iteration with 7 fix commits, 04-01 was straightforward)
 
 *Updated after each plan completion*
 
@@ -71,6 +72,12 @@ Recent decisions affecting current work:
 - 03-02: Guardian instant stop on input release — Zero velocity immediately (not gradual drag); more responsive control
 - 03-02: Guardian maxVelocity 160 (from 220) — Less floaty/slidey; balances mobility vs precise positioning
 - 03-02: Client-side projectile interpolation (not prediction) — Smooth rendering between server updates without prediction complexity
+- 04-01: Match starts when 3 players join — Automatic transition from WAITING to PLAYING
+- 04-01: Room locked on match start — Prevents mid-game joins
+- 04-01: Dead player input drained and ignored — Prevents ghost shooting
+- 04-01: Stats synced to clients via MapSchema — Clients can display live stats
+- 04-01: Auto-disconnect 15s after match end — Gives time to view stats
+- 04-01: Player leaving during PLAYING triggers win check — Counts as elimination
 
 ### Pending Todos
 
@@ -83,8 +90,17 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 03-02-PLAN.md (Client Combat Rendering) — Phase 3 complete (2 of 2 plans)
-Resume file: .planning/phases/03-combat-system/03-02-SUMMARY.md
+Stopped at: Completed 04-01-PLAN.md (Server Match Lifecycle) — Phase 4: 1 of 3 plans complete
+Resume file: .planning/phases/04-match-lifecycle-maps/04-01-SUMMARY.md
+
+**Phase 4 Progress (1 of 3):**
+- 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
+  - Match starts when 3 players join, room locked during PLAYING
+  - Win conditions: all guardians dead = paran wins, paran dead = guardians win
+  - Per-player stats tracking (kills, deaths, damage, shots fired/hit, accuracy)
+  - matchEnd broadcast with final stats, auto-disconnect after 15s
+- Next: 04-02 Arena map system with structured tilemap and spawn positions
+- Next: 04-03 Lobby system with waiting room and matchmaking
 
 **Phase 3 Complete:**
 - Server-authoritative combat system with projectiles, collision, damage, death
@@ -94,4 +110,3 @@ Resume file: .planning/phases/03-combat-system/03-02-SUMMARY.md
 - Paran Pac-Man style cardinal movement (last-key-wins, instant stop, speed redirects)
 - Guardian instant stop mechanic (zero velocity on input release)
 - Paran wall penalty mechanic (loses all velocity on wall collision)
-- Combat loop verified by human — ready for Phase 4 (Server Reconciliation)
