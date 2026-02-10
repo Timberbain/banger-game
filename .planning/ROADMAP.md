@@ -49,10 +49,11 @@ Plans:
   3. Local player movement feels responsive (input-to-visual latency under 100ms)
   4. Remote players move smoothly via interpolation
   5. Game remains playable at up to 150ms network latency
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: TBD during planning
+- [ ] 02-01-PLAN.md — Shared physics constants + server acceleration-based movement
+- [ ] 02-02-PLAN.md — Client prediction, entity interpolation, and latency verification
 
 ### Phase 3: Combat System
 **Goal**: Players can fire projectiles and deal damage with collision detection
