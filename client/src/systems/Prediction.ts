@@ -39,6 +39,7 @@ export class PredictionSystem {
       right: input.right,
       up: input.up,
       down: input.down,
+      fire: input.fire || false,
     });
 
     // Apply prediction locally (same physics as server)

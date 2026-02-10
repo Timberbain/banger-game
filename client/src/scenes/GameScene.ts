@@ -3,6 +3,7 @@ import { Client, Room } from 'colyseus.js';
 import { PredictionSystem } from '../systems/Prediction';
 import { InterpolationSystem } from '../systems/Interpolation';
 import { InputState } from '../../../shared/physics';
+import { CHARACTERS } from '../../../shared/characters';
 
 export class GameScene extends Phaser.Scene {
   private client!: Client;
@@ -16,6 +17,7 @@ export class GameScene extends Phaser.Scene {
     S: Phaser.Input.Keyboard.Key;
     D: Phaser.Input.Keyboard.Key;
   };
+  private fireKey!: Phaser.Input.Keyboard.Key;
   private connected: boolean = false;
   private statusText!: Phaser.GameObjects.Text;
 
@@ -23,6 +25,11 @@ export class GameScene extends Phaser.Scene {
   private prediction: PredictionSystem | null = null;
   private interpolation: InterpolationSystem = new InterpolationSystem();
   private remotePlayers: Set<string> = new Set();
+
+  // Combat rendering
+  private projectileSprites: Map<number, Phaser.GameObjects.Arc> = new Map();
+  private healthBars: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private eliminatedTexts: Map<string, Phaser.GameObjects.Text> = new Map();
 
   constructor() {
     super({ key: 'GameScene' });
@@ -64,6 +71,7 @@ export class GameScene extends Phaser.Scene {
       S: Phaser.Input.Keyboard.Key;
       D: Phaser.Input.Keyboard.Key;
     };
+    this.fireKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     // Add status text at top-left
     this.statusText = this.add.text(10, 10, 'Connecting to server...', {
@@ -91,11 +99,27 @@ export class GameScene extends Phaser.Scene {
 
         const isLocal = sessionId === this.room!.sessionId;
 
-        // Create a colored rectangle (24x24) as placeholder player sprite
-        const color = isLocal ? 0x00ff88 : 0xff4444; // Green for local, red for others
-        const rect = this.add.rectangle(player.x, player.y, 24, 24, color);
+        // Determine initial role-based visuals
+        const role = player.role || 'faran'; // Default to faran if role not yet assigned
+        const isParan = role === 'paran';
+        const size = isParan ? 32 : 24;
+        let color: number;
+        if (isParan) {
+          color = 0xff4444; // Red for Paran
+        } else {
+          color = isLocal ? 0x00ff88 : 0x4488ff; // Green for local guardian, blue for remote
+        }
+
+        // Create a colored rectangle as placeholder player sprite
+        const rect = this.add.rectangle(player.x, player.y, size, size, color);
         rect.setDepth(10); // Above tilemap
         this.playerSprites.set(sessionId, rect);
+
+        // Create health bar above player
+        const healthBar = this.add.graphics();
+        healthBar.setDepth(11);
+        this.healthBars.set(sessionId, healthBar);
+        this.updateHealthBar(sessionId, player.health, role);
 
         // Add player name text above sprite
         const nameText = this.add.text(
@@ -111,18 +135,67 @@ export class GameScene extends Phaser.Scene {
         nameText.setDepth(11);
         this.playerLabels.set(sessionId, nameText);
 
-        if (isLocal) {
-          // Local player: initialize prediction system
-          this.prediction = new PredictionSystem({
-            x: player.x,
-            y: player.y,
-            vx: player.vx || 0,
-            vy: player.vy || 0,
-            angle: player.angle || 0,
-          });
+        // Common onChange handler for role and health updates
+        player.onChange(() => {
+          // Update visuals when role changes
+          if (player.role) {
+            const sprite = this.playerSprites.get(sessionId);
+            if (sprite) {
+              const isParan = player.role === 'paran';
+              const size = isParan ? 32 : 24;
+              let color: number;
+              if (isParan) {
+                color = 0xff4444; // Red for Paran
+              } else {
+                color = isLocal ? 0x00ff88 : 0x4488ff; // Green for local guardian, blue for remote
+              }
+              sprite.setSize(size, size);
+              sprite.setFillStyle(color);
+            }
+          }
 
-          // Set up reconciliation on server state changes
-          player.onChange(() => {
+          // Update health bar
+          this.updateHealthBar(sessionId, player.health, player.role);
+
+          // Handle dead state
+          if (player.health <= 0) {
+            const sprite = this.playerSprites.get(sessionId);
+            if (sprite) {
+              sprite.setAlpha(0.3); // Ghosted
+            }
+            // Show ELIMINATED text if not already shown
+            if (!this.eliminatedTexts.has(sessionId)) {
+              const eliminatedText = this.add.text(
+                player.x,
+                player.y - 40,
+                'ELIMINATED',
+                {
+                  fontSize: '14px',
+                  color: '#ff0000',
+                  fontStyle: 'bold',
+                }
+              );
+              eliminatedText.setOrigin(0.5);
+              eliminatedText.setDepth(12);
+              this.eliminatedTexts.set(sessionId, eliminatedText);
+            }
+          } else {
+            // Alive - ensure sprite is opaque
+            const sprite = this.playerSprites.get(sessionId);
+            if (sprite) {
+              sprite.setAlpha(1.0);
+            }
+            // Remove eliminated text if it exists
+            const eliminatedText = this.eliminatedTexts.get(sessionId);
+            if (eliminatedText) {
+              eliminatedText.destroy();
+              this.eliminatedTexts.delete(sessionId);
+            }
+          }
+
+          // Role-specific handling
+          if (isLocal) {
+            // Local player: reconciliation
             if (this.prediction) {
               this.prediction.reconcile({
                 x: player.x,
@@ -146,20 +219,29 @@ export class GameScene extends Phaser.Scene {
                 label.y = state.y - 20;
               }
             }
-          });
-        } else {
-          // Remote player: use interpolation
-          this.remotePlayers.add(sessionId);
-
-          // Add snapshots on server state changes
-          player.onChange(() => {
+          } else {
+            // Remote player: interpolation
             this.interpolation.addSnapshot(sessionId, {
               timestamp: Date.now(),
               x: player.x,
               y: player.y,
               angle: player.angle || 0,
             });
+          }
+        });
+
+        if (isLocal) {
+          // Local player: initialize prediction system
+          this.prediction = new PredictionSystem({
+            x: player.x,
+            y: player.y,
+            vx: player.vx || 0,
+            vy: player.vy || 0,
+            angle: player.angle || 0,
           });
+        } else {
+          // Remote player: use interpolation
+          this.remotePlayers.add(sessionId);
         }
       });
 
@@ -183,6 +265,39 @@ export class GameScene extends Phaser.Scene {
           label.destroy();
           this.playerLabels.delete(sessionId);
         }
+        const healthBar = this.healthBars.get(sessionId);
+        if (healthBar) {
+          healthBar.destroy();
+          this.healthBars.delete(sessionId);
+        }
+        const eliminatedText = this.eliminatedTexts.get(sessionId);
+        if (eliminatedText) {
+          eliminatedText.destroy();
+          this.eliminatedTexts.delete(sessionId);
+        }
+      });
+
+      // Listen for projectiles
+      this.room.state.projectiles.onAdd((projectile: any, key: string) => {
+        const index = parseInt(key, 10);
+        const color = projectile.ownerId === this.room!.sessionId ? 0xffff00 : 0xff6600;
+        const circle = this.add.circle(projectile.x, projectile.y, 4, color);
+        circle.setDepth(5);
+        this.projectileSprites.set(index, circle);
+
+        projectile.onChange(() => {
+          circle.x = projectile.x;
+          circle.y = projectile.y;
+        });
+      });
+
+      this.room.state.projectiles.onRemove((projectile: any, key: string) => {
+        const index = parseInt(key, 10);
+        const sprite = this.projectileSprites.get(index);
+        if (sprite) {
+          sprite.destroy();
+          this.projectileSprites.delete(index);
+        }
       });
     } catch (e) {
       console.error('Connection failed:', e);
@@ -196,23 +311,28 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // Check if local player is dead
+    const localPlayer = this.room.state.players.get(this.room.sessionId);
+    const isDead = localPlayer && localPlayer.health <= 0;
+
     // Read current keyboard state
     const input: InputState = {
       left: this.cursors.left.isDown || this.wasd.A.isDown,
       right: this.cursors.right.isDown || this.wasd.D.isDown,
       up: this.cursors.up.isDown || this.wasd.W.isDown,
       down: this.cursors.down.isDown || this.wasd.S.isDown,
+      fire: this.fireKey.isDown,
     };
 
     // Send input every frame — acceleration physics needs one input per tick
-    // to match server simulation. Only skip if truly idle (no keys, no velocity).
+    // to match server simulation. Only skip if truly idle (no keys, no velocity) OR dead.
     const hasInput = input.left || input.right || input.up || input.down;
     const hasVelocity = (() => {
       const s = this.prediction!.getState();
       return Math.abs(s.vx) > 0.01 || Math.abs(s.vy) > 0.01;
     })();
 
-    if (hasInput || hasVelocity) {
+    if (!isDead && (hasInput || hasVelocity || input.fire)) {
       this.prediction.sendInput(input, this.room);
     }
 
@@ -252,5 +372,60 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+
+    // Update health bar and eliminated text positions
+    this.room.state.players.forEach((player: any, sessionId: string) => {
+      const sprite = this.playerSprites.get(sessionId);
+      if (sprite) {
+        const healthBar = this.healthBars.get(sessionId);
+        if (healthBar) {
+          // Position health bar above sprite
+          this.drawHealthBar(healthBar, sprite.x, sprite.y - 25, player.health, player.role);
+        }
+        const eliminatedText = this.eliminatedTexts.get(sessionId);
+        if (eliminatedText) {
+          eliminatedText.x = sprite.x;
+          eliminatedText.y = sprite.y - 40;
+        }
+      }
+    });
+  }
+
+  private updateHealthBar(sessionId: string, health: number, role: string): void {
+    const healthBar = this.healthBars.get(sessionId);
+    if (healthBar) {
+      const sprite = this.playerSprites.get(sessionId);
+      if (sprite) {
+        this.drawHealthBar(healthBar, sprite.x, sprite.y - 25, health, role);
+      }
+    }
+  }
+
+  private drawHealthBar(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    health: number,
+    role: string
+  ): void {
+    graphics.clear();
+
+    const maxHealth = role ? CHARACTERS[role]?.maxHealth || 50 : 50;
+    const healthPercent = Math.max(0, health) / maxHealth;
+
+    const barWidth = 30;
+    const barHeight = 4;
+    const barX = x - barWidth / 2;
+    const barY = y;
+
+    // Background (red)
+    graphics.fillStyle(0x990000, 1);
+    graphics.fillRect(barX, barY, barWidth, barHeight);
+
+    // Foreground (green)
+    graphics.fillStyle(0x00ff00, 1);
+    graphics.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+
+    graphics.setPosition(0, 0); // Graphics object uses world coordinates
   }
 }
