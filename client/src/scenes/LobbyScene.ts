@@ -389,16 +389,34 @@ export class LobbyScene extends Phaser.Scene {
     const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
     this.uiElements.push(bg);
 
-    // Room code display (if private)
-    if (this.room.state.isPrivate && this.room.state.roomCode) {
-      const codeLabel = this.add.text(400, 40, `Room Code: ${this.room.state.roomCode}`, {
-        fontSize: '28px',
-        color: '#ffff00',
-        fontStyle: 'bold',
-        fontFamily: 'monospace'
-      }).setOrigin(0.5);
-      this.uiElements.push(codeLabel);
+    // Room code display -- use listener because state may not be synced yet
+    let codeLabel: Phaser.GameObjects.Text | null = null;
+
+    const updateRoomCode = (value: string) => {
+      if (value && this.room?.state.isPrivate) {
+        if (!codeLabel) {
+          codeLabel = this.add.text(400, 40, `Room Code: ${value}`, {
+            fontSize: '28px',
+            color: '#ffff00',
+            fontStyle: 'bold',
+            fontFamily: 'monospace'
+          }).setOrigin(0.5);
+          this.uiElements.push(codeLabel);
+        } else {
+          codeLabel.setText(`Room Code: ${value}`);
+        }
+      }
+    };
+
+    // Show immediately if already synced
+    if (this.room.state.roomCode) {
+      updateRoomCode(this.room.state.roomCode);
     }
+
+    // Also listen for changes (handles race condition)
+    this.room.state.listen('roomCode', (value: string) => {
+      updateRoomCode(value);
+    });
 
     // Character selection section
     this.createCharacterSelection();
