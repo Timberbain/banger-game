@@ -128,11 +128,14 @@ export class GameRoom extends Room<GameState> {
 
     let role: string;
 
-    // If from lobby, use assigned role
-    if (this.roleAssignments && this.roleAssignments[client.sessionId]) {
+    // If client sends role from lobby, use it (with validation)
+    if (options?.role && ["paran", "faran", "baran"].includes(options.role)) {
+      role = options.role;
+    } else if (this.roleAssignments && this.roleAssignments[client.sessionId]) {
+      // Fallback to roleAssignments lookup (unlikely to match but kept for safety)
       role = this.roleAssignments[client.sessionId];
     } else {
-      // Fallback: assign role based on join order (backward compatibility)
+      // Final fallback: assign by join order (backward compatibility for direct joins)
       const playerCount = this.state.players.size;
       if (playerCount === 0) {
         role = "paran";
@@ -141,6 +144,19 @@ export class GameRoom extends Room<GameState> {
       } else {
         role = "baran";
       }
+    }
+
+    // Validate no duplicate roles
+    let roleTaken = false;
+    this.state.players.forEach((p) => {
+      if (p.role === role) roleTaken = true;
+    });
+    if (roleTaken) {
+      // Assign first available role
+      const takenRoles = new Set<string>();
+      this.state.players.forEach((p) => { takenRoles.add(p.role); });
+      const availableRoles = ["paran", "faran", "baran"].filter(r => !takenRoles.has(r));
+      role = availableRoles[0] || "baran";
     }
 
     // Set spawn position based on role

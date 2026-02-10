@@ -252,17 +252,17 @@ export class LobbyRoom extends Room<LobbyState> {
 
     try {
       // Create GameRoom with lobby-assigned roles
-      const reservation = await matchMaker.create("game_room", {
+      const room = await matchMaker.createRoom("game_room", {
         fromLobby: true,
         roleAssignments,
       });
 
       // Notify all clients that the game is ready
       this.broadcast("gameReady", {
-        gameRoomId: reservation.room.roomId,
+        gameRoomId: room.roomId,
       });
 
-      console.log(`Game created: ${reservation.room.roomId}`);
+      console.log(`Game created: ${room.roomId}`);
 
       // Dispose lobby after clients transition (5 second grace period)
       this.clock.setTimeout(() => {
