@@ -2,6 +2,20 @@ import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema";
 import { InputState } from "../../../shared/physics";
 import { Projectile } from "./Projectile";
 
+export enum MatchState {
+  WAITING = "waiting",
+  PLAYING = "playing",
+  ENDED = "ended"
+}
+
+export class PlayerStats extends Schema {
+  @type("number") kills: number = 0;
+  @type("number") deaths: number = 0;
+  @type("number") damageDealt: number = 0;
+  @type("number") shotsFired: number = 0;
+  @type("number") shotsHit: number = 0;
+}
+
 export class Player extends Schema {
   @type("number") x: number = 0;
   @type("number") y: number = 0;
@@ -24,4 +38,9 @@ export class GameState extends Schema {
   @type("number") serverTime: number = 0;
   @type("string") mapName: string = "test_arena";
   @type("number") tickCount: number = 0;
+  @type("string") matchState: string = MatchState.WAITING;
+  @type("number") matchStartTime: number = 0;
+  @type("number") matchEndTime: number = 0;
+  @type({ map: PlayerStats }) matchStats = new MapSchema<PlayerStats>();
+  @type("string") winner: string = "";
 }
