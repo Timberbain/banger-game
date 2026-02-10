@@ -37,6 +37,7 @@ export class GameScene extends Phaser.Scene {
   private projectileVelocities: Map<number, { vx: number; vy: number }> = new Map();
   private healthBars: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private eliminatedTexts: Map<string, Phaser.GameObjects.Text> = new Map();
+  private dcLabels: Map<string, Phaser.GameObjects.Text> = new Map();
 
   // Spectator mode
   private spectatorTarget: string | null = null;
@@ -248,13 +249,13 @@ export class GameScene extends Phaser.Scene {
           this.updateHealthBar(sessionId, player.health, player.role);
 
           // Handle disconnected state
-          if (!player.connected) {
+          if (!player.connected && player.health > 0) {
             const sprite = this.playerSprites.get(sessionId);
             if (sprite) {
-              sprite.setAlpha(0.3); // Ghosted for disconnected
+              sprite.setAlpha(0.3);
             }
             // Show DC label if not already shown
-            if (!this.eliminatedTexts.has(sessionId)) {
+            if (!this.dcLabels.has(sessionId)) {
               const dcText = this.add.text(
                 player.x,
                 player.y + 30,
@@ -269,15 +270,21 @@ export class GameScene extends Phaser.Scene {
               );
               dcText.setOrigin(0.5);
               dcText.setDepth(12);
-              this.eliminatedTexts.set(sessionId, dcText);
+              this.dcLabels.set(sessionId, dcText);
             }
           } else if (player.health <= 0) {
-            // Dead state (but connected)
+            // Dead state
             const sprite = this.playerSprites.get(sessionId);
             if (sprite) {
-              sprite.setAlpha(0.3); // Ghosted
+              sprite.setAlpha(0.3);
             }
-            // Show ELIMINATED text if not already shown
+            // Remove DC label if they died while disconnected
+            const dcLabel = this.dcLabels.get(sessionId);
+            if (dcLabel) {
+              dcLabel.destroy();
+              this.dcLabels.delete(sessionId);
+            }
+            // Show ELIMINATED text
             if (!this.eliminatedTexts.has(sessionId)) {
               const eliminatedText = this.add.text(
                 player.x,
@@ -299,7 +306,13 @@ export class GameScene extends Phaser.Scene {
             if (sprite) {
               sprite.setAlpha(1.0);
             }
-            // Remove eliminated/DC text if it exists
+            // Remove DC label if player reconnected
+            const dcLabel = this.dcLabels.get(sessionId);
+            if (dcLabel) {
+              dcLabel.destroy();
+              this.dcLabels.delete(sessionId);
+            }
+            // Remove eliminated text if it exists (shouldn't happen but defensive)
             const eliminatedText = this.eliminatedTexts.get(sessionId);
             if (eliminatedText) {
               eliminatedText.destroy();
@@ -394,6 +407,11 @@ export class GameScene extends Phaser.Scene {
         if (eliminatedText) {
           eliminatedText.destroy();
           this.eliminatedTexts.delete(sessionId);
+        }
+        const dcLabel = this.dcLabels.get(sessionId);
+        if (dcLabel) {
+          dcLabel.destroy();
+          this.dcLabels.delete(sessionId);
         }
       });
 
@@ -580,6 +598,11 @@ export class GameScene extends Phaser.Scene {
         if (eliminatedText) {
           eliminatedText.x = sprite.x;
           eliminatedText.y = sprite.y - 40;
+        }
+        const dcLabel = this.dcLabels.get(sessionId);
+        if (dcLabel) {
+          dcLabel.x = sprite.x;
+          dcLabel.y = sprite.y + 30;
         }
       }
     });

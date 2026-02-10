@@ -208,15 +208,20 @@ export class GameRoom extends Room<GameState> {
     // Mark player as disconnected
     player.connected = false;
 
-    // If consented (intentional leave), remove player immediately
+    // If consented (intentional leave), handle based on match state
     if (consented) {
       console.log(`Player left (consented): ${client.sessionId}`);
-      this.state.players.delete(client.sessionId);
-      // Keep stats for display (don't delete from matchStats)
 
-      // Check win conditions after intentional leave during match
       if (this.state.matchState === MatchState.PLAYING) {
-        this.checkWinConditions();
+        // During active match: show disconnect state briefly before removing
+        // This gives clients time to render the ghosted state
+        this.clock.setTimeout(() => {
+          this.state.players.delete(client.sessionId);
+          this.checkWinConditions();
+        }, 2000);
+      } else {
+        // Not in active match: remove immediately
+        this.state.players.delete(client.sessionId);
       }
       return;
     }
