@@ -18,15 +18,87 @@ export class LobbyScene extends Phaser.Scene {
     super({ key: 'LobbyScene' });
   }
 
-  create() {
+  async create() {
     // Initialize Colyseus client
     this.client = new Client('ws://localhost:2567');
 
     // Set default player name (could be from localStorage later)
     this.playerName = localStorage.getItem('playerName') || `Player${Math.floor(Math.random() * 1000)}`;
 
-    // Show main menu
-    this.showMainMenu();
+    // Check for active session before showing menu
+    await this.checkReconnection();
+  }
+
+  private async checkReconnection() {
+    // Check for stored reconnection token
+    const stored = localStorage.getItem('bangerActiveRoom');
+
+    if (!stored) {
+      // No active session, show menu normally
+      this.showMainMenu();
+      return;
+    }
+
+    try {
+      const { token, timestamp } = JSON.parse(stored);
+
+      // Check if token is expired (grace period + 30s buffer)
+      const graceMs = LOBBY_CONFIG.MATCH_RECONNECT_GRACE * 1000;
+      const bufferMs = 30000; // 30 seconds
+      const elapsed = Date.now() - timestamp;
+
+      if (elapsed > graceMs + bufferMs) {
+        console.log('Stored session expired, clearing token');
+        localStorage.removeItem('bangerActiveRoom');
+        this.showMainMenu();
+        return;
+      }
+
+      // Show reconnecting message
+      const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+      this.uiElements.push(bg);
+
+      const text = this.add.text(400, 300, 'Reconnecting to match...', {
+        fontSize: '24px',
+        color: '#ffff00'
+      }).setOrigin(0.5);
+      this.uiElements.push(text);
+
+      // Attempt reconnection
+      const room = await this.client.reconnect(token);
+      console.log('Successfully reconnected to game room:', room.id);
+
+      // Update stored token
+      if (room.reconnectionToken) {
+        localStorage.setItem('bangerActiveRoom', JSON.stringify({
+          token: room.reconnectionToken,
+          timestamp: Date.now()
+        }));
+      }
+
+      // Go directly to game scene
+      this.scene.start('GameScene', { room });
+
+    } catch (e) {
+      console.error('Reconnection failed:', e);
+
+      // Clear expired token
+      localStorage.removeItem('bangerActiveRoom');
+
+      // Show session expired message briefly
+      this.clearUI();
+      const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+      this.uiElements.push(bg);
+
+      const errorText = this.add.text(400, 300, 'Session expired', {
+        fontSize: '22px',
+        color: '#ff6666'
+      }).setOrigin(0.5);
+      this.uiElements.push(errorText);
+
+      // Show menu after 2 seconds
+      this.time.delayedCall(2000, () => this.showMainMenu());
+    }
   }
 
   private showMainMenu() {

@@ -146,6 +146,9 @@ export class GameScene extends Phaser.Scene {
         this.matchWinner = data.winner;
         this.matchEnded = true;
 
+        // Clear reconnection token on match end
+        localStorage.removeItem('bangerActiveRoom');
+
         // Launch victory scene as overlay
         this.scene.launch("VictoryScene", {
           winner: data.winner,
@@ -157,6 +160,19 @@ export class GameScene extends Phaser.Scene {
 
         // Pause game scene input (scene stays visible underneath)
         this.scene.pause();
+      });
+
+      // Handle unexpected disconnection
+      this.room.onLeave((code: number) => {
+        console.log('Left room with code:', code);
+
+        // If match ended normally, token already cleared
+        if (this.matchEnded) {
+          return;
+        }
+
+        // Unexpected disconnect - attempt reconnection
+        this.handleReconnection();
       });
 
       // Listen for players joining
@@ -231,8 +247,32 @@ export class GameScene extends Phaser.Scene {
           // Update health bar
           this.updateHealthBar(sessionId, player.health, player.role);
 
-          // Handle dead state
-          if (player.health <= 0) {
+          // Handle disconnected state
+          if (!player.connected) {
+            const sprite = this.playerSprites.get(sessionId);
+            if (sprite) {
+              sprite.setAlpha(0.3); // Ghosted for disconnected
+            }
+            // Show DC label if not already shown
+            if (!this.eliminatedTexts.has(sessionId)) {
+              const dcText = this.add.text(
+                player.x,
+                player.y + 30,
+                'DC',
+                {
+                  fontSize: '12px',
+                  color: '#ffaa00',
+                  fontStyle: 'bold',
+                  backgroundColor: '#000000',
+                  padding: { x: 4, y: 2 }
+                }
+              );
+              dcText.setOrigin(0.5);
+              dcText.setDepth(12);
+              this.eliminatedTexts.set(sessionId, dcText);
+            }
+          } else if (player.health <= 0) {
+            // Dead state (but connected)
             const sprite = this.playerSprites.get(sessionId);
             if (sprite) {
               sprite.setAlpha(0.3); // Ghosted
@@ -254,12 +294,12 @@ export class GameScene extends Phaser.Scene {
               this.eliminatedTexts.set(sessionId, eliminatedText);
             }
           } else {
-            // Alive - ensure sprite is opaque
+            // Alive and connected - ensure sprite is opaque
             const sprite = this.playerSprites.get(sessionId);
             if (sprite) {
               sprite.setAlpha(1.0);
             }
-            // Remove eliminated text if it exists
+            // Remove eliminated/DC text if it exists
             const eliminatedText = this.eliminatedTexts.get(sessionId);
             if (eliminatedText) {
               eliminatedText.destroy();
@@ -611,6 +651,97 @@ export class GameScene extends Phaser.Scene {
     const currentIndex = alivePlayers.indexOf(currentTarget);
     const nextIndex = (currentIndex + 1) % alivePlayers.length;
     return alivePlayers[nextIndex];
+  }
+
+  private async handleReconnection() {
+    // Show reconnecting overlay
+    this.statusText.setText('Reconnecting...');
+
+    // Get stored token
+    const stored = localStorage.getItem('bangerActiveRoom');
+    if (!stored) {
+      this.returnToLobby('Connection lost. No active session.');
+      return;
+    }
+
+    try {
+      const { token } = JSON.parse(stored);
+
+      // Attempt reconnection
+      const room = await this.client.reconnect(token);
+      console.log('Successfully reconnected to room:', room.id);
+
+      // Update room reference
+      this.room = room;
+
+      // Update stored token with new one
+      if (room.reconnectionToken) {
+        localStorage.setItem('bangerActiveRoom', JSON.stringify({
+          token: room.reconnectionToken,
+          timestamp: Date.now()
+        }));
+      }
+
+      // Re-attach state listeners
+      this.attachRoomListeners();
+
+      // Update status
+      this.statusText.setText(`Reconnected: ${room.sessionId}`);
+
+    } catch (e) {
+      console.error('Reconnection failed:', e);
+      this.returnToLobby('Connection lost. Returning to lobby...');
+    }
+  }
+
+  private attachRoomListeners() {
+    if (!this.room) return;
+
+    // Re-attach all the message and state listeners
+    // (These were set up in create() initially)
+
+    this.room.onMessage("matchStart", () => {
+      this.statusText.setText(`Match started!`);
+      this.time.delayedCall(2000, () => {
+        if (!this.matchEnded) {
+          this.statusText.setText(`Connected: ${this.room!.sessionId}`);
+        }
+      });
+    });
+
+    this.room.onMessage("matchEnd", (data: any) => {
+      this.finalStats = data.stats;
+      this.matchWinner = data.winner;
+      this.matchEnded = true;
+      localStorage.removeItem('bangerActiveRoom');
+
+      this.scene.launch("VictoryScene", {
+        winner: data.winner,
+        stats: data.stats,
+        duration: data.duration,
+        localSessionId: this.room!.sessionId,
+        room: this.room
+      });
+
+      this.scene.pause();
+    });
+
+    this.room.onLeave((code: number) => {
+      console.log('Left room with code:', code);
+      if (this.matchEnded) {
+        return;
+      }
+      this.handleReconnection();
+    });
+  }
+
+  private returnToLobby(message: string) {
+    this.statusText.setText(message);
+    localStorage.removeItem('bangerActiveRoom');
+
+    this.time.delayedCall(3000, () => {
+      this.scene.start('LobbyScene');
+    });
   }
 
   private createTilemap(mapKey: string): void {
