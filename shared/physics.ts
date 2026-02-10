@@ -59,33 +59,53 @@ export function applyMovementPhysics(
   if (input.up) ay -= acceleration;
   if (input.down) ay += acceleration;
 
-  // Normalize diagonal movement (divide by sqrt(2) when both axes active)
-  if (ax !== 0 && ay !== 0) {
-    const normalizeFactor = 1 / Math.sqrt(2);
-    ax *= normalizeFactor;
-    ay *= normalizeFactor;
-  }
-
-  // Paran-specific instant turning: preserve speed magnitude, redirect to new input direction
+  // Paran-specific Pac-Man style movement
   if (player.role === 'paran') {
-    // Check if there's any input direction
-    const hasInput = ax !== 0 || ay !== 0;
-
-    if (hasInput) {
-      // Compute current speed magnitude
+    // 1. Cardinal-only movement: if both axes have input, filter to one axis
+    if (ax !== 0 && ay !== 0) {
+      // Get current velocity direction
       const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
 
-      // Only redirect if there's significant speed to preserve
+      // If moving with significant velocity, prioritize the perpendicular axis (allows turning)
       if (currentSpeed > PHYSICS.minVelocity) {
-        // Compute input direction (already normalized for diagonals above)
-        const inputMagnitude = Math.sqrt(ax * ax + ay * ay);
-        const inputDirX = ax / inputMagnitude;
-        const inputDirY = ay / inputMagnitude;
-
-        // Redirect velocity: set to input direction with preserved speed
-        player.vx = inputDirX * currentSpeed;
-        player.vy = inputDirY * currentSpeed;
+        const movingHorizontally = Math.abs(player.vx) > Math.abs(player.vy);
+        if (movingHorizontally) {
+          // Currently moving horizontally, switch to vertical input
+          ax = 0;
+        } else {
+          // Currently moving vertically, switch to horizontal input
+          ay = 0;
+        }
+      } else {
+        // Not moving or very slow, prioritize vertical (arbitrary but consistent)
+        ax = 0;
       }
+    }
+
+    // 2. Instant stop: if no input, zero velocity immediately
+    const hasInput = ax !== 0 || ay !== 0;
+    if (!hasInput) {
+      player.vx = 0;
+      player.vy = 0;
+      return; // Skip rest of physics processing
+    }
+
+    // 3. Instant turning: preserve speed magnitude, redirect to new input direction
+    const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+    if (currentSpeed > PHYSICS.minVelocity) {
+      // Redirect velocity: set to input direction with preserved speed
+      const inputMagnitude = Math.sqrt(ax * ax + ay * ay);
+      const inputDirX = ax / inputMagnitude;
+      const inputDirY = ay / inputMagnitude;
+      player.vx = inputDirX * currentSpeed;
+      player.vy = inputDirY * currentSpeed;
+    }
+  } else {
+    // Guardian behavior: normalize diagonal movement (divide by sqrt(2) when both axes active)
+    if (ax !== 0 && ay !== 0) {
+      const normalizeFactor = 1 / Math.sqrt(2);
+      ax *= normalizeFactor;
+      ay *= normalizeFactor;
     }
   }
 
