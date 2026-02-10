@@ -12,7 +12,7 @@ Building a browser-based asymmetric 1v2 multiplayer shooter with server-authorit
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation & Server Architecture** - Establish infrastructure and authority model
+- [x] **Phase 1: Foundation & Server Architecture** - Establish infrastructure and authority model
 - [ ] **Phase 2: Core Movement** - Acceleration-based physics with client prediction
 - [ ] **Phase 3: Combat System** - Projectiles, collision detection, damage system
 - [ ] **Phase 4: Match Lifecycle & Maps** - Win conditions, multiple arenas, spectator mode
@@ -35,9 +35,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Server foundation (Express + Colyseus + Schema state + 60Hz GameRoom)
-- [ ] 01-02-PLAN.md — Client foundation (Vite + Phaser + Tiled test arena map)
-- [ ] 01-03-PLAN.md — Integration (client-server connection, input validation, latency simulation)
+- [x] 01-01-PLAN.md — Server foundation (Express + Colyseus + Schema state + 60Hz GameRoom)
+- [x] 01-02-PLAN.md — Client foundation (Vite + Phaser + Tiled test arena map)
+- [x] 01-03-PLAN.md — Integration (client-server connection, input validation, latency simulation)
 
 ### Phase 2: Core Movement
 **Goal**: Players can move characters with responsive acceleration-based physics
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Server Architecture | 0/3 | Planned | - |
+| 1. Foundation & Server Architecture | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. Core Movement | 0/TBD | Not started | - |
 | 3. Combat System | 0/TBD | Not started | - |
 | 4. Match Lifecycle & Maps | 0/TBD | Not started | - |
@@ -151,4 +151,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-10*
