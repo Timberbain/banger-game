@@ -4,6 +4,7 @@ import { Server } from "colyseus";
 import { monitor } from "@colyseus/monitor";
 import cors from "cors";
 import { GameRoom } from "./rooms/GameRoom";
+import { LobbyRoom } from "./rooms/LobbyRoom";
 import { SERVER_CONFIG } from "./config";
 
 const app = express();
@@ -26,6 +27,9 @@ if (simulateLatency > 0) {
 const gameServer = new Server({
   server: httpServer,
 });
+
+// Register lobby room
+gameServer.define("lobby_room", LobbyRoom);
 
 // Register game room
 gameServer.define("game_room", GameRoom);

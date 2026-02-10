@@ -13,6 +13,7 @@ export class GameRoom extends Room<GameState> {
   // Static map rotation index shared across room instances
   private static currentMapIndex: number = 0;
   private mapMetadata!: MapMetadata;
+  private roleAssignments?: Record<string, string>;
 
   /**
    * Validate input structure and types
@@ -54,6 +55,12 @@ export class GameRoom extends Room<GameState> {
     this.setState(new GameState());
     this.state.matchState = MatchState.WAITING; // Explicit state initialization
     this.autoDispose = true;
+
+    // Store role assignments if from lobby
+    if (options.fromLobby && options.roleAssignments) {
+      this.roleAssignments = options.roleAssignments;
+      console.log("GameRoom created from lobby with role assignments:", this.roleAssignments);
+    }
 
     // Select map (sequential rotation across room instances)
     this.mapMetadata = MAPS[GameRoom.currentMapIndex % MAPS.length];
@@ -118,20 +125,31 @@ export class GameRoom extends Room<GameState> {
   onJoin(client: Client, options?: any) {
     const player = new Player();
 
-    // Assign character role based on join order
-    // First player = paran (force), second/third = guardians
-    const playerCount = this.state.players.size;
     let role: string;
-    if (playerCount === 0) {
-      role = "paran";
+
+    // If from lobby, use assigned role
+    if (this.roleAssignments && this.roleAssignments[client.sessionId]) {
+      role = this.roleAssignments[client.sessionId];
+    } else {
+      // Fallback: assign role based on join order (backward compatibility)
+      const playerCount = this.state.players.size;
+      if (playerCount === 0) {
+        role = "paran";
+      } else if (playerCount === 1) {
+        role = "faran";
+      } else {
+        role = "baran";
+      }
+    }
+
+    // Set spawn position based on role
+    if (role === "paran") {
       player.x = this.mapMetadata.spawnPoints.paran.x;
       player.y = this.mapMetadata.spawnPoints.paran.y;
-    } else if (playerCount === 1) {
-      role = "faran";
+    } else if (role === "faran") {
       player.x = this.mapMetadata.spawnPoints.guardians[0].x;
       player.y = this.mapMetadata.spawnPoints.guardians[0].y;
     } else {
-      role = "baran";
       player.x = this.mapMetadata.spawnPoints.guardians[1].x;
       player.y = this.mapMetadata.spawnPoints.guardians[1].y;
     }

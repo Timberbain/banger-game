@@ -2,6 +2,7 @@ import { Room, Client, matchMaker } from "colyseus";
 import { LobbyState, LobbyPlayer } from "../schema/LobbyState";
 import { generateRoomCode } from "../utils/roomCode";
 import { LOBBY_CONFIG, VALID_ROLES, ROLE_LIMITS } from "../../../shared/lobby";
+import { matchmakingQueue } from "./MatchmakingQueue";
 
 /**
  * Pre-match lobby room
@@ -10,6 +11,7 @@ import { LOBBY_CONFIG, VALID_ROLES, ROLE_LIMITS } from "../../../shared/lobby";
 export class LobbyRoom extends Room<LobbyState> {
   maxClients = LOBBY_CONFIG.MAX_PLAYERS;
   private countdownInterval?: any;
+  private matchmakingCheckInterval?: any;
 
   onCreate(options: any) {
     this.setState(new LobbyState());
@@ -72,6 +74,35 @@ export class LobbyRoom extends Room<LobbyState> {
       this.checkReadyToStart();
     });
 
+    this.onMessage("joinQueue", (client, message) => {
+      const { preferredRole } = message;
+      if (!VALID_ROLES.includes(preferredRole)) {
+        return;
+      }
+      matchmakingQueue.addToQueue(client.sessionId, preferredRole);
+    });
+
+    this.onMessage("leaveQueue", (client, message) => {
+      matchmakingQueue.removeFromQueue(client.sessionId);
+    });
+
+    // Periodic matchmaking check (every 1 second)
+    this.matchmakingCheckInterval = this.clock.setInterval(() => {
+      const match = matchmakingQueue.tryFormMatch();
+      if (match) {
+        // TODO: Create lobby room for matched players
+        // This requires creating reservations for specific clients, which is complex
+        // For now, just log that a match was found
+        console.log("Match found via matchmaking:", match);
+      }
+
+      // Check for timeouts
+      const timedOut = matchmakingQueue.checkTimeouts(LOBBY_CONFIG.QUEUE_TIMEOUT);
+      if (timedOut.length > 0) {
+        console.log("Players timed out from queue:", timedOut);
+      }
+    }, 1000);
+
     console.log(`LobbyRoom created with roomId: ${this.roomId}`);
   }
 
@@ -95,6 +126,9 @@ export class LobbyRoom extends Room<LobbyState> {
   async onLeave(client: Client, consented: boolean) {
     const player = this.state.players.get(client.sessionId);
     if (!player) return;
+
+    // Remove from matchmaking queue
+    matchmakingQueue.removeFromQueue(client.sessionId);
 
     player.connected = false;
 
@@ -244,6 +278,9 @@ export class LobbyRoom extends Room<LobbyState> {
   onDispose() {
     if (this.countdownInterval) {
       this.countdownInterval.clear();
+    }
+    if (this.matchmakingCheckInterval) {
+      this.matchmakingCheckInterval.clear();
     }
     console.log(`LobbyRoom disposed: ${this.roomId}`);
   }
