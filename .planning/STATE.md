@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 4 (Match Lifecycle & Maps)
+**Current focus:** Phase 5 (Multiplayer Lobbies)
 
 ## Current Position
 
-Phase: 4 of 7 (Match Lifecycle & Maps)
-Plan: 3 of 3
-Status: Complete
-Last activity: 2026-02-10 — Completed 04-03-PLAN.md (Arena Map System)
+Phase: 5 of 7 (Multiplayer Lobbies)
+Plan: 1 of 3
+Status: In Progress
+Last activity: 2026-02-10 — Completed 05-01-PLAN.md (Lobby Infrastructure)
 
-Progress: [████████░░] 67% (10 of 12 plans complete: Phase 1-3 done, Phase 4: 3/3 done)
+Progress: [████████░░] 73% (11 of 15 plans complete: Phase 1-4 done, Phase 5: 1/3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 10.7 min
-- Total execution time: 3.25 hours
+- Total plans completed: 11
+- Average duration: 9.8 min
+- Total execution time: 3.3 hours
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: [████████░░] 67% (10 of 12 plans complete: Phase 1
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
 | 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
+| 05-multiplayer-lobbies | 1 | 3 min | 3.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (45 min), 04-01 (10 min), 04-02 (3 min), 04-03 (4 min)
-- Trend: Phase 4 extremely fast (5.7 min avg), well-defined incremental features
+- Last 5 plans: 04-01 (10 min), 04-02 (3 min), 04-03 (4 min), 05-01 (3 min)
+- Trend: Phase 5 maintaining fast velocity (3 min), clear implementation requirements
 
 *Updated after each plan completion*
 
@@ -84,6 +85,12 @@ Recent decisions affecting current work:
 - [Phase 04-03]: 4 maps in rotation pool provides gameplay variety
 - [Phase 04-03]: Sequential map rotation ensures all maps get played without repetition
 - [Phase 04-03]: Map-specific spawn points ensure balanced starting positions
+- [Phase 05-01]: Room code excludes ambiguous characters (0/O, 1/I/L) for user clarity
+- [Phase 05-01]: Changing role un-readies player to confirm selection
+- [Phase 05-01]: GameRoom accepts roleAssignments option from lobby
+- [Phase 05-01]: Room code excludes ambiguous characters (0/O, 1/I/L) for user clarity
+- [Phase 05-01]: Changing role un-readies player to confirm selection
+- [Phase 05-01]: GameRoom accepts roleAssignments option from lobby
 
 ### Pending Todos
 
@@ -96,8 +103,19 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 04-03-PLAN.md (Arena Map System) — Phase 4: 3 of 3 plans complete (PHASE COMPLETE)
-Resume file: .planning/phases/04-match-lifecycle-maps/04-03-SUMMARY.md
+Stopped at: Completed 05-01-PLAN.md (Lobby Infrastructure) — Phase 5: 1 of 3 plans complete
+Resume file: .planning/phases/05-multiplayer-lobbies/05-01-SUMMARY.md
+
+**Phase 5 In Progress (1 of 3):**
+- 05-01 Complete: Server-side lobby infrastructure
+  - LobbyRoom with character selection (role validation, conflict detection)
+  - Ready system with 3-second countdown (requires 1 paran + 1 faran + 1 baran)
+  - Private room codes (6-char alphanumeric, excludes ambiguous characters)
+  - MatchmakingQueue singleton for role-based matchmaking (1 paran + 2 guardians)
+  - GameRoom accepts lobby-assigned roles via roleAssignments option
+  - Reconnection grace period (30s lobby, 60s match)
+  - Both lobby_room and game_room registered on server
+- Next: 05-02 (Client lobby UI and transitions)
 
 **Phase 4 Complete (3 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
