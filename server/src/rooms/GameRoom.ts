@@ -1,5 +1,5 @@
 import { Room, Client } from "colyseus";
-import { GameState, Player } from "../schema/GameState";
+import { GameState, Player, MatchState, PlayerStats } from "../schema/GameState";
 import { Projectile } from "../schema/Projectile";
 import { SERVER_CONFIG, GAME_CONFIG } from "../config";
 import { applyMovementPhysics, updateFacingDirection, PHYSICS, ARENA } from "../../../shared/physics";
@@ -47,6 +47,7 @@ export class GameRoom extends Room<GameState> {
 
   onCreate(options: any) {
     this.setState(new GameState());
+    this.state.matchState = MatchState.WAITING; // Explicit state initialization
     this.autoDispose = true;
 
     // Set up fixed timestep loop using accumulator pattern
@@ -117,6 +118,10 @@ export class GameRoom extends Room<GameState> {
 
     const stats = CHARACTERS[role];
 
+    // Initialize player stats BEFORE adding player to state
+    const playerStats = new PlayerStats();
+    this.state.matchStats.set(client.sessionId, playerStats);
+
     // Set initial position (centered with small random offset to avoid overlap)
     player.x = ARENA.width / 2 + (Math.random() - 0.5) * 100;
     player.y = ARENA.height / 2 + (Math.random() - 0.5) * 100;
@@ -133,14 +138,32 @@ export class GameRoom extends Room<GameState> {
     this.state.players.set(client.sessionId, player);
 
     console.log(`Player joined: ${client.sessionId} (${player.name}) as ${role} with ${stats.maxHealth} health`);
+
+    // Start match when all players have joined
+    if (this.state.players.size === this.maxClients) {
+      this.startMatch();
+    }
   }
 
   onLeave(client: Client, consented: boolean) {
     this.state.players.delete(client.sessionId);
+    // Keep stats for display (don't delete from matchStats)
     console.log(`Player left: ${client.sessionId} (consented: ${consented})`);
+
+    // Check if leaving triggers win condition
+    if (this.state.matchState === MatchState.PLAYING) {
+      this.checkWinConditions();
+    }
   }
 
   fixedTick(deltaTime: number) {
+    // Guard: only run game logic during PLAYING state
+    if (this.state.matchState !== MatchState.PLAYING) {
+      // Still increment serverTime during WAITING (needed for matchStartTime comparison)
+      this.state.serverTime += deltaTime;
+      return;
+    }
+
     // Increment tick counter
     this.state.tickCount++;
 
@@ -154,6 +177,11 @@ export class GameRoom extends Room<GameState> {
     const noInput: { left: boolean; right: boolean; up: boolean; down: boolean } = { left: false, right: false, up: false, down: false };
 
     this.state.players.forEach((player, sessionId) => {
+      // Ignore dead player input
+      if (player.health <= 0) {
+        player.inputQueue = []; // Drain dead player input
+        return; // Skip processing
+      }
       // Get character stats
       const stats = CHARACTERS[player.role];
 
@@ -179,6 +207,10 @@ export class GameRoom extends Room<GameState> {
 
             // Update cooldown
             player.lastFireTime = this.state.serverTime;
+
+            // Track stats
+            const shooterStats = this.state.matchStats.get(sessionId);
+            if (shooterStats) shooterStats.shotsFired++;
           }
         }
 
@@ -265,7 +297,23 @@ export class GameRoom extends Room<GameState> {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < COMBAT.playerRadius + COMBAT.projectileRadius) {
+          // Apply damage
+          const wasAlive = target.health > 0;
           target.health = Math.max(0, target.health - proj.damage);
+          const isDead = target.health === 0;
+
+          // Track stats
+          const shooterStats = this.state.matchStats.get(proj.ownerId);
+          if (shooterStats) {
+            shooterStats.shotsHit++;
+            shooterStats.damageDealt += proj.damage;
+            if (wasAlive && isDead) {
+              shooterStats.kills++;
+              const targetStats = this.state.matchStats.get(targetId);
+              if (targetStats) targetStats.deaths++;
+            }
+          }
+
           hit = true;
         }
       });
@@ -274,6 +322,73 @@ export class GameRoom extends Room<GameState> {
         this.state.projectiles.splice(i, 1);
       }
     }
+
+    // Check win conditions after combat processing
+    this.checkWinConditions();
+  }
+
+  private startMatch() {
+    this.state.matchState = MatchState.PLAYING;
+    this.state.matchStartTime = this.state.serverTime;
+    this.lock(); // Prevent additional joins
+    this.broadcast("matchStart", { startTime: this.state.matchStartTime });
+    console.log("Match started!");
+  }
+
+  private checkWinConditions() {
+    const players = Array.from(this.state.players.values());
+    const aliveParan = players.find(p => p.role === "paran" && p.health > 0);
+    const aliveGuardians = players.filter(p => p.role !== "paran" && p.health > 0);
+
+    if (!aliveParan) {
+      this.endMatch("guardians");
+    } else if (aliveGuardians.length === 0) {
+      this.endMatch("paran");
+    }
+  }
+
+  private endMatch(winner: string) {
+    // Drain all input queues
+    this.state.players.forEach(p => { p.inputQueue = []; });
+
+    // Set winner
+    this.state.winner = winner;
+
+    // Serialize stats for broadcast (client can also read from matchStats, but broadcast provides clean object)
+    const stats: Record<string, any> = {};
+    this.state.matchStats.forEach((playerStats, sessionId) => {
+      const player = this.state.players.get(sessionId);
+      stats[sessionId] = {
+        name: player?.name || "Unknown",
+        role: player?.role || "unknown",
+        kills: playerStats.kills,
+        deaths: playerStats.deaths,
+        damageDealt: playerStats.damageDealt,
+        shotsFired: playerStats.shotsFired,
+        shotsHit: playerStats.shotsHit,
+        accuracy: playerStats.shotsFired > 0
+          ? Math.round(playerStats.shotsHit / playerStats.shotsFired * 1000) / 10
+          : 0
+      };
+    });
+
+    // Broadcast final stats
+    this.broadcast("matchEnd", {
+      winner,
+      stats,
+      duration: this.state.serverTime - this.state.matchStartTime
+    });
+
+    // Set match state to ENDED (triggers client scene transitions)
+    this.state.matchState = MatchState.ENDED;
+    this.state.matchEndTime = this.state.serverTime;
+
+    console.log(`Match ended! Winner: ${winner}`);
+
+    // Auto-disconnect after 15 seconds (gives time to view stats)
+    this.clock.setTimeout(() => {
+      this.disconnect();
+    }, 15000);
   }
 
   onDispose() {
