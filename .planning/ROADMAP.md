@@ -13,7 +13,7 @@ Building a browser-based asymmetric 1v2 multiplayer shooter with server-authorit
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Server Architecture** - Establish infrastructure and authority model
-- [ ] **Phase 2: Core Movement** - Acceleration-based physics with client prediction
+- [x] **Phase 2: Core Movement** - Acceleration-based physics with client prediction
 - [ ] **Phase 3: Combat System** - Projectiles, collision detection, damage system
 - [ ] **Phase 4: Match Lifecycle & Maps** - Win conditions, multiple arenas, spectator mode
 - [ ] **Phase 5: Multiplayer Lobbies** - Room codes, matchmaking, character selection
@@ -52,8 +52,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Shared physics constants + server acceleration-based movement
-- [ ] 02-02-PLAN.md — Client prediction, entity interpolation, and latency verification
+- [x] 02-01-PLAN.md — Shared physics constants + server acceleration-based movement
+- [x] 02-02-PLAN.md — Client prediction, entity interpolation, and latency verification
 
 ### Phase 3: Combat System
 **Goal**: Players can fire projectiles and deal damage with collision detection
@@ -143,7 +143,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Server Architecture | 3/3 | ✓ Complete | 2026-02-10 |
-| 2. Core Movement | 0/TBD | Not started | - |
+| 2. Core Movement | 2/2 | ✓ Complete | 2026-02-10 |
 | 3. Combat System | 0/TBD | Not started | - |
 | 4. Match Lifecycle & Maps | 0/TBD | Not started | - |
 | 5. Multiplayer Lobbies | 0/TBD | Not started | - |
@@ -152,4 +152,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-10*
+*Last updated: 2026-02-10 (Phase 2 complete)*

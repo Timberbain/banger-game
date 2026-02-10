@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 2 (Core Movement)
+**Current focus:** Phase 2 (Core Movement) — COMPLETE
 
 ## Current Position
 
-Phase: 2 of 7 (Core Movement) — IN PROGRESS
-Plan: 2 of 3
-Status: Client prediction and interpolation complete
-Last activity: 2026-02-10 — Completed 02-02-PLAN.md (Client prediction and interpolation)
+Phase: 2 of 7 (Core Movement) — COMPLETE
+Plan: 2 of 2
+Status: Phase complete, ready for Phase 3
+Last activity: 2026-02-10 — Completed Phase 2 (Core Movement)
 
-Progress: [█████░░░░░] 50% (Phase 1: 3/3 done, Phase 2: 2/3 done)
+Progress: [███░░░░░░░] 29% (Phases 1-2 complete: 5 of 5 plans done)
 
 ## Performance Metrics
 
@@ -73,14 +73,14 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-10T10:37:24Z (plan execution)
-Stopped at: Completed 02-02-PLAN.md (Client prediction and interpolation)
-Resume file: .planning/phases/02-core-movement/02-02-SUMMARY.md
+Last session: 2026-02-10 (phase execution)
+Stopped at: Completed Phase 2 (Core Movement) — all 2 plans done
+Resume file: .planning/phases/02-core-movement/02-VERIFICATION.md
 
-**Phase 2 Progress:**
-- Shared physics module with acceleration/drag/maxVelocity
-- Server upgraded to velocity-based movement
+**Phase 2 Summary:**
+- Shared physics module with acceleration/drag/maxVelocity (shared/physics.ts)
+- Server upgraded to velocity-based movement with sequence tracking
 - Client-side prediction with input replay reconciliation
 - Entity interpolation for smooth remote player rendering
-- Movement feels responsive even at 150ms latency
-- Ready for Plan 03 (if exists) or progression to Phase 3 (Collision Detection)
+- Movement feels responsive even at 150ms latency (human verified)
+- Ready for Phase 3: Combat System
