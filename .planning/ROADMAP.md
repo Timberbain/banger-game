@@ -103,10 +103,12 @@ Plans:
   6. Player selects character before match begins
   7. Match begins with countdown after all 3 players ready
   8. Player can reconnect to active match within grace period (30-60s)
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 05-01: TBD during planning
+- [ ] 05-01-PLAN.md — Server lobby infrastructure (LobbyRoom, LobbyState, MatchmakingQueue, room codes)
+- [ ] 05-02-PLAN.md — Client LobbyScene UI (create/join/queue, character selection, ready, countdown)
+- [ ] 05-03-PLAN.md — Reconnection grace period (server allowReconnection, client token persistence)
 
 ### Phase 6: Accounts & Stats
 **Goal**: Players have persistent accounts with tracked stats
