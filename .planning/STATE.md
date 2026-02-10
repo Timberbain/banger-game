@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 4 of 7 (Match Lifecycle & Maps)
-Plan: 1 of 3
+Plan: 2 of 3
 Status: In Progress
-Last activity: 2026-02-10 — Completed 04-01-PLAN.md (Server Match Lifecycle)
+Last activity: 2026-02-10 — Completed 04-02-PLAN.md (Client Match End UI & Spectator Mode)
 
-Progress: [██████░░░░] 56% (8 of 12 plans complete: Phase 1-3 done, Phase 4: 1/3 done)
+Progress: [███████░░░] 60% (9 of 12 plans complete: Phase 1-3 done, Phase 4: 2/3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 12.0 min
-- Total execution time: 2.92 hours
+- Total plans completed: 9
+- Average duration: 11.3 min
+- Total execution time: 3.07 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [██████░░░░] 56% (8 of 12 plans complete: Phase 1-
 | 01-foundation-server-architecture | 3 | 26 min | 8.7 min |
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
-| 04-match-lifecycle-maps | 1 | 10 min | 10.0 min |
+| 04-match-lifecycle-maps | 2 | 13 min | 6.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (23 min), 03-01 (3 min), 03-02 (45 min), 04-01 (10 min)
-- Trend: Variable (03-02 included checkpoint iteration with 7 fix commits, 04-01 was straightforward)
+- Last 5 plans: 03-01 (3 min), 03-02 (45 min), 04-01 (10 min), 04-02 (3 min)
+- Trend: Phase 4 very fast (6.5 min avg), straightforward UI implementation
 
 *Updated after each plan completion*
 
@@ -78,6 +78,9 @@ Recent decisions affecting current work:
 - 04-01: Stats synced to clients via MapSchema — Clients can display live stats
 - 04-01: Auto-disconnect 15s after match end — Gives time to view stats
 - 04-01: Player leaving during PLAYING triggers win check — Counts as elimination
+- 04-02: scene.launch (not scene.start) for VictoryScene — Keeps GameScene visible underneath as overlay
+- 04-02: matchEnd message with stats (not Schema listener) — Avoids stale stats pitfall
+- 04-02: Tab key for spectator camera cycling — Familiar FPS convention
 
 ### Pending Todos
 
@@ -90,17 +93,22 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 04-01-PLAN.md (Server Match Lifecycle) — Phase 4: 1 of 3 plans complete
-Resume file: .planning/phases/04-match-lifecycle-maps/04-01-SUMMARY.md
+Stopped at: Completed 04-02-PLAN.md (Client Match End UI & Spectator Mode) — Phase 4: 2 of 3 plans complete
+Resume file: .planning/phases/04-match-lifecycle-maps/04-02-SUMMARY.md
 
-**Phase 4 Progress (1 of 3):**
+**Phase 4 Progress (2 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
   - Match starts when 3 players join, room locked during PLAYING
   - Win conditions: all guardians dead = paran wins, paran dead = guardians win
   - Per-player stats tracking (kills, deaths, damage, shots fired/hit, accuracy)
   - matchEnd broadcast with final stats, auto-disconnect after 15s
-- Next: 04-02 Arena map system with structured tilemap and spawn positions
-- Next: 04-03 Lobby system with waiting room and matchmaking
+- 04-02 Complete: Client match end UI and spectator mode
+  - VictoryScene overlay with stats table (kills, deaths, damage, accuracy)
+  - Local player highlighted in yellow for quick identification
+  - Spectator mode for eliminated players (Tab to cycle camera between alive players)
+  - Return to Lobby button (disconnects from room, returns to BootScene)
+  - Match state status text (waiting, match started, spectating)
+- Next: 04-03 Arena map system with structured tilemap and spawn positions
 
 **Phase 3 Complete:**
 - Server-authoritative combat system with projectiles, collision, damage, death
