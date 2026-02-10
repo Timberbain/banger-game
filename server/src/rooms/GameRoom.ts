@@ -197,23 +197,12 @@ export class GameRoom extends Room<GameState> {
         processedAny = true;
       }
 
-      // If no inputs this tick (network timing gap), handle per-role:
+      // If no inputs this tick (network timing gap), maintain velocity
+      // and just integrate position. Instant stop only triggers from actual
+      // input with no directions, not from missing network frames.
       if (!processedAny) {
-        if (player.role === 'paran') {
-          // Paran: maintain velocity, just integrate position.
-          // Instant stop only triggers from actual input with no directions,
-          // not from missing network frames.
-          player.x += player.vx * FIXED_DT;
-          player.y += player.vy * FIXED_DT;
-        } else {
-          // Guardians: apply drag (coast to stop)
-          applyMovementPhysics(player, noInput, FIXED_DT, {
-            acceleration: stats.acceleration,
-            drag: stats.drag,
-            maxVelocity: stats.maxVelocity,
-          });
-          updateFacingDirection(player);
-        }
+        player.x += player.vx * FIXED_DT;
+        player.y += player.vy * FIXED_DT;
       }
 
       // Store position before clamping for collision detection

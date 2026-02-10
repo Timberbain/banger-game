@@ -107,6 +107,14 @@ export function applyMovementPhysics(
       ax *= normalizeFactor;
       ay *= normalizeFactor;
     }
+
+    // Instant stop when no input (like humans running and stopping)
+    const hasInput = ax !== 0 || ay !== 0;
+    if (!hasInput) {
+      player.vx = 0;
+      player.vy = 0;
+      return;
+    }
   }
 
   // Integrate velocity
