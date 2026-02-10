@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 5 of 7 (Multiplayer Lobbies)
-Plan: 3 of 3
-Status: Complete
-Last activity: 2026-02-10 — Completed 05-03-PLAN.md (Reconnection Support)
+Plan: 5 of 7 (gap closure)
+Status: In Progress
+Last activity: 2026-02-10 — Completed 05-05-PLAN.md (Lobby UI Race Conditions)
 
-Progress: [█████████░] 86% (13 of 15 plans complete: Phase 1-4 done, Phase 5: 3/3 done)
+Progress: [█████████░] 87% (14 of 16 plans complete: Phase 1-4 done, Phase 5: 4/7 done including gap closures)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 8.2 min
-- Total execution time: 3.5 hours
+- Total plans completed: 14
+- Average duration: 7.4 min
+- Total execution time: 3.6 hours
 
 **By Phase:**
 
@@ -31,15 +31,16 @@ Progress: [█████████░] 86% (13 of 15 plans complete: Phase 1
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
 | 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
-| 05-multiplayer-lobbies | 3 | 8 min | 2.7 min |
+| 05-multiplayer-lobbies | 4 | 9 min | 2.25 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (4 min), 05-01 (3 min), 05-02 (3 min), 05-03 (2 min)
-- Trend: Phase 5 complete with excellent velocity (2.7 min avg), well-defined plans
+- Last 5 plans: 05-01 (3 min), 05-02 (3 min), 05-03 (2 min), 05-05 (1 min)
+- Trend: Phase 5 gap closures maintaining excellent velocity (avg 2.25 min), precise bug fixes
 
 *Updated after each plan completion*
 | Phase 05 P02 | 3 | 2 tasks | 6 files |
 | Phase 05 P03 | 2 | 2 tasks | 5 files |
+| Phase 05 P05 | 1 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Recent decisions affecting current work:
 - [Phase 05-03]: 60s grace period for match reconnection (longer than 30s lobby grace)
 - [Phase 05-03]: Disconnected players frozen in place for fair reconnection
 - [Phase 05-03]: Client checks reconnection on LobbyScene.create() for seamless auto-reconnect
+- [Phase 05]: State listener for room code display - race-condition-safe
+- [Phase 05]: Optimistic UI updates for character selection - immediate visual feedback
 
 ### Pending Todos
 
@@ -115,10 +118,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 05-03-PLAN.md (Reconnection Support) — Phase 5: 3 of 3 plans complete
-Resume file: .planning/phases/05-multiplayer-lobbies/05-03-SUMMARY.md
+Stopped at: Completed 05-05-PLAN.md (Lobby UI Race Conditions) — Phase 5: 4 of 7 plans complete (gap closures in progress)
+Resume file: .planning/phases/05-multiplayer-lobbies/05-05-SUMMARY.md
 
-**Phase 5 Complete (3 of 3):**
+**Phase 5 In Progress (4 of 7):**
 - 05-01 Complete: Server-side lobby infrastructure
   - LobbyRoom with character selection (role validation, conflict detection)
   - Ready system with 3-second countdown (requires 1 paran + 1 faran + 1 baran)
@@ -149,7 +152,12 @@ Resume file: .planning/phases/05-multiplayer-lobbies/05-03-SUMMARY.md
   - Disconnected players shown at 30% opacity with "DC" label
   - Browser refresh survival via stored reconnection token
   - Token cleanup on match end and intentional leave
-- Next: Phase 6 (if exists) or final polish phase
+- 05-05 Complete: Lobby UI race conditions (gap closure)
+  - Room code displays via state listener (race-condition-safe)
+  - Character selection highlights immediately (optimistic UI)
+  - Real-time availability updates when players join/leave/select
+  - Fixed: onAdd registers onChange on newly added players
+- Next: 05-06, 05-07 (remaining gap closures) or Phase 6
 
 **Phase 4 Complete (3 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
