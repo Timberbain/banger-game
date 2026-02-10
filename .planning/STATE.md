@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 5 of 7 (Multiplayer Lobbies)
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Complete
-Last activity: 2026-02-10 — Completed 05-04-PLAN.md (Lobby-to-Game Transition Blockers)
+Last activity: 2026-02-10 — Completed 05-07-PLAN.md (Reconnection Failures & Disconnect Ghosting)
 
-Progress: [█████████░] 87% (14 of 16 plans complete: Phase 1-4 done, Phase 5: 4/7 done)
+Progress: [█████████░] 88% (15 of 17 plans complete: Phase 1-4 done, Phase 5: 5/7 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
-- Average duration: 7.6 min
+- Total plans completed: 15
+- Average duration: 7.3 min
 - Total execution time: 1.8 hours
 
 **By Phase:**
@@ -31,11 +31,11 @@ Progress: [█████████░] 87% (14 of 16 plans complete: Phase 1
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
 | 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
-| 05-multiplayer-lobbies | 4 | 13 min | 3.3 min |
+| 05-multiplayer-lobbies | 5 | 16 min | 3.2 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (4 min), 05-01 (3 min), 05-02 (3 min), 05-03 (2 min), 05-04 (5 min)
-- Trend: Phase 5 maintaining excellent velocity (avg 3.3 min), gap closures resolving UAT blockers
+- Last 5 plans: 05-01 (3 min), 05-02 (3 min), 05-03 (2 min), 05-04 (5 min), 05-07 (3 min)
+- Trend: Phase 5 maintaining excellent velocity (avg 3.2 min), gap closures resolving UAT blockers efficiently
 
 *Updated after each plan completion*
 | Phase 05 P02 | 3 | 2 tasks | 6 files |
@@ -43,6 +43,7 @@ Progress: [█████████░] 87% (14 of 16 plans complete: Phase 1
 | Phase 05 P05 | 1 | 2 tasks | 1 files |
 | Phase 05 P06 | 4 | 2 tasks | 3 files |
 | Phase 05 P04 | 5 | 2 tasks | 2 files |
+| Phase 05 P07 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,10 @@ Recent decisions affecting current work:
 - [Phase 05-06]: Client auto-selects assigned role after joining lobby from matchmaking
 - [Phase 05-04]: matchMaker.createRoom() instead of create() to avoid phantom seat reservation
 - [Phase 05-04]: GameRoom reads role from options.role instead of sessionId lookup for cross-room persistence
+- [Phase 05-07]: Defer consented leave deletion by 2s during PLAYING state for disconnect visual rendering
+- [Phase 05-07]: Separate dcLabels map from eliminatedTexts to prevent label collision
+- [Phase 05-07]: 3 retries with 800ms delay for F5 reconnection to handle WebSocket close race condition
+- [Phase 05-07]: Extract handlePlayerChange() helper to deduplicate onChange logic between initial connection and reconnection
 
 ### Pending Todos
 
@@ -126,10 +131,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 05-04-PLAN.md (Lobby-to-Game Transition Blockers) — Phase 5: 4 of 7 plans complete
-Resume file: .planning/phases/05-multiplayer-lobbies/05-04-SUMMARY.md
+Stopped at: Completed 05-07-PLAN.md (Reconnection Failures & Disconnect Ghosting) — Phase 5: 5 of 7 plans complete
+Resume file: .planning/phases/05-multiplayer-lobbies/05-07-SUMMARY.md
 
-**Phase 5 In Progress (4 of 7):**
+**Phase 5 In Progress (5 of 7):**
 - 05-01 Complete: Server-side lobby infrastructure
   - LobbyRoom with character selection (role validation, conflict detection)
   - Ready system with 3-second countdown (requires 1 paran + 1 faran + 1 baran)
@@ -165,7 +170,13 @@ Resume file: .planning/phases/05-multiplayer-lobbies/05-04-SUMMARY.md
   - Fixed role assignment (options.role instead of sessionId lookup)
   - Added role conflict prevention with fallback to available role
   - All 3 players can now successfully join GameRoom with correct roles
-- Next: 05-05, 05-06, 05-07 (remaining gap closures) then Phase 5 complete or Phase 6
+- 05-07 Complete: Reconnection failures and disconnect ghosting (gap closure)
+  - Server: defer consented leave deletion by 2s during PLAYING state
+  - Client: separate dcLabels map for DC labels (no collision with ELIMINATED)
+  - LobbyScene: 3-attempt retry with 800ms delay for F5 reconnection
+  - GameScene: full Schema state listener re-registration after reconnect
+  - Extracted handlePlayerChange() helper for code reuse
+- Next: 05-05, 05-06 (remaining gap closures) then Phase 5 complete or Phase 6
 
 **Phase 4 Complete (3 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
