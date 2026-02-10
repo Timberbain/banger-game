@@ -1,0 +1,143 @@
+"use strict";
+/**
+ * Shared physics constants and movement logic
+ * Used by both client and server for deterministic prediction
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NETWORK = exports.ARENA = exports.PHYSICS = void 0;
+exports.applyMovementPhysics = applyMovementPhysics;
+exports.updateFacingDirection = updateFacingDirection;
+exports.PHYSICS = {
+    acceleration: 600, // px/s^2 applied when input held
+    drag: 0.85, // exponential damping factor per second
+    maxVelocity: 200, // px/s max speed cap
+    minVelocity: 0.01, // threshold below which velocity snaps to 0
+    facingThreshold: 10, // speed threshold for updating facing angle
+};
+exports.ARENA = {
+    width: 800,
+    height: 600,
+};
+exports.NETWORK = {
+    tickRate: 60,
+    fixedTimeStep: 1000 / 60, // 16.67ms
+    interpolationDelay: 100, // ms behind server time for remote rendering
+};
+/**
+ * Apply acceleration-based physics to a player
+ * Mutates player object in place
+ *
+ * @param player - Object with { x, y, vx, vy, angle, role? }
+ * @param input - InputState with direction keys
+ * @param dt - Delta time in seconds (e.g., 1/60)
+ * @param stats - Optional character-specific stats to override PHYSICS defaults
+ */
+function applyMovementPhysics(player, input, dt, stats) {
+    var _a, _b, _c;
+    // Use character-specific stats or fallback to PHYSICS defaults
+    const acceleration = (_a = stats === null || stats === void 0 ? void 0 : stats.acceleration) !== null && _a !== void 0 ? _a : exports.PHYSICS.acceleration;
+    const drag = (_b = stats === null || stats === void 0 ? void 0 : stats.drag) !== null && _b !== void 0 ? _b : exports.PHYSICS.drag;
+    const maxVelocity = (_c = stats === null || stats === void 0 ? void 0 : stats.maxVelocity) !== null && _c !== void 0 ? _c : exports.PHYSICS.maxVelocity;
+    // Calculate acceleration from input
+    let ax = 0;
+    let ay = 0;
+    if (input.left)
+        ax -= acceleration;
+    if (input.right)
+        ax += acceleration;
+    if (input.up)
+        ay -= acceleration;
+    if (input.down)
+        ay += acceleration;
+    // Paran-specific Pac-Man style movement
+    if (player.role === 'paran') {
+        // 1. Cardinal-only movement: if both axes have input, filter to one axis
+        if (ax !== 0 && ay !== 0) {
+            // Get current velocity direction
+            const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+            // If moving with significant velocity, prioritize the perpendicular axis (allows turning)
+            if (currentSpeed > exports.PHYSICS.minVelocity) {
+                const movingHorizontally = Math.abs(player.vx) > Math.abs(player.vy);
+                if (movingHorizontally) {
+                    // Currently moving horizontally, switch to vertical input
+                    ax = 0;
+                }
+                else {
+                    // Currently moving vertically, switch to horizontal input
+                    ay = 0;
+                }
+            }
+            else {
+                // Not moving or very slow, prioritize vertical (arbitrary but consistent)
+                ax = 0;
+            }
+        }
+        // 2. Instant stop: if no input, zero velocity immediately
+        const hasInput = ax !== 0 || ay !== 0;
+        if (!hasInput) {
+            player.vx = 0;
+            player.vy = 0;
+            return; // Skip rest of physics processing
+        }
+        // 3. Instant turning: preserve speed magnitude, redirect to new input direction
+        const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+        if (currentSpeed > exports.PHYSICS.minVelocity) {
+            // Redirect velocity: set to input direction with preserved speed
+            const inputMagnitude = Math.sqrt(ax * ax + ay * ay);
+            const inputDirX = ax / inputMagnitude;
+            const inputDirY = ay / inputMagnitude;
+            player.vx = inputDirX * currentSpeed;
+            player.vy = inputDirY * currentSpeed;
+        }
+    }
+    else {
+        // Guardian behavior: normalize diagonal movement (divide by sqrt(2) when both axes active)
+        if (ax !== 0 && ay !== 0) {
+            const normalizeFactor = 1 / Math.sqrt(2);
+            ax *= normalizeFactor;
+            ay *= normalizeFactor;
+        }
+        // Instant stop when no input (like humans running and stopping)
+        const hasInput = ax !== 0 || ay !== 0;
+        if (!hasInput) {
+            player.vx = 0;
+            player.vy = 0;
+            return;
+        }
+    }
+    // Integrate velocity
+    player.vx += ax * dt;
+    player.vy += ay * dt;
+    // Apply drag (exponential damping)
+    player.vx *= Math.pow(drag, dt);
+    player.vy *= Math.pow(drag, dt);
+    // Snap to 0 if below minVelocity threshold
+    if (Math.abs(player.vx) < exports.PHYSICS.minVelocity)
+        player.vx = 0;
+    if (Math.abs(player.vy) < exports.PHYSICS.minVelocity)
+        player.vy = 0;
+    // Clamp to maxVelocity
+    const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+    if (speed > maxVelocity) {
+        const scale = maxVelocity / speed;
+        player.vx *= scale;
+        player.vy *= scale;
+    }
+    // Integrate position
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+}
+/**
+ * Update player facing direction based on velocity
+ * Only updates if speed is above threshold
+ *
+ * @param player - Object with { vx, vy, angle }
+ */
+function updateFacingDirection(player) {
+    const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+    // Only update facing if moving above threshold
+    if (speed > exports.PHYSICS.facingThreshold) {
+        player.angle = Math.atan2(player.vy, player.vx);
+    }
+}
+//# sourceMappingURL=physics.js.map
