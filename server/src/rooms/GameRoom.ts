@@ -4,10 +4,15 @@ import { Projectile } from "../schema/Projectile";
 import { SERVER_CONFIG, GAME_CONFIG } from "../config";
 import { applyMovementPhysics, updateFacingDirection, PHYSICS, ARENA } from "../../../shared/physics";
 import { CHARACTERS, COMBAT } from "../../../shared/characters";
+import { MAPS, MapMetadata } from "../../../shared/maps";
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
   patchRate = SERVER_CONFIG.patchRate; // 1000/60 - must match tick rate for 60Hz sync
+
+  // Static map rotation index shared across room instances
+  private static currentMapIndex: number = 0;
+  private mapMetadata!: MapMetadata;
 
   /**
    * Validate input structure and types
@@ -49,6 +54,15 @@ export class GameRoom extends Room<GameState> {
     this.setState(new GameState());
     this.state.matchState = MatchState.WAITING; // Explicit state initialization
     this.autoDispose = true;
+
+    // Select map (sequential rotation across room instances)
+    this.mapMetadata = MAPS[GameRoom.currentMapIndex % MAPS.length];
+    this.state.mapName = this.mapMetadata.name;
+
+    // Advance rotation for next room
+    GameRoom.currentMapIndex++;
+
+    console.log(`GameRoom created with map: ${this.mapMetadata.displayName}`);
 
     // Set up fixed timestep loop using accumulator pattern
     let elapsedTime = 0;
@@ -110,10 +124,16 @@ export class GameRoom extends Room<GameState> {
     let role: string;
     if (playerCount === 0) {
       role = "paran";
+      player.x = this.mapMetadata.spawnPoints.paran.x;
+      player.y = this.mapMetadata.spawnPoints.paran.y;
     } else if (playerCount === 1) {
       role = "faran";
+      player.x = this.mapMetadata.spawnPoints.guardians[0].x;
+      player.y = this.mapMetadata.spawnPoints.guardians[0].y;
     } else {
       role = "baran";
+      player.x = this.mapMetadata.spawnPoints.guardians[1].x;
+      player.y = this.mapMetadata.spawnPoints.guardians[1].y;
     }
 
     const stats = CHARACTERS[role];
@@ -121,10 +141,6 @@ export class GameRoom extends Room<GameState> {
     // Initialize player stats BEFORE adding player to state
     const playerStats = new PlayerStats();
     this.state.matchStats.set(client.sessionId, playerStats);
-
-    // Set initial position (centered with small random offset to avoid overlap)
-    player.x = ARENA.width / 2 + (Math.random() - 0.5) * 100;
-    player.y = ARENA.height / 2 + (Math.random() - 0.5) * 100;
     player.vx = 0;
     player.vy = 0;
     player.health = stats.maxHealth;

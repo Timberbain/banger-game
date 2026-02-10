@@ -4,6 +4,7 @@ import { PredictionSystem } from '../systems/Prediction';
 import { InterpolationSystem } from '../systems/Interpolation';
 import { InputState } from '../../../shared/physics';
 import { CHARACTERS } from '../../../shared/characters';
+import { MAPS } from '../../../shared/maps';
 
 export class GameScene extends Phaser.Scene {
   private client!: Client;
@@ -50,32 +51,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Load tileset and tilemap (cached by Phaser if already loaded in BootScene)
+    // Tileset image is always the same — load it here
     this.load.image('tiles', 'tilesets/placeholder.png');
-    this.load.tilemapTiledJSON('test_arena', 'maps/test_arena.json');
+    // Tilemap JSON loaded dynamically in create() after receiving mapName from server
   }
 
   async create() {
-    // Set up tilemap
-    const map = this.make.tilemap({ key: 'test_arena' });
-    const tileset = map.addTilesetImage('placeholder', 'tiles');
-
-    if (!tileset) {
-      console.error('Failed to load tileset');
-      return;
-    }
-
-    // Create layers
-    const groundLayer = map.createLayer('Ground', tileset, 0, 0);
-    const wallsLayer = map.createLayer('Walls', tileset, 0, 0);
-
-    if (!groundLayer || !wallsLayer) {
-      console.error('Failed to create layers');
-      return;
-    }
-
-    // Set collision for wall tiles
-    wallsLayer.setCollisionByExclusion([-1, 0]);
+    // Tilemap will be created after server state is received
 
     // Set up keyboard input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -107,6 +89,28 @@ export class GameScene extends Phaser.Scene {
       this.statusText.setText(`Waiting for players... (${this.room.state.players.size}/3)`);
 
       console.log('Connected to game_room:', this.room.sessionId);
+
+      // Load map dynamically based on server's mapName
+      this.room.onStateChange.once((state: any) => {
+        const mapName = state.mapName || "test_arena";
+        const mapData = MAPS.find(m => m.name === mapName);
+
+        if (!mapData) {
+          console.error(`Unknown map: ${mapName}, falling back to test_arena`);
+        }
+
+        const mapFile = mapData?.file || "maps/test_arena.json";
+        const mapKey = mapData?.name || "test_arena";
+
+        console.log(`Loading map: ${mapName} from ${mapFile}`);
+
+        // Load the tilemap JSON dynamically
+        this.load.tilemapTiledJSON(mapKey, mapFile);
+        this.load.once('complete', () => {
+          this.createTilemap(mapKey);
+        });
+        this.load.start();
+      });
 
       // Listen for match start broadcast
       this.room.onMessage("matchStart", () => {
@@ -590,5 +594,26 @@ export class GameScene extends Phaser.Scene {
     const currentIndex = alivePlayers.indexOf(currentTarget);
     const nextIndex = (currentIndex + 1) % alivePlayers.length;
     return alivePlayers[nextIndex];
+  }
+
+  private createTilemap(mapKey: string): void {
+    const map = this.make.tilemap({ key: mapKey });
+    const tileset = map.addTilesetImage('placeholder', 'tiles');
+
+    if (!tileset) {
+      console.error('Failed to load tileset');
+      return;
+    }
+
+    const groundLayer = map.createLayer('Ground', tileset, 0, 0);
+    const wallsLayer = map.createLayer('Walls', tileset, 0, 0);
+
+    if (!wallsLayer) {
+      console.error('Failed to create Walls layer');
+      return;
+    }
+
+    wallsLayer.setCollisionByExclusion([-1, 0]);
+    console.log(`Tilemap ${mapKey} created successfully`);
   }
 }
