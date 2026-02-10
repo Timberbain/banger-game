@@ -83,10 +83,12 @@ Plans:
   4. 3-5 hand-crafted arena maps with distinct obstacle layouts exist
   5. Maps rotate between matches
   6. Eliminated players can spectate remainder of match
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 04-01: TBD during planning
+- [ ] 04-01-PLAN.md — Server match state machine, win conditions, and per-player stats tracking
+- [ ] 04-02-PLAN.md — Client victory/defeat screen with stats display and spectator mode
+- [ ] 04-03-PLAN.md — Hand-crafted arena maps (3 new) and sequential map rotation
 
 ### Phase 5: Multiplayer Lobbies
 **Goal**: Players can find matches via room codes or matchmaking
@@ -146,7 +148,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Foundation & Server Architecture | 3/3 | ✓ Complete | 2026-02-10 |
 | 2. Core Movement | 2/2 | ✓ Complete | 2026-02-10 |
 | 3. Combat System | 2/2 | ✓ Complete | 2026-02-10 |
-| 4. Match Lifecycle & Maps | 0/TBD | Not started | - |
+| 4. Match Lifecycle & Maps | 0/3 | Not started | - |
 | 5. Multiplayer Lobbies | 0/TBD | Not started | - |
 | 6. Accounts & Stats | 0/TBD | Not started | - |
 | 7. UX Polish | 0/TBD | Not started | - |
