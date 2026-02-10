@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
+import { LobbyScene } from './scenes/LobbyScene';
 import { GameScene } from './scenes/GameScene';
 import { VictoryScene } from './scenes/VictoryScene';
 
@@ -9,7 +10,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: 600,
   parent: 'game-container',
   backgroundColor: '#1a1a2e',
-  scene: [BootScene, GameScene, VictoryScene],
+  scene: [BootScene, LobbyScene, GameScene, VictoryScene],
   physics: {
     default: 'arcade',
     arcade: {

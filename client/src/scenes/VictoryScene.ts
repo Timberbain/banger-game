@@ -125,7 +125,7 @@ export class VictoryScene extends Phaser.Scene {
     this.scene.stop('VictoryScene');
     this.scene.stop('GameScene');
 
-    // Return to boot scene (will be replaced with proper lobby in Phase 5)
-    this.scene.start('BootScene');
+    // Return to lobby scene
+    this.scene.start('LobbyScene');
   }
 }

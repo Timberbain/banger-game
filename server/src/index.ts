@@ -1,6 +1,6 @@
 import express from "express";
 import { createServer } from "http";
-import { Server } from "colyseus";
+import { Server, matchMaker } from "colyseus";
 import { monitor } from "@colyseus/monitor";
 import cors from "cors";
 import { GameRoom } from "./rooms/GameRoom";
@@ -41,6 +41,32 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     wsLatencySimulation: parseInt(process.env.SIMULATE_LATENCY || '0', 10),
   });
+});
+
+// Room code lookup endpoint for private lobbies
+app.get('/rooms/find', async (req, res) => {
+  const code = (req.query.code as string)?.toUpperCase();
+
+  if (!code || code.length !== 6) {
+    return res.status(400).json({ error: 'Invalid room code' });
+  }
+
+  try {
+    // Query all lobby rooms
+    const rooms = await matchMaker.query({ name: "lobby_room" });
+
+    // Find room with matching code in metadata
+    const matchingRoom = rooms.find(room => room.metadata?.roomCode === code);
+
+    if (!matchingRoom) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    res.json({ roomId: matchingRoom.roomId });
+  } catch (error) {
+    console.error('Error finding room:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // Add Colyseus monitor for dev debugging

@@ -56,7 +56,10 @@ export class GameScene extends Phaser.Scene {
     // Tilemap JSON loaded dynamically in create() after receiving mapName from server
   }
 
-  async create() {
+  async create(data?: { room?: Room }) {
+    // Check if room was provided from LobbyScene
+    const providedRoom = data?.room;
+
     // Tilemap will be created after server state is received
 
     // Set up keyboard input
@@ -84,11 +87,25 @@ export class GameScene extends Phaser.Scene {
 
     // Connect to Colyseus
     try {
-      this.room = await this.client.joinOrCreate('game_room');
+      // Use provided room from lobby, or fallback to direct join for development
+      if (providedRoom) {
+        this.room = providedRoom;
+        console.log('Using room from lobby:', this.room.sessionId);
+      } else {
+        this.room = await this.client.joinOrCreate('game_room');
+        console.log('Connected to game_room:', this.room.sessionId);
+      }
+
       this.connected = true;
       this.statusText.setText(`Waiting for players... (${this.room.state.players.size}/3)`);
 
-      console.log('Connected to game_room:', this.room.sessionId);
+      // Store reconnection token
+      if (this.room.reconnectionToken) {
+        localStorage.setItem('bangerActiveRoom', JSON.stringify({
+          token: this.room.reconnectionToken,
+          timestamp: Date.now()
+        }));
+      }
 
       // Load map dynamically based on server's mapName
       this.room.onStateChange.once((state: any) => {

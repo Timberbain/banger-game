@@ -24,13 +24,13 @@ export class BootScene extends Phaser.Scene {
     this.add.text(
       this.cameras.main.centerX,
       this.cameras.main.centerY + 20,
-      'Connecting...',
+      'Loading...',
       { fontSize: '16px', color: '#aaaaaa', fontFamily: 'Arial' }
     ).setOrigin(0.5);
 
-    // Transition to GameScene after brief delay
+    // Transition to LobbyScene after brief delay
     this.time.delayedCall(500, () => {
-      this.scene.start('GameScene');
+      this.scene.start('LobbyScene');
     });
   }
 }
