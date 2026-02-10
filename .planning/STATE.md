@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 2 (Core Movement) — COMPLETE
+**Current focus:** Phase 3 (Combat System)
 
 ## Current Position
 
-Phase: 2 of 7 (Core Movement) — COMPLETE
-Plan: 2 of 2
-Status: Phase complete, ready for Phase 3
-Last activity: 2026-02-10 — Completed Phase 2 (Core Movement)
+Phase: 3 of 7 (Combat System)
+Plan: 1 of 2
+Status: In progress
+Last activity: 2026-02-10 — Completed 03-01-PLAN.md (Server Combat Core)
 
-Progress: [███░░░░░░░] 29% (Phases 1-2 complete: 5 of 5 plans done)
+Progress: [████░░░░░░] 40% (Phases 1-2 complete, Phase 3: 1 of 2 plans done, total: 6 of 9 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 11.6 min
-- Total execution time: 1.93 hours
+- Total plans completed: 6
+- Average duration: 10.0 min
+- Total execution time: 2.0 hours
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [███░░░░░░░] 29% (Phases 1-2 complete: 5 of 5 plan
 |-------|-------|-------|----------|
 | 01-foundation-server-architecture | 3 | 26 min | 8.7 min |
 | 02-core-movement | 2 | 29 min | 14.5 min |
+| 03-combat-system | 1 | 3 min | 3.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (6 min), 01-03 (15 min), 02-01 (6 min), 02-02 (23 min)
-- Trend: Increasing (02-02 had human checkpoint + bug fix)
+- Last 5 plans: 01-03 (15 min), 02-01 (6 min), 02-02 (23 min), 03-01 (3 min)
+- Trend: Decreasing (03-01 was fast, no checkpoints needed)
 
 *Updated after each plan completion*
 
@@ -62,6 +63,10 @@ Recent decisions affecting current work:
 - 02-02: Send input every frame (not just on change) — Acceleration physics requires one input per tick to match server's 60Hz fixed timestep
 - 02-02: Apply drag physics on server when input queue empty — Player must decelerate when client stops sending input
 - 02-02: 100ms interpolation delay for remote players — Balances smoothness with visual latency
+- 03-01: Character-specific physics overrides — Enables asymmetric gameplay while keeping shared physics logic
+- 03-01: Paran wall penalty (lose ALL velocity) — Core asymmetric mechanic for high-speed glass cannon role
+- 03-01: Fire input in queue (not separate handler) — Keeps fire synchronized with movement at 60Hz
+- 03-01: Server-only lastFireTime (no @type) — Cooldown enforcement is server-authoritative, reduces bandwidth
 
 ### Pending Todos
 
@@ -74,13 +79,14 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed Phase 2 (Core Movement) — all 2 plans done
-Resume file: .planning/phases/02-core-movement/02-VERIFICATION.md
+Stopped at: Completed 03-01-PLAN.md (Server Combat Core) — Phase 3 plan 1 of 2 done
+Resume file: .planning/phases/03-combat-system/03-01-SUMMARY.md
 
-**Phase 2 Summary:**
-- Shared physics module with acceleration/drag/maxVelocity (shared/physics.ts)
-- Server upgraded to velocity-based movement with sequence tracking
-- Client-side prediction with input replay reconciliation
-- Entity interpolation for smooth remote player rendering
-- Movement feels responsive even at 150ms latency (human verified)
-- Ready for Phase 3: Combat System
+**Phase 3 Progress:**
+- Server-authoritative combat system implemented
+- Character archetypes defined (faran/baran guardians, paran force)
+- Projectile spawning, simulation, and collision detection
+- Role-specific physics (acceleration, drag, maxVelocity per character)
+- Paran wall penalty mechanic (loses all velocity on wall collision)
+- Fire rate cooldown enforcement (200ms for guardians, 1000ms for Paran)
+- Ready for client combat implementation (03-02)
