@@ -13,6 +13,7 @@ export class LobbyScene extends Phaser.Scene {
   // UI elements storage for cleanup
   private uiElements: Phaser.GameObjects.GameObject[] = [];
   private htmlInput: HTMLInputElement | null = null;
+  private characterPanelUpdaters: (() => void)[] = [];
 
   constructor() {
     super({ key: 'LobbyScene' });
@@ -495,6 +496,9 @@ export class LobbyScene extends Phaser.Scene {
   private createCharacterSelection() {
     if (!this.room) return;
 
+    // Clear updater array for fresh character panel registration
+    this.characterPanelUpdaters = [];
+
     const titleY = this.room.state.isPrivate ? 100 : 60;
     const title = this.add.text(400, titleY, 'Select Character', {
       fontSize: '22px',
@@ -573,12 +577,22 @@ export class LobbyScene extends Phaser.Scene {
         }
       };
 
+      // Register this panel's updater for optimistic UI updates
+      this.characterPanelUpdaters.push(updatePanel);
+
       // Update on player changes
       if (this.room) {
-        this.room.state.players.onAdd(() => updatePanel());
+        this.room.state.players.onAdd((player: any) => {
+          updatePanel();
+          // Register onChange on NEWLY ADDED players too
+          player.onChange(() => updatePanel());
+        });
+        // Register on existing players
         this.room.state.players.forEach((player: any) => {
           player.onChange(() => updatePanel());
         });
+        // Also listen for removals (role becomes available again)
+        this.room.state.players.onRemove(() => updatePanel());
       }
 
       updatePanel();
@@ -689,6 +703,8 @@ export class LobbyScene extends Phaser.Scene {
     if (this.room) {
       this.selectedRole = role;
       this.room.send('selectRole', { role });
+      // Immediate optimistic UI update
+      this.characterPanelUpdaters.forEach(fn => fn());
     }
   }
 
