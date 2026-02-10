@@ -26,6 +26,11 @@ export class GameScene extends Phaser.Scene {
   private interpolation: InterpolationSystem = new InterpolationSystem();
   private remotePlayers: Set<string> = new Set();
 
+  // Paran cardinal input: track key press order so last-pressed wins
+  private directionPressOrder: ('left' | 'right' | 'up' | 'down')[] = [];
+  private prevKeyState: Record<string, boolean> = { left: false, right: false, up: false, down: false };
+  private localRole: string = '';
+
   // Combat rendering
   private projectileSprites: Map<number, Phaser.GameObjects.Arc> = new Map();
   private projectileVelocities: Map<number, { vx: number; vy: number }> = new Map();
@@ -233,6 +238,7 @@ export class GameScene extends Phaser.Scene {
 
         if (isLocal) {
           // Local player: initialize prediction system with role
+          this.localRole = role;
           this.prediction = new PredictionSystem({
             x: player.x,
             y: player.y,
@@ -331,13 +337,44 @@ export class GameScene extends Phaser.Scene {
     const isDead = localPlayer && localPlayer.health <= 0;
 
     // Read current keyboard state
-    const input: InputState = {
+    const rawInput = {
       left: this.cursors.left.isDown || this.wasd.A.isDown,
       right: this.cursors.right.isDown || this.wasd.D.isDown,
       up: this.cursors.up.isDown || this.wasd.W.isDown,
       down: this.cursors.down.isDown || this.wasd.S.isDown,
-      fire: this.fireKey.isDown,
     };
+
+    // Track key press order for Paran's last-key-wins cardinal movement
+    const dirs = ['left', 'right', 'up', 'down'] as const;
+    for (const dir of dirs) {
+      if (rawInput[dir] && !this.prevKeyState[dir]) {
+        // Key just pressed — push to end (most recent)
+        this.directionPressOrder = this.directionPressOrder.filter(d => d !== dir);
+        this.directionPressOrder.push(dir);
+      } else if (!rawInput[dir] && this.prevKeyState[dir]) {
+        // Key released — remove from order
+        this.directionPressOrder = this.directionPressOrder.filter(d => d !== dir);
+      }
+      this.prevKeyState[dir] = rawInput[dir];
+    }
+
+    // For Paran: only send the last-pressed direction (cardinal only)
+    let input: InputState;
+    if (this.localRole === 'paran') {
+      const lastDir = this.directionPressOrder.length > 0
+        ? this.directionPressOrder[this.directionPressOrder.length - 1]
+        : null;
+      input = {
+        left: lastDir === 'left',
+        right: lastDir === 'right',
+        up: lastDir === 'up',
+        down: lastDir === 'down',
+        fire: this.fireKey.isDown,
+      };
+    } else {
+      // Guardians: send all pressed directions (allows diagonal)
+      input = { ...rawInput, fire: this.fireKey.isDown };
+    }
 
     // Send input every frame — acceleration physics needs one input per tick
     // to match server simulation. Only skip if truly idle (no keys, no velocity) OR dead.
