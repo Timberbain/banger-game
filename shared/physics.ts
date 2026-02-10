@@ -66,22 +66,26 @@ export function applyMovementPhysics(
     ay *= normalizeFactor;
   }
 
-  // Paran-specific instant turning: zero velocity in opposite direction
+  // Paran-specific instant turning: preserve speed magnitude, redirect to new input direction
   if (player.role === 'paran') {
-    // Check for direction reversals and zero velocity in the old direction
-    if (ax > 0 && player.vx < 0) {
-      // Pressing right, but moving left: instant turn
-      player.vx = 0;
-    } else if (ax < 0 && player.vx > 0) {
-      // Pressing left, but moving right: instant turn
-      player.vx = 0;
-    }
-    if (ay > 0 && player.vy < 0) {
-      // Pressing down, but moving up: instant turn
-      player.vy = 0;
-    } else if (ay < 0 && player.vy > 0) {
-      // Pressing up, but moving down: instant turn
-      player.vy = 0;
+    // Check if there's any input direction
+    const hasInput = ax !== 0 || ay !== 0;
+
+    if (hasInput) {
+      // Compute current speed magnitude
+      const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+
+      // Only redirect if there's significant speed to preserve
+      if (currentSpeed > PHYSICS.minVelocity) {
+        // Compute input direction (already normalized for diagonals above)
+        const inputMagnitude = Math.sqrt(ax * ax + ay * ay);
+        const inputDirX = ax / inputMagnitude;
+        const inputDirY = ay / inputMagnitude;
+
+        // Redirect velocity: set to input direction with preserved speed
+        player.vx = inputDirX * currentSpeed;
+        player.vy = inputDirY * currentSpeed;
+      }
     }
   }
 
