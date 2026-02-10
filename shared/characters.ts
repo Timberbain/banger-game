@@ -17,8 +17,8 @@ export const CHARACTERS: Record<string, CharacterStats> = {
   faran: {
     maxHealth: 50,
     acceleration: 800,
-    maxVelocity: 220,
-    drag: 0.88,
+    maxVelocity: 160,
+    drag: 0.4,
     damage: 10,
     fireRate: 200, // 5 shots/sec
     projectileSpeed: 300,
@@ -26,8 +26,8 @@ export const CHARACTERS: Record<string, CharacterStats> = {
   baran: {
     maxHealth: 50,
     acceleration: 800,
-    maxVelocity: 220,
-    drag: 0.88,
+    maxVelocity: 160,
+    drag: 0.4,
     damage: 10,
     fireRate: 200, // 5 shots/sec
     projectileSpeed: 300,
