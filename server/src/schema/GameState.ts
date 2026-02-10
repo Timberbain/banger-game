@@ -26,6 +26,7 @@ export class Player extends Schema {
   @type("number") angle: number = 0; // facing direction in radians
   @type("string") role: string = ""; // "guardian" or "paran" in later phases
   @type("number") lastProcessedSeq: number = 0; // for client reconciliation
+  @type("boolean") connected: boolean = true; // connection status synced to clients
 
   // NOT decorated with @type -- server-only, not synced to clients
   inputQueue: Array<{ seq: number } & InputState> = [];

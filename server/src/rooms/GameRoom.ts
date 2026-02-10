@@ -5,6 +5,7 @@ import { SERVER_CONFIG, GAME_CONFIG } from "../config";
 import { applyMovementPhysics, updateFacingDirection, PHYSICS, ARENA } from "../../../shared/physics";
 import { CHARACTERS, COMBAT } from "../../../shared/characters";
 import { MAPS, MapMetadata } from "../../../shared/maps";
+import { LOBBY_CONFIG } from "../../../shared/lobby";
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
@@ -179,14 +180,56 @@ export class GameRoom extends Room<GameState> {
     }
   }
 
-  onLeave(client: Client, consented: boolean) {
-    this.state.players.delete(client.sessionId);
-    // Keep stats for display (don't delete from matchStats)
-    console.log(`Player left: ${client.sessionId} (consented: ${consented})`);
+  async onLeave(client: Client, consented: boolean) {
+    const player = this.state.players.get(client.sessionId);
 
-    // Check if leaving triggers win condition
+    // Player doesn't exist - already removed or never joined properly
+    if (!player) {
+      console.log(`Player left but not found: ${client.sessionId}`);
+      return;
+    }
+
+    // Mark player as disconnected
+    player.connected = false;
+
+    // If consented (intentional leave), remove player immediately
+    if (consented) {
+      console.log(`Player left (consented): ${client.sessionId}`);
+      this.state.players.delete(client.sessionId);
+      // Keep stats for display (don't delete from matchStats)
+
+      // Check win conditions after intentional leave during match
+      if (this.state.matchState === MatchState.PLAYING) {
+        this.checkWinConditions();
+      }
+      return;
+    }
+
+    // Non-consented leave: handle reconnection based on match state
     if (this.state.matchState === MatchState.PLAYING) {
-      this.checkWinConditions();
+      // Active match: allow reconnection with grace period
+      console.log(`Player disconnected during match: ${client.sessionId}, grace period: ${LOBBY_CONFIG.MATCH_RECONNECT_GRACE}s`);
+
+      try {
+        await this.allowReconnection(client, LOBBY_CONFIG.MATCH_RECONNECT_GRACE);
+
+        // Successfully reconnected
+        player.connected = true;
+        player.inputQueue = []; // Clear stale inputs
+        console.log(`Player reconnected: ${client.sessionId}`);
+      } catch (e) {
+        // Grace period expired or reconnection failed
+        console.log(`Player failed to reconnect (grace period expired): ${client.sessionId}`);
+        this.state.players.delete(client.sessionId);
+        // Keep stats for display
+
+        // Check win conditions after grace period expiration
+        this.checkWinConditions();
+      }
+    } else {
+      // Not in active match (WAITING or ENDED): no point reconnecting
+      console.log(`Player left during ${this.state.matchState}: ${client.sessionId}`);
+      this.state.players.delete(client.sessionId);
     }
   }
 
@@ -216,6 +259,15 @@ export class GameRoom extends Room<GameState> {
         player.inputQueue = []; // Drain dead player input
         return; // Skip processing
       }
+
+      // Ignore disconnected player input and freeze them in place
+      if (!player.connected) {
+        player.vx = 0;
+        player.vy = 0;
+        player.inputQueue = [];
+        return; // Skip all processing for disconnected player
+      }
+
       // Get character stats
       const stats = CHARACTERS[player.role];
 
