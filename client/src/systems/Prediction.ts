@@ -5,6 +5,7 @@ import {
   InputState,
   PHYSICS,
 } from '../../../shared/physics';
+import { CHARACTERS } from '../../../shared/characters';
 
 interface PendingInput {
   seq: number;
@@ -17,15 +18,18 @@ interface PlayerState {
   vx: number;
   vy: number;
   angle: number;
+  role?: string;
 }
 
 export class PredictionSystem {
   private inputSequence: number = 0;
   private pendingInputs: PendingInput[] = [];
   private localState: PlayerState;
+  private role: string;
 
-  constructor(initialState: PlayerState) {
-    this.localState = { ...initialState };
+  constructor(initialState: PlayerState, role: string) {
+    this.localState = { ...initialState, role };
+    this.role = role;
   }
 
   sendInput(input: InputState, room: Room): void {
@@ -42,8 +46,15 @@ export class PredictionSystem {
       fire: input.fire || false,
     });
 
+    // Get character stats for prediction
+    const stats = CHARACTERS[this.role];
+
     // Apply prediction locally (same physics as server)
-    applyMovementPhysics(this.localState, input, 1 / 60);
+    applyMovementPhysics(this.localState, input, 1 / 60, {
+      acceleration: stats.acceleration,
+      drag: stats.drag,
+      maxVelocity: stats.maxVelocity,
+    });
     updateFacingDirection(this.localState);
 
     // Store pending input for reconciliation
@@ -73,9 +84,16 @@ export class PredictionSystem {
     this.localState.vy = serverState.vy;
     this.localState.angle = serverState.angle;
 
+    // Get character stats for prediction replay
+    const stats = CHARACTERS[this.role];
+
     // Replay all remaining pending inputs
     for (const pending of this.pendingInputs) {
-      applyMovementPhysics(this.localState, pending.input, 1 / 60);
+      applyMovementPhysics(this.localState, pending.input, 1 / 60, {
+        acceleration: stats.acceleration,
+        drag: stats.drag,
+        maxVelocity: stats.maxVelocity,
+      });
       updateFacingDirection(this.localState);
     }
   }
@@ -85,7 +103,7 @@ export class PredictionSystem {
   }
 
   reset(state: PlayerState): void {
-    this.localState = { ...state };
+    this.localState = { ...state, role: this.role };
     this.pendingInputs = [];
   }
 }

@@ -28,6 +28,7 @@ export class GameScene extends Phaser.Scene {
 
   // Combat rendering
   private projectileSprites: Map<number, Phaser.GameObjects.Arc> = new Map();
+  private projectileVelocities: Map<number, { vx: number; vy: number }> = new Map();
   private healthBars: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private eliminatedTexts: Map<string, Phaser.GameObjects.Text> = new Map();
 
@@ -231,14 +232,14 @@ export class GameScene extends Phaser.Scene {
         });
 
         if (isLocal) {
-          // Local player: initialize prediction system
+          // Local player: initialize prediction system with role
           this.prediction = new PredictionSystem({
             x: player.x,
             y: player.y,
             vx: player.vx || 0,
             vy: player.vy || 0,
             angle: player.angle || 0,
-          });
+          }, role);
         } else {
           // Remote player: use interpolation
           this.remotePlayers.add(sessionId);
@@ -285,9 +286,22 @@ export class GameScene extends Phaser.Scene {
         circle.setDepth(5);
         this.projectileSprites.set(index, circle);
 
+        // Store velocity for client-side interpolation
+        this.projectileVelocities.set(index, {
+          vx: projectile.vx,
+          vy: projectile.vy,
+        });
+
         projectile.onChange(() => {
+          // Server correction: snap to authoritative position
           circle.x = projectile.x;
           circle.y = projectile.y;
+
+          // Update velocities if they changed (shouldn't normally, but handle it)
+          this.projectileVelocities.set(index, {
+            vx: projectile.vx,
+            vy: projectile.vy,
+          });
         });
       });
 
@@ -298,6 +312,7 @@ export class GameScene extends Phaser.Scene {
           sprite.destroy();
           this.projectileSprites.delete(index);
         }
+        this.projectileVelocities.delete(index);
       });
     } catch (e) {
       console.error('Connection failed:', e);
@@ -387,6 +402,17 @@ export class GameScene extends Phaser.Scene {
           eliminatedText.x = sprite.x;
           eliminatedText.y = sprite.y - 40;
         }
+      }
+    });
+
+    // Client-side projectile interpolation: move projectiles between server updates
+    const dt = delta / 1000; // Convert ms to seconds
+    this.projectileSprites.forEach((sprite, index) => {
+      const velocity = this.projectileVelocities.get(index);
+      if (velocity) {
+        // Extrapolate position using known velocity
+        sprite.x += velocity.vx * dt;
+        sprite.y += velocity.vy * dt;
       }
     });
   }

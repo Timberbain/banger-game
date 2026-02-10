@@ -34,13 +34,13 @@ export interface InputState {
  * Apply acceleration-based physics to a player
  * Mutates player object in place
  *
- * @param player - Object with { x, y, vx, vy, angle }
+ * @param player - Object with { x, y, vx, vy, angle, role? }
  * @param input - InputState with direction keys
  * @param dt - Delta time in seconds (e.g., 1/60)
  * @param stats - Optional character-specific stats to override PHYSICS defaults
  */
 export function applyMovementPhysics(
-  player: { x: number; y: number; vx: number; vy: number; angle: number },
+  player: { x: number; y: number; vx: number; vy: number; angle: number; role?: string },
   input: InputState,
   dt: number,
   stats?: { acceleration: number; drag: number; maxVelocity: number }
@@ -64,6 +64,25 @@ export function applyMovementPhysics(
     const normalizeFactor = 1 / Math.sqrt(2);
     ax *= normalizeFactor;
     ay *= normalizeFactor;
+  }
+
+  // Paran-specific instant turning: zero velocity in opposite direction
+  if (player.role === 'paran') {
+    // Check for direction reversals and zero velocity in the old direction
+    if (ax > 0 && player.vx < 0) {
+      // Pressing right, but moving left: instant turn
+      player.vx = 0;
+    } else if (ax < 0 && player.vx > 0) {
+      // Pressing left, but moving right: instant turn
+      player.vx = 0;
+    }
+    if (ay > 0 && player.vy < 0) {
+      // Pressing down, but moving up: instant turn
+      player.vy = 0;
+    } else if (ay < 0 && player.vy > 0) {
+      // Pressing up, but moving down: instant turn
+      player.vy = 0;
+    }
   }
 
   // Integrate velocity
