@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 4 of 7 (Match Lifecycle & Maps)
-Plan: 2 of 3
-Status: In Progress
-Last activity: 2026-02-10 — Completed 04-02-PLAN.md (Client Match End UI & Spectator Mode)
+Plan: 3 of 3
+Status: Complete
+Last activity: 2026-02-10 — Completed 04-03-PLAN.md (Arena Map System)
 
-Progress: [███████░░░] 60% (9 of 12 plans complete: Phase 1-3 done, Phase 4: 2/3 done)
+Progress: [████████░░] 67% (10 of 12 plans complete: Phase 1-3 done, Phase 4: 3/3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 11.3 min
-- Total execution time: 3.07 hours
+- Total plans completed: 10
+- Average duration: 10.7 min
+- Total execution time: 3.25 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [███████░░░] 60% (9 of 12 plans complete: Phase 1-
 | 01-foundation-server-architecture | 3 | 26 min | 8.7 min |
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
-| 04-match-lifecycle-maps | 2 | 13 min | 6.5 min |
+| 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (3 min), 03-02 (45 min), 04-01 (10 min), 04-02 (3 min)
-- Trend: Phase 4 very fast (6.5 min avg), straightforward UI implementation
+- Last 5 plans: 03-02 (45 min), 04-01 (10 min), 04-02 (3 min), 04-03 (4 min)
+- Trend: Phase 4 extremely fast (5.7 min avg), well-defined incremental features
 
 *Updated after each plan completion*
 
@@ -81,6 +81,9 @@ Recent decisions affecting current work:
 - 04-02: scene.launch (not scene.start) for VictoryScene — Keeps GameScene visible underneath as overlay
 - 04-02: matchEnd message with stats (not Schema listener) — Avoids stale stats pitfall
 - 04-02: Tab key for spectator camera cycling — Familiar FPS convention
+- [Phase 04-03]: 4 maps in rotation pool provides gameplay variety
+- [Phase 04-03]: Sequential map rotation ensures all maps get played without repetition
+- [Phase 04-03]: Map-specific spawn points ensure balanced starting positions
 
 ### Pending Todos
 
@@ -93,10 +96,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 04-02-PLAN.md (Client Match End UI & Spectator Mode) — Phase 4: 2 of 3 plans complete
-Resume file: .planning/phases/04-match-lifecycle-maps/04-02-SUMMARY.md
+Stopped at: Completed 04-03-PLAN.md (Arena Map System) — Phase 4: 3 of 3 plans complete (PHASE COMPLETE)
+Resume file: .planning/phases/04-match-lifecycle-maps/04-03-SUMMARY.md
 
-**Phase 4 Progress (2 of 3):**
+**Phase 4 Complete (3 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
   - Match starts when 3 players join, room locked during PLAYING
   - Win conditions: all guardians dead = paran wins, paran dead = guardians win
@@ -108,7 +111,14 @@ Resume file: .planning/phases/04-match-lifecycle-maps/04-02-SUMMARY.md
   - Spectator mode for eliminated players (Tab to cycle camera between alive players)
   - Return to Lobby button (disconnects from room, returns to BootScene)
   - Match state status text (waiting, match started, spectating)
-- Next: 04-03 Arena map system with structured tilemap and spawn positions
+- 04-03 Complete: Arena map system with 4-map rotation
+  - shared/maps.ts with MapMetadata interface and MAPS array
+  - 3 new arena maps: corridor_chaos (tight corridors), cross_fire (central cross), pillars (scattered cover)
+  - Server sequential map rotation with static counter (round-robin)
+  - Client dynamic map loading from state.mapName
+  - Map-specific spawn points (Paran center, guardians at opposite corners)
+  - All maps 800x608 pixels (25x19 tiles) with distinct obstacle layouts
+- Next: Phase 5 (if exists) or Phase 6 (Polish & Testing)
 
 **Phase 3 Complete:**
 - Server-authoritative combat system with projectiles, collision, damage, death
