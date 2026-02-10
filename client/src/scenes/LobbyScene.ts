@@ -65,20 +65,41 @@ export class LobbyScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.uiElements.push(text);
 
-      // Attempt reconnection
-      const room = await this.client.reconnect(token);
-      console.log('Successfully reconnected to game room:', room.id);
+      // Attempt reconnection with retries (server may not have processed disconnect yet)
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 800; // ms
 
-      // Update stored token
-      if (room.reconnectionToken) {
-        localStorage.setItem('bangerActiveRoom', JSON.stringify({
-          token: room.reconnectionToken,
-          timestamp: Date.now()
-        }));
+      let reconnectedRoom: Room | null = null;
+
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          reconnectedRoom = await this.client.reconnect(token);
+          console.log(`Successfully reconnected on attempt ${attempt}`);
+          break;
+        } catch (e) {
+          console.log(`Reconnection attempt ${attempt}/${MAX_RETRIES} failed:`, e);
+          if (attempt < MAX_RETRIES) {
+            // Wait before retrying -- gives server time to process disconnect
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            text.setText(`Reconnecting to match... (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          }
+        }
       }
 
-      // Go directly to game scene
-      this.scene.start('GameScene', { room });
+      if (reconnectedRoom) {
+        // Update stored token
+        if (reconnectedRoom.reconnectionToken) {
+          localStorage.setItem('bangerActiveRoom', JSON.stringify({
+            token: reconnectedRoom.reconnectionToken,
+            timestamp: Date.now()
+          }));
+        }
+
+        // Go directly to game scene
+        this.scene.start('GameScene', { room: reconnectedRoom });
+      } else {
+        throw new Error('All reconnection attempts failed');
+      }
 
     } catch (e) {
       console.error('Reconnection failed:', e);

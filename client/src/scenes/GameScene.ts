@@ -228,133 +228,7 @@ export class GameScene extends Phaser.Scene {
 
         // Common onChange handler for role and health updates
         player.onChange(() => {
-          // Update visuals when role changes
-          if (player.role) {
-            const sprite = this.playerSprites.get(sessionId);
-            if (sprite) {
-              const isParan = player.role === 'paran';
-              const size = isParan ? 32 : 24;
-              let color: number;
-              if (isParan) {
-                color = 0xff4444; // Red for Paran
-              } else {
-                color = isLocal ? 0x00ff88 : 0x4488ff; // Green for local guardian, blue for remote
-              }
-              sprite.setSize(size, size);
-              sprite.setFillStyle(color);
-            }
-          }
-
-          // Update health bar
-          this.updateHealthBar(sessionId, player.health, player.role);
-
-          // Handle disconnected state
-          if (!player.connected && player.health > 0) {
-            const sprite = this.playerSprites.get(sessionId);
-            if (sprite) {
-              sprite.setAlpha(0.3);
-            }
-            // Show DC label if not already shown
-            if (!this.dcLabels.has(sessionId)) {
-              const dcText = this.add.text(
-                player.x,
-                player.y + 30,
-                'DC',
-                {
-                  fontSize: '12px',
-                  color: '#ffaa00',
-                  fontStyle: 'bold',
-                  backgroundColor: '#000000',
-                  padding: { x: 4, y: 2 }
-                }
-              );
-              dcText.setOrigin(0.5);
-              dcText.setDepth(12);
-              this.dcLabels.set(sessionId, dcText);
-            }
-          } else if (player.health <= 0) {
-            // Dead state
-            const sprite = this.playerSprites.get(sessionId);
-            if (sprite) {
-              sprite.setAlpha(0.3);
-            }
-            // Remove DC label if they died while disconnected
-            const dcLabel = this.dcLabels.get(sessionId);
-            if (dcLabel) {
-              dcLabel.destroy();
-              this.dcLabels.delete(sessionId);
-            }
-            // Show ELIMINATED text
-            if (!this.eliminatedTexts.has(sessionId)) {
-              const eliminatedText = this.add.text(
-                player.x,
-                player.y - 40,
-                'ELIMINATED',
-                {
-                  fontSize: '14px',
-                  color: '#ff0000',
-                  fontStyle: 'bold',
-                }
-              );
-              eliminatedText.setOrigin(0.5);
-              eliminatedText.setDepth(12);
-              this.eliminatedTexts.set(sessionId, eliminatedText);
-            }
-          } else {
-            // Alive and connected - ensure sprite is opaque
-            const sprite = this.playerSprites.get(sessionId);
-            if (sprite) {
-              sprite.setAlpha(1.0);
-            }
-            // Remove DC label if player reconnected
-            const dcLabel = this.dcLabels.get(sessionId);
-            if (dcLabel) {
-              dcLabel.destroy();
-              this.dcLabels.delete(sessionId);
-            }
-            // Remove eliminated text if it exists (shouldn't happen but defensive)
-            const eliminatedText = this.eliminatedTexts.get(sessionId);
-            if (eliminatedText) {
-              eliminatedText.destroy();
-              this.eliminatedTexts.delete(sessionId);
-            }
-          }
-
-          // Role-specific handling
-          if (isLocal) {
-            // Local player: reconciliation
-            if (this.prediction) {
-              this.prediction.reconcile({
-                x: player.x,
-                y: player.y,
-                vx: player.vx || 0,
-                vy: player.vy || 0,
-                angle: player.angle || 0,
-                lastProcessedSeq: player.lastProcessedSeq || 0,
-              });
-
-              // Update sprite from reconciled prediction state
-              const state = this.prediction.getState();
-              const sprite = this.playerSprites.get(sessionId);
-              if (sprite) {
-                sprite.x = state.x;
-                sprite.y = state.y;
-              }
-              const label = this.playerLabels.get(sessionId);
-              if (label) {
-                label.x = state.x;
-                label.y = state.y - 20;
-              }
-            }
-          } else {
-            // Remote player: interpolation
-            this.interpolation.addSnapshot(sessionId, {
-              timestamp: Date.now(),
-              x: player.x,
-              y: player.y,
-              angle: player.angle || 0,
-            });
-          }
+          this.handlePlayerChange(player, sessionId, isLocal);
         });
 
         if (isLocal) {
@@ -717,12 +591,90 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private handlePlayerChange(player: any, sessionId: string, isLocal: boolean) {
+    // Update visuals when role changes
+    if (player.role) {
+      const sprite = this.playerSprites.get(sessionId);
+      if (sprite) {
+        const isParan = player.role === 'paran';
+        const size = isParan ? 32 : 24;
+        let color: number;
+        if (isParan) {
+          color = 0xff4444;
+        } else {
+          color = isLocal ? 0x00ff88 : 0x4488ff;
+        }
+        sprite.setSize(size, size);
+        sprite.setFillStyle(color);
+      }
+    }
+
+    // Update health bar
+    this.updateHealthBar(sessionId, player.health, player.role);
+
+    // Handle disconnected state (using dcLabels map)
+    if (!player.connected && player.health > 0) {
+      const sprite = this.playerSprites.get(sessionId);
+      if (sprite) sprite.setAlpha(0.3);
+      if (!this.dcLabels.has(sessionId)) {
+        const dcText = this.add.text(player.x, player.y + 30, 'DC', {
+          fontSize: '12px', color: '#ffaa00', fontStyle: 'bold',
+          backgroundColor: '#000000', padding: { x: 4, y: 2 }
+        });
+        dcText.setOrigin(0.5);
+        dcText.setDepth(12);
+        this.dcLabels.set(sessionId, dcText);
+      }
+    } else if (player.health <= 0) {
+      const sprite = this.playerSprites.get(sessionId);
+      if (sprite) sprite.setAlpha(0.3);
+      const dcLabel = this.dcLabels.get(sessionId);
+      if (dcLabel) { dcLabel.destroy(); this.dcLabels.delete(sessionId); }
+      if (!this.eliminatedTexts.has(sessionId)) {
+        const eliminatedText = this.add.text(player.x, player.y - 40, 'ELIMINATED', {
+          fontSize: '14px', color: '#ff0000', fontStyle: 'bold',
+        });
+        eliminatedText.setOrigin(0.5);
+        eliminatedText.setDepth(12);
+        this.eliminatedTexts.set(sessionId, eliminatedText);
+      }
+    } else {
+      const sprite = this.playerSprites.get(sessionId);
+      if (sprite) sprite.setAlpha(1.0);
+      const dcLabel = this.dcLabels.get(sessionId);
+      if (dcLabel) { dcLabel.destroy(); this.dcLabels.delete(sessionId); }
+      const eliminatedText = this.eliminatedTexts.get(sessionId);
+      if (eliminatedText) { eliminatedText.destroy(); this.eliminatedTexts.delete(sessionId); }
+    }
+
+    // Role-specific handling
+    if (isLocal) {
+      if (this.prediction) {
+        this.prediction.reconcile({
+          x: player.x, y: player.y,
+          vx: player.vx || 0, vy: player.vy || 0,
+          angle: player.angle || 0,
+          lastProcessedSeq: player.lastProcessedSeq || 0,
+        });
+        const state = this.prediction.getState();
+        const sprite = this.playerSprites.get(sessionId);
+        if (sprite) { sprite.x = state.x; sprite.y = state.y; }
+        const label = this.playerLabels.get(sessionId);
+        if (label) { label.x = state.x; label.y = state.y - 20; }
+      }
+    } else {
+      this.interpolation.addSnapshot(sessionId, {
+        timestamp: Date.now(),
+        x: player.x, y: player.y,
+        angle: player.angle || 0,
+      });
+    }
+  }
+
   private attachRoomListeners() {
     if (!this.room) return;
 
-    // Re-attach all the message and state listeners
-    // (These were set up in create() initially)
-
+    // Re-attach message listeners
     this.room.onMessage("matchStart", () => {
       this.statusText.setText(`Match started!`);
       this.time.delayedCall(2000, () => {
@@ -755,6 +707,120 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       this.handleReconnection();
+    });
+
+    // Re-attach state listeners for players
+    this.room.state.players.onAdd((player: any, sessionId: string) => {
+      console.log('Player joined (after reconnect):', sessionId);
+
+      const isLocal = sessionId === this.room!.sessionId;
+
+      // Skip if sprite already exists (player was already present before reconnect)
+      if (this.playerSprites.has(sessionId)) {
+        // Still need to re-register onChange
+        player.onChange(() => {
+          this.handlePlayerChange(player, sessionId, isLocal);
+        });
+        return;
+      }
+
+      // Create new player visual (same logic as create())
+      const role = player.role || 'faran';
+      const isParan = role === 'paran';
+      const size = isParan ? 32 : 24;
+      let color: number;
+      if (isParan) {
+        color = 0xff4444;
+      } else {
+        color = isLocal ? 0x00ff88 : 0x4488ff;
+      }
+
+      const rect = this.add.rectangle(player.x, player.y, size, size, color);
+      rect.setDepth(10);
+      this.playerSprites.set(sessionId, rect);
+
+      const healthBar = this.add.graphics();
+      healthBar.setDepth(11);
+      this.healthBars.set(sessionId, healthBar);
+      this.updateHealthBar(sessionId, player.health, role);
+
+      const nameText = this.add.text(
+        player.x, player.y - 20,
+        player.name || sessionId.slice(0, 6),
+        { fontSize: '12px', color: '#ffffff' }
+      );
+      nameText.setOrigin(0.5);
+      nameText.setDepth(11);
+      this.playerLabels.set(sessionId, nameText);
+
+      player.onChange(() => {
+        this.handlePlayerChange(player, sessionId, isLocal);
+      });
+
+      if (isLocal) {
+        this.localRole = role;
+        this.prediction = new PredictionSystem({
+          x: player.x, y: player.y,
+          vx: player.vx || 0, vy: player.vy || 0,
+          angle: player.angle || 0,
+        }, role);
+      } else {
+        this.remotePlayers.add(sessionId);
+      }
+    });
+
+    this.room.state.players.onRemove((player: any, sessionId: string) => {
+      console.log('Player left (after reconnect):', sessionId);
+
+      if (this.spectatorTarget === sessionId) {
+        this.spectatorTarget = this.getNextAlivePlayer(sessionId);
+      }
+
+      if (this.remotePlayers.has(sessionId)) {
+        this.interpolation.removePlayer(sessionId);
+        this.remotePlayers.delete(sessionId);
+      }
+
+      const sprite = this.playerSprites.get(sessionId);
+      if (sprite) { sprite.destroy(); this.playerSprites.delete(sessionId); }
+      const label = this.playerLabels.get(sessionId);
+      if (label) { label.destroy(); this.playerLabels.delete(sessionId); }
+      const healthBar = this.healthBars.get(sessionId);
+      if (healthBar) { healthBar.destroy(); this.healthBars.delete(sessionId); }
+      const eliminatedText = this.eliminatedTexts.get(sessionId);
+      if (eliminatedText) { eliminatedText.destroy(); this.eliminatedTexts.delete(sessionId); }
+      const dcLabel = this.dcLabels.get(sessionId);
+      if (dcLabel) { dcLabel.destroy(); this.dcLabels.delete(sessionId); }
+    });
+
+    // Re-attach projectile listeners
+    this.room.state.projectiles.onAdd((projectile: any, key: string) => {
+      const index = parseInt(key, 10);
+      const color = projectile.ownerId === this.room!.sessionId ? 0xffff00 : 0xff6600;
+      const circle = this.add.circle(projectile.x, projectile.y, 4, color);
+      circle.setDepth(5);
+      this.projectileSprites.set(index, circle);
+
+      this.projectileVelocities.set(index, {
+        vx: projectile.vx,
+        vy: projectile.vy,
+      });
+
+      projectile.onChange(() => {
+        circle.x = projectile.x;
+        circle.y = projectile.y;
+        this.projectileVelocities.set(index, {
+          vx: projectile.vx,
+          vy: projectile.vy,
+        });
+      });
+    });
+
+    this.room.state.projectiles.onRemove((projectile: any, key: string) => {
+      const index = parseInt(key, 10);
+      const sprite = this.projectileSprites.get(index);
+      if (sprite) { sprite.destroy(); this.projectileSprites.delete(index); }
+      this.projectileVelocities.delete(index);
     });
   }
 
