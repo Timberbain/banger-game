@@ -37,6 +37,14 @@ export class GameScene extends Phaser.Scene {
   private healthBars: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private eliminatedTexts: Map<string, Phaser.GameObjects.Text> = new Map();
 
+  // Spectator mode
+  private spectatorTarget: string | null = null;
+  private tabKey!: Phaser.Input.Keyboard.Key;
+  private isSpectating: boolean = false;
+  private matchEnded: boolean = false;
+  private finalStats: any = null;
+  private matchWinner: string = "";
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -78,6 +86,7 @@ export class GameScene extends Phaser.Scene {
       D: Phaser.Input.Keyboard.Key;
     };
     this.fireKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.tabKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
 
     // Add status text at top-left
     this.statusText = this.add.text(10, 10, 'Connecting to server...', {
@@ -95,15 +104,53 @@ export class GameScene extends Phaser.Scene {
     try {
       this.room = await this.client.joinOrCreate('game_room');
       this.connected = true;
-      this.statusText.setText(`Connected: ${this.room.sessionId}`);
+      this.statusText.setText(`Waiting for players... (${this.room.state.players.size}/3)`);
 
       console.log('Connected to game_room:', this.room.sessionId);
+
+      // Listen for match start broadcast
+      this.room.onMessage("matchStart", () => {
+        this.statusText.setText(`Match started!`);
+        // Clear the message after 2 seconds
+        this.time.delayedCall(2000, () => {
+          if (!this.matchEnded) {
+            this.statusText.setText(`Connected: ${this.room!.sessionId}`);
+          }
+        });
+      });
+
+      // Listen for match end broadcast (includes final stats)
+      this.room.onMessage("matchEnd", (data: any) => {
+        this.finalStats = data.stats;
+        this.matchWinner = data.winner;
+        this.matchEnded = true;
+
+        // Launch victory scene as overlay
+        this.scene.launch("VictoryScene", {
+          winner: data.winner,
+          stats: data.stats,
+          duration: data.duration,
+          localSessionId: this.room!.sessionId,
+          room: this.room
+        });
+
+        // Pause game scene input (scene stays visible underneath)
+        this.scene.pause();
+      });
 
       // Listen for players joining
       this.room.state.players.onAdd((player: any, sessionId: string) => {
         console.log('Player joined:', sessionId);
 
         const isLocal = sessionId === this.room!.sessionId;
+
+        // Update waiting status
+        if (!this.matchEnded) {
+          const count = this.room!.state.players.size;
+          if (count < 3) {
+            this.statusText.setText(`Waiting for players... (${count}/3)`);
+          }
+        }
 
         // Determine initial role-based visuals
         const role = player.role || 'faran'; // Default to faran if role not yet assigned
@@ -256,6 +303,11 @@ export class GameScene extends Phaser.Scene {
       this.room.state.players.onRemove((player: any, sessionId: string) => {
         console.log('Player left:', sessionId);
 
+        // If spectating this player, switch target
+        if (this.spectatorTarget === sessionId) {
+          this.spectatorTarget = this.getNextAlivePlayer(sessionId);
+        }
+
         // Clean up interpolation buffer for remote players
         if (this.remotePlayers.has(sessionId)) {
           this.interpolation.removePlayer(sessionId);
@@ -336,7 +388,35 @@ export class GameScene extends Phaser.Scene {
     const localPlayer = this.room.state.players.get(this.room.sessionId);
     const isDead = localPlayer && localPlayer.health <= 0;
 
-    // Read current keyboard state
+    // Handle spectator mode when dead
+    if (isDead && !this.isSpectating && !this.matchEnded) {
+      this.isSpectating = true;
+      // Set initial spectator target to first alive player
+      this.spectatorTarget = this.getNextAlivePlayer(null);
+      this.statusText.setText('SPECTATING - Press Tab to cycle players');
+    }
+
+    if (this.isSpectating && !this.matchEnded) {
+      // Cycle through alive players with Tab key
+      if (Phaser.Input.Keyboard.JustDown(this.tabKey)) {
+        this.spectatorTarget = this.getNextAlivePlayer(this.spectatorTarget);
+      }
+
+      // Follow spectator target with camera
+      if (this.spectatorTarget) {
+        const targetSprite = this.playerSprites.get(this.spectatorTarget);
+        if (targetSprite) {
+          this.cameras.main.centerOn(targetSprite.x, targetSprite.y);
+        } else {
+          // Target sprite gone, find next alive player
+          this.spectatorTarget = this.getNextAlivePlayer(this.spectatorTarget);
+        }
+      }
+    }
+
+    // Skip input processing if dead or spectating
+    if (!isDead && !this.isSpectating) {
+      // Read current keyboard state
     const rawInput = {
       left: this.cursors.left.isDown || this.wasd.A.isDown,
       right: this.cursors.right.isDown || this.wasd.D.isDown,
@@ -377,14 +457,14 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Send input every frame — acceleration physics needs one input per tick
-    // to match server simulation. Only skip if truly idle (no keys, no velocity) OR dead.
+    // to match server simulation. Only skip if truly idle (no keys, no velocity).
     const hasInput = input.left || input.right || input.up || input.down;
     const hasVelocity = (() => {
       const s = this.prediction!.getState();
       return Math.abs(s.vx) > 0.01 || Math.abs(s.vy) > 0.01;
     })();
 
-    if (!isDead && (hasInput || hasVelocity || input.fire)) {
+    if (hasInput || hasVelocity || input.fire) {
       this.prediction.sendInput(input, this.room);
     }
 
@@ -401,6 +481,7 @@ export class GameScene extends Phaser.Scene {
     if (localLabel) {
       localLabel.x = state.x;
       localLabel.y = state.y - 20;
+    }
     }
 
     // Update remote player sprites via interpolation
@@ -490,5 +571,24 @@ export class GameScene extends Phaser.Scene {
     graphics.fillRect(barX, barY, barWidth * healthPercent, barHeight);
 
     graphics.setPosition(0, 0); // Graphics object uses world coordinates
+  }
+
+  private getNextAlivePlayer(currentTarget: string | null): string | null {
+    if (!this.room) return null;
+
+    const alivePlayers: string[] = [];
+    this.room.state.players.forEach((player: any, sessionId: string) => {
+      if (player.health > 0 && sessionId !== this.room!.sessionId) {
+        alivePlayers.push(sessionId);
+      }
+    });
+
+    if (alivePlayers.length === 0) return null;
+
+    if (!currentTarget) return alivePlayers[0];
+
+    const currentIndex = alivePlayers.indexOf(currentTarget);
+    const nextIndex = (currentIndex + 1) % alivePlayers.length;
+    return alivePlayers[nextIndex];
   }
 }
