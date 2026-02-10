@@ -66,10 +66,11 @@ Plans:
   4. Paran has distinct stats (high health, slow acceleration, powerful attacks, instant turning)
   5. Paran loses all speed on collision with walls or obstacles
   6. Arena edges block all players
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 03-01: TBD during planning
+- [ ] 03-01-PLAN.md -- Server combat: character stats, projectile lifecycle, collision detection, Paran wall penalty
+- [ ] 03-02-PLAN.md -- Client combat: fire input, projectile rendering, health display, role differentiation + human verify
 
 ### Phase 4: Match Lifecycle & Maps
 **Goal**: Complete matches with win conditions on multiple hand-crafted maps
