@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 5 of 7 (Multiplayer Lobbies)
-Plan: 2 of 3
-Status: In Progress
-Last activity: 2026-02-10 — Completed 05-02-PLAN.md (Client Lobby UI)
+Plan: 3 of 3
+Status: Complete
+Last activity: 2026-02-10 — Completed 05-03-PLAN.md (Reconnection Support)
 
-Progress: [████████░░] 80% (12 of 15 plans complete: Phase 1-4 done, Phase 5: 2/3 done)
+Progress: [█████████░] 86% (13 of 15 plans complete: Phase 1-4 done, Phase 5: 3/3 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 9.0 min
-- Total execution time: 3.4 hours
+- Total plans completed: 13
+- Average duration: 8.2 min
+- Total execution time: 3.5 hours
 
 **By Phase:**
 
@@ -31,14 +31,15 @@ Progress: [████████░░] 80% (12 of 15 plans complete: Phase 1
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
 | 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
-| 05-multiplayer-lobbies | 2 | 6 min | 3.0 min |
+| 05-multiplayer-lobbies | 3 | 8 min | 2.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (3 min), 04-03 (4 min), 05-01 (3 min), 05-02 (3 min)
-- Trend: Phase 5 maintaining fast velocity (3 min avg), clear implementation requirements
+- Last 5 plans: 04-03 (4 min), 05-01 (3 min), 05-02 (3 min), 05-03 (2 min)
+- Trend: Phase 5 complete with excellent velocity (2.7 min avg), well-defined plans
 
 *Updated after each plan completion*
 | Phase 05 P02 | 3 | 2 tasks | 6 files |
+| Phase 05 P03 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,12 @@ Recent decisions affecting current work:
 - [Phase 05-02]: GameScene accepts room from scene data with fallback for testing
 - [Phase 05-02]: Room code lookup via HTTP GET /rooms/find endpoint
 - [Phase 05-02]: Store reconnection token in localStorage for browser refresh recovery
+- [Phase 05-03]: 60s grace period for match reconnection (longer than 30s lobby grace)
+- [Phase 05-03]: Disconnected players frozen in place for fair reconnection
+- [Phase 05-03]: Client checks reconnection on LobbyScene.create() for seamless auto-reconnect
+- [Phase 05-03]: 60s grace period for match reconnection (longer than 30s lobby grace)
+- [Phase 05-03]: Disconnected players frozen in place for fair reconnection
+- [Phase 05-03]: Client checks reconnection on LobbyScene.create() for seamless auto-reconnect
 
 ### Pending Todos
 
@@ -108,10 +115,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 05-02-PLAN.md (Client Lobby UI) — Phase 5: 2 of 3 plans complete
-Resume file: .planning/phases/05-multiplayer-lobbies/05-02-SUMMARY.md
+Stopped at: Completed 05-03-PLAN.md (Reconnection Support) — Phase 5: 3 of 3 plans complete
+Resume file: .planning/phases/05-multiplayer-lobbies/05-03-SUMMARY.md
 
-**Phase 5 In Progress (2 of 3):**
+**Phase 5 Complete (3 of 3):**
 - 05-01 Complete: Server-side lobby infrastructure
   - LobbyRoom with character selection (role validation, conflict detection)
   - Ready system with 3-second countdown (requires 1 paran + 1 faran + 1 baran)
@@ -132,7 +139,17 @@ Resume file: .planning/phases/05-multiplayer-lobbies/05-02-SUMMARY.md
   - Scene flow: Boot → Lobby → Game → Victory → Lobby
   - GameScene accepts room from scene data (no duplicate connection)
   - Reconnection token storage in localStorage
-- Next: 05-03 (UAT - Lobby system end-to-end testing)
+- 05-03 Complete: Reconnection support for network resilience
+  - Server-side 60s grace period with allowReconnection during active matches
+  - Player.connected boolean field synced to clients
+  - Disconnected players frozen in place (zero velocity, drained inputs)
+  - Client-side reconnection token persistence in localStorage
+  - Automatic reconnection check on LobbyScene.create() before showing menu
+  - handleReconnection method with token-based client.reconnect()
+  - Disconnected players shown at 30% opacity with "DC" label
+  - Browser refresh survival via stored reconnection token
+  - Token cleanup on match end and intentional leave
+- Next: Phase 6 (if exists) or final polish phase
 
 **Phase 4 Complete (3 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
