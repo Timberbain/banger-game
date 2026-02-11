@@ -17,8 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Combat System** - Projectiles, collision detection, damage system
 - [x] **Phase 4: Match Lifecycle & Maps** - Win conditions, multiple arenas, spectator mode
 - [x] **Phase 5: Multiplayer Lobbies** - Room codes, matchmaking, character selection
-- [ ] **Phase 6: Accounts & Stats** - Light accounts, stat tracking, match history
-- [ ] **Phase 7: UX Polish** - HUD, audio, visual feedback, tutorial
+- [ ] **Phase 6: UX Polish** - HUD, audio, visual feedback, tutorial
 
 ## Phase Details
 
@@ -120,23 +119,9 @@ Plans:
 - [x] 05-12-PLAN.md — Gap closure v4: S key input fix + sessionStorage for reconnection tokens
 - [x] 05-13-PLAN.md — Gap closure v5: Fix focus event listener race condition for WASD in room code input
 
-### Phase 6: Accounts & Stats
-**Goal**: Players have persistent accounts with tracked stats
-**Depends on**: Phase 5
-**Requirements**: ACCT-01, ACCT-02, ACCT-03, ACCT-04
-**Success Criteria** (what must be TRUE):
-  1. Player can create account with username and password
-  2. Player session persists across browser refresh
-  3. Player stats tracked (wins, losses, games played per character)
-  4. Player can view their own stats
-**Plans**: TBD
-
-Plans:
-- [ ] 06-01: TBD during planning
-
-### Phase 7: UX Polish
+### Phase 6: UX Polish
 **Goal**: Game has polished interface, audio, and onboarding
-**Depends on**: Phase 6
+**Depends on**: Phase 5
 **Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05, UX-07
 **Success Criteria** (what must be TRUE):
   1. HUD displays health bars, ability cooldowns, and match timer
@@ -148,12 +133,12 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 07-01: TBD during planning
+- [ ] 06-01: TBD during planning
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -162,9 +147,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Combat System | 2/2 | ✓ Complete | 2026-02-10 |
 | 4. Match Lifecycle & Maps | 3/3 | ✓ Complete | 2026-02-10 |
 | 5. Multiplayer Lobbies | 13/13 | ✓ Complete | 2026-02-11 |
-| 6. Accounts & Stats | 0/TBD | Not started | - |
-| 7. UX Polish | 0/TBD | Not started | - |
+| 6. UX Polish | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-11 (Phase 5 COMPLETE — 13/13 plans, 5 gap closure rounds)*
+*Last updated: 2026-02-11 (Phase 6 removed — Accounts & Stats)*

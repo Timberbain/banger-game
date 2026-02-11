@@ -5,11 +5,11 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 5 COMPLETE — Next: Phase 6 (Accounts & Stats)
+**Current focus:** Phase 5 COMPLETE — Next: Phase 6 (UX Polish)
 
 ## Current Position
 
-Phase: 5 of 5 (Multiplayer Lobbies)
+Phase: 5 of 6 (Multiplayer Lobbies)
 Plan: 13 of 13
 Status: Complete
 Last activity: 2026-02-11 — Completed 05-13-PLAN.md (UAT v5 Gap Closure - Focus event listener race condition)
