@@ -47,8 +47,28 @@ export class LobbyScene extends Phaser.Scene {
           }).setOrigin(0.5);
           this.uiElements.push(text);
 
-          try {
-            this.room = await this.client.reconnect(token);
+          // Attempt lobby reconnection with retries (server needs ~9s to process F5 disconnect)
+          const LOBBY_MAX_RETRIES = 12;
+          const LOBBY_RETRY_DELAY = 1000; // ms
+
+          let reconnectedLobby: Room | null = null;
+
+          for (let attempt = 1; attempt <= LOBBY_MAX_RETRIES; attempt++) {
+            try {
+              reconnectedLobby = await this.client.reconnect(token);
+              console.log(`Successfully reconnected to lobby on attempt ${attempt}`);
+              break;
+            } catch (e) {
+              console.log(`Lobby reconnection attempt ${attempt}/${LOBBY_MAX_RETRIES} failed:`, e);
+              if (attempt < LOBBY_MAX_RETRIES) {
+                await new Promise(resolve => setTimeout(resolve, LOBBY_RETRY_DELAY));
+                text.setText(`Reconnecting to lobby... (attempt ${attempt + 1}/${LOBBY_MAX_RETRIES})`);
+              }
+            }
+          }
+
+          if (reconnectedLobby) {
+            this.room = reconnectedLobby;
             console.log('Reconnected to lobby:', this.room.id);
 
             // Update stored token
@@ -62,8 +82,8 @@ export class LobbyScene extends Phaser.Scene {
 
             this.showLobbyView();
             return;
-          } catch (e) {
-            console.log('Lobby reconnection failed:', e);
+          } else {
+            console.log('All lobby reconnection attempts failed');
             localStorage.removeItem('bangerLobbyRoom');
             this.clearUI();
             // Fall through to check game token or show menu
