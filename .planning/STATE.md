@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 5 of 5 (Multiplayer Lobbies)
-Plan: 12 of 12
+Plan: 13 of 13
 Status: Complete
-Last activity: 2026-02-11 — Completed 05-12-PLAN.md (UAT v4 Gap Closure - S key input & sessionStorage)
+Last activity: 2026-02-11 — Completed 05-13-PLAN.md (UAT v5 Gap Closure - Focus event listener race condition)
 
-Progress: [██████████] 100% (22 of 22 plans complete: All phases 1-5 complete)
+Progress: [██████████] 100% (23 of 23 plans complete: All phases 1-5 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
-- Average duration: 5.2 min
+- Total plans completed: 23
+- Average duration: 5.0 min
 - Total execution time: 1.9 hours
 
 **By Phase:**
@@ -31,10 +31,10 @@ Progress: [██████████] 100% (22 of 22 plans complete: All ph
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
 | 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
-| 05-multiplayer-lobbies | 12 | 22 min | 1.8 min |
+| 05-multiplayer-lobbies | 13 | 23 min | 1.8 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-07 (3 min), 05-10 (2 min), 05-11 (1.5 min), 05-12 (2 min), 05-08/09 (gap closures)
+- Last 5 plans: 05-10 (2 min), 05-11 (1.5 min), 05-12 (2 min), 05-13 (0.6 min), gap closures sub-minute
 - Trend: Phase 5 exceptional velocity (avg 1.8 min), gap closures extremely efficient
 
 *Updated after each plan completion*
@@ -47,6 +47,7 @@ Progress: [██████████] 100% (22 of 22 plans complete: All ph
 | Phase 05 P11 | 88 | 2 tasks | 1 files |
 | Phase 05 P10 | 1.7 | 2 tasks | 3 files |
 | Phase 05 P12 | 2 | 2 tasks | 2 files |
+| Phase 05 P13 | 0.6 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,7 @@ Recent decisions affecting current work:
 - [Phase 05-11]: 12-retry loop with 1000ms intervals for lobby reconnection (matches proven game pattern)
 - [Phase 05]: Global keyboard capture control via disableGlobalCapture/enableGlobalCapture for HTML input coexistence with Phaser
 - [Phase 05]: sessionStorage instead of localStorage for reconnection tokens to enable per-tab isolation
+- [Phase 05-13]: Register focus event listeners BEFORE calling focus() to catch synchronous focus event
 
 ### Pending Todos
 
@@ -138,10 +140,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-11 (phase execution)
-Stopped at: Completed 05-12-PLAN.md (UAT v4 Gap Closure) — Phase 5: COMPLETE (12/12 plans)
-Resume file: .planning/phases/05-multiplayer-lobbies/05-12-SUMMARY.md
+Stopped at: Completed 05-13-PLAN.md (UAT v5 Gap Closure - Focus event listener race condition) — Phase 5: COMPLETE (13/13 plans)
+Resume file: .planning/phases/05-multiplayer-lobbies/05-13-SUMMARY.md
 
-**Phase 5 Complete (12 of 12):**
+**Phase 5 Complete (13 of 13):**
 - 05-01 Complete: Server-side lobby infrastructure
   - LobbyRoom with character selection (role validation, conflict detection)
   - Ready system with 3-second countdown (requires 1 paran + 1 faran + 1 baran)
@@ -200,7 +202,12 @@ Resume file: .planning/phases/05-multiplayer-lobbies/05-12-SUMMARY.md
   - Migrated reconnection tokens from localStorage to sessionStorage (9 replacements)
   - sessionStorage is per-tab (isolated) but survives F5 (persists across reload)
   - Eliminates cross-tab token collision: all 3 tabs reconnect successfully
-  - Phase 5: COMPLETE (12/12 plans, 4 gap closure rounds)
+- 05-13 Complete: UAT v5 gap closure (Focus event listener race condition)
+  - Fixed WASD input in room code field after returning from match
+  - Reordered event listener registration to occur BEFORE htmlInput.focus() call
+  - Ensures disableGlobalCapture() executes when synchronous focus event fires
+  - Race-condition-safe pattern: register listeners before triggering events
+  - Phase 5: COMPLETE (13/13 plans, 5 gap closure rounds)
 
 **Phase 4 Complete (3 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
