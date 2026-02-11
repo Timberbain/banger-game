@@ -98,7 +98,15 @@ export class GameScene extends Phaser.Scene {
       }
 
       this.connected = true;
-      this.statusText.setText(`Waiting for players... (${this.room.state.players.size}/3)`);
+      // Check initial matchState -- don't show "waiting" if match already started
+      if (this.room.state.matchState === 'playing') {
+        this.statusText.setText('Match started!');
+        this.time.delayedCall(2000, () => {
+          if (!this.matchEnded) this.statusText.setVisible(false);
+        });
+      } else {
+        this.statusText.setText(`Waiting for players... (${this.room.state.players.size}/3)`);
+      }
 
       // Store reconnection token
       if (this.room.reconnectionToken) {
@@ -130,15 +138,24 @@ export class GameScene extends Phaser.Scene {
         this.load.start();
       });
 
-      // Listen for match start broadcast
+      // Schema-based matchState listener -- reliable regardless of join timing
+      this.room.state.listen("matchState", (value: string) => {
+        if (value === 'playing' && !this.matchEnded) {
+          this.statusText.setText('Match started!');
+          this.time.delayedCall(2000, () => {
+            if (!this.matchEnded) this.statusText.setVisible(false);
+          });
+        }
+      });
+
+      // Keep matchStart handler as backup (idempotent with Schema listener)
       this.room.onMessage("matchStart", () => {
-        this.statusText.setText(`Match started!`);
-        // Clear the message after 2 seconds
-        this.time.delayedCall(2000, () => {
-          if (!this.matchEnded) {
-            this.statusText.setText(`Connected: ${this.room!.sessionId}`);
-          }
-        });
+        if (!this.matchEnded) {
+          this.statusText.setText('Match started!');
+          this.time.delayedCall(2000, () => {
+            if (!this.matchEnded) this.statusText.setVisible(false);
+          });
+        }
       });
 
       // Listen for match end broadcast (includes final stats)
@@ -183,7 +200,7 @@ export class GameScene extends Phaser.Scene {
         const isLocal = sessionId === this.room!.sessionId;
 
         // Update waiting status
-        if (!this.matchEnded) {
+        if (!this.matchEnded && this.room!.state.matchState !== 'playing') {
           const count = this.room!.state.players.size;
           if (count < 3) {
             this.statusText.setText(`Waiting for players... (${count}/3)`);
@@ -674,14 +691,24 @@ export class GameScene extends Phaser.Scene {
   private attachRoomListeners() {
     if (!this.room) return;
 
+    // Schema-based matchState listener for reconnection
+    this.room.state.listen("matchState", (value: string) => {
+      if (value === 'playing' && !this.matchEnded) {
+        this.statusText.setText('Match started!');
+        this.time.delayedCall(2000, () => {
+          if (!this.matchEnded) this.statusText.setVisible(false);
+        });
+      }
+    });
+
     // Re-attach message listeners
     this.room.onMessage("matchStart", () => {
-      this.statusText.setText(`Match started!`);
-      this.time.delayedCall(2000, () => {
-        if (!this.matchEnded) {
-          this.statusText.setText(`Connected: ${this.room!.sessionId}`);
-        }
-      });
+      if (!this.matchEnded) {
+        this.statusText.setText('Match started!');
+        this.time.delayedCall(2000, () => {
+          if (!this.matchEnded) this.statusText.setVisible(false);
+        });
+      }
     });
 
     this.room.onMessage("matchEnd", (data: any) => {

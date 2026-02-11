@@ -58,6 +58,23 @@ export class LobbyRoom extends Room<LobbyState> {
       console.log(`Player ${client.sessionId} selected role: ${role}`);
     });
 
+    this.onMessage("deselectRole", (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+
+      player.role = "";
+      player.ready = false;
+
+      console.log(`Player ${client.sessionId} deselected role`);
+
+      // Cancel countdown if active (role distribution now invalid)
+      if (this.countdownInterval) {
+        this.countdownInterval.clear();
+        this.countdownInterval = undefined;
+        this.state.countdown = 0;
+      }
+    });
+
     this.onMessage("toggleReady", (client, message) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;

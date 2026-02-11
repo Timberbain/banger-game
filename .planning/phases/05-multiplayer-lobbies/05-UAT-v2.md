@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: fixed
 phase: 05-multiplayer-lobbies
 source: 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md
 started: 2026-02-10T22:00:00Z

@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Two issues: (1) lobby refresh loses room seat, room not found on rejoin. (2) No way to deselect/swap characters once all selected."
 created: 2026-02-10T23:00:00Z
 updated: 2026-02-10T23:15:00Z

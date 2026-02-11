@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "When all 3 players enter the game from lobby, they see inconsistent status text. One sees 'Waiting for players...(3/3)', another sees 'Match started!', and the third sees 'Connected: <playername>'."
 created: 2026-02-10T12:00:00Z
 updated: 2026-02-10T12:01:00Z

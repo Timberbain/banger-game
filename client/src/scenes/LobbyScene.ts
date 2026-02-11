@@ -31,7 +31,52 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   private async checkReconnection() {
-    // Check for stored reconnection token
+    // Check for lobby reconnection token FIRST (lobby refresh)
+    const lobbyStored = localStorage.getItem('bangerLobbyRoom');
+    if (lobbyStored) {
+      try {
+        const { token, timestamp } = JSON.parse(lobbyStored);
+        const graceMs = LOBBY_CONFIG.LOBBY_RECONNECT_GRACE * 1000;
+        const elapsed = Date.now() - timestamp;
+
+        if (elapsed < graceMs) {
+          const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+          this.uiElements.push(bg);
+          const text = this.add.text(400, 300, 'Reconnecting to lobby...', {
+            fontSize: '24px', color: '#ffff00'
+          }).setOrigin(0.5);
+          this.uiElements.push(text);
+
+          try {
+            this.room = await this.client.reconnect(token);
+            console.log('Reconnected to lobby:', this.room.id);
+
+            // Update stored token
+            if (this.room.reconnectionToken) {
+              localStorage.setItem('bangerLobbyRoom', JSON.stringify({
+                token: this.room.reconnectionToken,
+                roomId: this.room.id,
+                timestamp: Date.now()
+              }));
+            }
+
+            this.showLobbyView();
+            return;
+          } catch (e) {
+            console.log('Lobby reconnection failed:', e);
+            localStorage.removeItem('bangerLobbyRoom');
+            this.clearUI();
+            // Fall through to check game token or show menu
+          }
+        } else {
+          localStorage.removeItem('bangerLobbyRoom');
+        }
+      } catch (e) {
+        localStorage.removeItem('bangerLobbyRoom');
+      }
+    }
+
+    // Check for stored game reconnection token
     const stored = localStorage.getItem('bangerActiveRoom');
 
     if (!stored) {
@@ -66,8 +111,8 @@ export class LobbyScene extends Phaser.Scene {
       this.uiElements.push(text);
 
       // Attempt reconnection with retries (server may not have processed disconnect yet)
-      const MAX_RETRIES = 3;
-      const RETRY_DELAY = 800; // ms
+      const MAX_RETRIES = 12;
+      const RETRY_DELAY = 1000; // ms
 
       let reconnectedRoom: Room | null = null;
 
@@ -125,6 +170,8 @@ export class LobbyScene extends Phaser.Scene {
 
   private showMainMenu() {
     this.clearUI();
+    this.selectedRole = null;
+    localStorage.removeItem('bangerLobbyRoom');
     this.currentView = 'menu';
 
     // Dark background
@@ -231,6 +278,18 @@ export class LobbyScene extends Phaser.Scene {
     document.body.appendChild(this.htmlInput);
     this.htmlInput.focus();
 
+    // Disable Phaser keyboard capture while HTML input is focused
+    this.htmlInput.addEventListener('focus', () => {
+      if (this.input.keyboard) {
+        this.input.keyboard.enabled = false;
+      }
+    });
+    this.htmlInput.addEventListener('blur', () => {
+      if (this.input.keyboard) {
+        this.input.keyboard.enabled = true;
+      }
+    });
+
     // Join button
     const joinButton = this.add.text(400, 380, 'Join', {
       fontSize: '24px',
@@ -300,11 +359,14 @@ export class LobbyScene extends Phaser.Scene {
       this.room = await this.client.joinById(roomId, { name: this.playerName });
       console.log('Joined private room:', this.room.id);
       this.showLobbyView();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to join room:', e);
 
-      // Show error message
-      statusText.setText('Room not found!');
+      // Show appropriate error message
+      const errorMsg = e?.message?.includes('full') || e?.message?.includes('locked')
+        ? 'Room is full!'
+        : 'Room not found!';
+      statusText.setText(errorMsg);
       statusText.setColor('#ff0000');
 
       // Auto-hide after 3 seconds
@@ -503,6 +565,7 @@ export class LobbyScene extends Phaser.Scene {
     if (!this.room) return;
 
     this.clearUI();
+    this.selectedRole = null;
     this.currentView = 'lobby';
 
     // Background
@@ -537,6 +600,15 @@ export class LobbyScene extends Phaser.Scene {
     this.room.state.listen('roomCode', (value: string) => {
       updateRoomCode(value);
     });
+
+    // Store lobby reconnection token for browser refresh recovery
+    if (this.room.reconnectionToken) {
+      localStorage.setItem('bangerLobbyRoom', JSON.stringify({
+        token: this.room.reconnectionToken,
+        roomId: this.room.id,
+        timestamp: Date.now()
+      }));
+    }
 
     // Character selection section
     this.createCharacterSelection();
@@ -584,6 +656,7 @@ export class LobbyScene extends Phaser.Scene {
     // Listen for game ready message
     this.room.onMessage('gameReady', async (data: { gameRoomId: string }) => {
       console.log('Game ready! Joining game room:', data.gameRoomId);
+      localStorage.removeItem('bangerLobbyRoom');
 
       try {
         // Leave lobby
@@ -820,8 +893,15 @@ export class LobbyScene extends Phaser.Scene {
 
   private selectRole(role: string) {
     if (this.room) {
-      this.selectedRole = role;
-      this.room.send('selectRole', { role });
+      if (this.selectedRole === role) {
+        // Deselect current role
+        this.selectedRole = null;
+        this.room.send('deselectRole');
+      } else {
+        // Select new role
+        this.selectedRole = role;
+        this.room.send('selectRole', { role });
+      }
       // Immediate optimistic UI update
       this.characterPanelUpdaters.forEach(fn => fn());
     }
@@ -859,6 +939,7 @@ export class LobbyScene extends Phaser.Scene {
   shutdown() {
     // Clean up when scene shuts down
     this.clearUI();
+    localStorage.removeItem('bangerLobbyRoom');
 
     if (this.room) {
       try {

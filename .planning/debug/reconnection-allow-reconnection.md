@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Browser refresh during active match fails to reconnect. Client tries but gets 'Session expired'. Server logs: '❌ reconnection token invalid or expired. Did you missed .allowReconnection()?'"
 created: 2026-02-10T12:00:00Z
 updated: 2026-02-10T12:30:00Z
