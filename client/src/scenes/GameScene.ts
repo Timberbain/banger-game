@@ -178,7 +178,7 @@ export class GameScene extends Phaser.Scene {
         this.matchEnded = true;
 
         // Clear reconnection token on match end
-        localStorage.removeItem('bangerActiveRoom');
+        sessionStorage.removeItem('bangerActiveRoom');
 
         // Launch victory scene as overlay
         this.scene.launch("VictoryScene", {
@@ -720,7 +720,7 @@ export class GameScene extends Phaser.Scene {
       this.finalStats = data.stats;
       this.matchWinner = data.winner;
       this.matchEnded = true;
-      localStorage.removeItem('bangerActiveRoom');
+      sessionStorage.removeItem('bangerActiveRoom');
 
       this.scene.launch("VictoryScene", {
         winner: data.winner,
@@ -858,7 +858,7 @@ export class GameScene extends Phaser.Scene {
 
   private returnToLobby(message: string) {
     this.statusText.setText(message);
-    localStorage.removeItem('bangerActiveRoom');
+    sessionStorage.removeItem('bangerActiveRoom');
 
     this.time.delayedCall(3000, () => {
       this.scene.start('LobbyScene');

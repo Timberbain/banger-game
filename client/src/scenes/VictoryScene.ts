@@ -117,7 +117,7 @@ export class VictoryScene extends Phaser.Scene {
 
   private returnToLobby(room: any) {
     // Clear reconnection token on intentional leave
-    localStorage.removeItem('bangerActiveRoom');
+    sessionStorage.removeItem('bangerActiveRoom');
 
     // Disconnect from room if still connected
     if (room) {

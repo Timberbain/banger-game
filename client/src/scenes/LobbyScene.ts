@@ -84,15 +84,15 @@ export class LobbyScene extends Phaser.Scene {
             return;
           } else {
             console.log('All lobby reconnection attempts failed');
-            localStorage.removeItem('bangerLobbyRoom');
+            sessionStorage.removeItem('bangerLobbyRoom');
             this.clearUI();
             // Fall through to check game token or show menu
           }
         } else {
-          localStorage.removeItem('bangerLobbyRoom');
+          sessionStorage.removeItem('bangerLobbyRoom');
         }
       } catch (e) {
-        localStorage.removeItem('bangerLobbyRoom');
+        sessionStorage.removeItem('bangerLobbyRoom');
       }
     }
 
@@ -115,7 +115,7 @@ export class LobbyScene extends Phaser.Scene {
 
       if (elapsed > graceMs + bufferMs) {
         console.log('Stored session expired, clearing token');
-        localStorage.removeItem('bangerActiveRoom');
+        sessionStorage.removeItem('bangerActiveRoom');
         this.showMainMenu();
         return;
       }
@@ -170,7 +170,7 @@ export class LobbyScene extends Phaser.Scene {
       console.error('Reconnection failed:', e);
 
       // Clear expired token
-      localStorage.removeItem('bangerActiveRoom');
+      sessionStorage.removeItem('bangerActiveRoom');
 
       // Show session expired message briefly
       this.clearUI();
@@ -191,7 +191,7 @@ export class LobbyScene extends Phaser.Scene {
   private showMainMenu() {
     this.clearUI();
     this.selectedRole = null;
-    localStorage.removeItem('bangerLobbyRoom');
+    sessionStorage.removeItem('bangerLobbyRoom');
     this.currentView = 'menu';
 
     // Dark background
@@ -676,7 +676,7 @@ export class LobbyScene extends Phaser.Scene {
     // Listen for game ready message
     this.room.onMessage('gameReady', async (data: { gameRoomId: string }) => {
       console.log('Game ready! Joining game room:', data.gameRoomId);
-      localStorage.removeItem('bangerLobbyRoom');
+      sessionStorage.removeItem('bangerLobbyRoom');
 
       try {
         // Leave lobby
@@ -959,7 +959,7 @@ export class LobbyScene extends Phaser.Scene {
   shutdown() {
     // Clean up when scene shuts down
     this.clearUI();
-    localStorage.removeItem('bangerLobbyRoom');
+    sessionStorage.removeItem('bangerLobbyRoom');
 
     if (this.room) {
       try {
