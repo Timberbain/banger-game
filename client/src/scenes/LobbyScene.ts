@@ -32,7 +32,7 @@ export class LobbyScene extends Phaser.Scene {
 
   private async checkReconnection() {
     // Check for lobby reconnection token FIRST (lobby refresh)
-    const lobbyStored = localStorage.getItem('bangerLobbyRoom');
+    const lobbyStored = sessionStorage.getItem('bangerLobbyRoom');
     if (lobbyStored) {
       try {
         const { token, timestamp } = JSON.parse(lobbyStored);
@@ -73,7 +73,7 @@ export class LobbyScene extends Phaser.Scene {
 
             // Update stored token
             if (this.room.reconnectionToken) {
-              localStorage.setItem('bangerLobbyRoom', JSON.stringify({
+              sessionStorage.setItem('bangerLobbyRoom', JSON.stringify({
                 token: this.room.reconnectionToken,
                 roomId: this.room.id,
                 timestamp: Date.now()
@@ -97,7 +97,7 @@ export class LobbyScene extends Phaser.Scene {
     }
 
     // Check for stored game reconnection token
-    const stored = localStorage.getItem('bangerActiveRoom');
+    const stored = sessionStorage.getItem('bangerActiveRoom');
 
     if (!stored) {
       // No active session, show menu normally
@@ -154,7 +154,7 @@ export class LobbyScene extends Phaser.Scene {
       if (reconnectedRoom) {
         // Update stored token
         if (reconnectedRoom.reconnectionToken) {
-          localStorage.setItem('bangerActiveRoom', JSON.stringify({
+          sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
             token: reconnectedRoom.reconnectionToken,
             timestamp: Date.now()
           }));
@@ -623,7 +623,7 @@ export class LobbyScene extends Phaser.Scene {
 
     // Store lobby reconnection token for browser refresh recovery
     if (this.room.reconnectionToken) {
-      localStorage.setItem('bangerLobbyRoom', JSON.stringify({
+      sessionStorage.setItem('bangerLobbyRoom', JSON.stringify({
         token: this.room.reconnectionToken,
         roomId: this.room.id,
         timestamp: Date.now()
@@ -690,7 +690,7 @@ export class LobbyScene extends Phaser.Scene {
         });
 
         // Store reconnection token
-        localStorage.setItem('bangerActiveRoom', JSON.stringify({
+        sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
           token: gameRoom.reconnectionToken,
           timestamp: Date.now()
         }));

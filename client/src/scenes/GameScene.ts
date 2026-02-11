@@ -123,7 +123,7 @@ export class GameScene extends Phaser.Scene {
 
       // Store reconnection token
       if (this.room.reconnectionToken) {
-        localStorage.setItem('bangerActiveRoom', JSON.stringify({
+        sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
           token: this.room.reconnectionToken,
           timestamp: Date.now()
         }));
@@ -577,7 +577,7 @@ export class GameScene extends Phaser.Scene {
     this.statusText.setText('Reconnecting...');
 
     // Get stored token
-    const stored = localStorage.getItem('bangerActiveRoom');
+    const stored = sessionStorage.getItem('bangerActiveRoom');
     if (!stored) {
       this.returnToLobby('Connection lost. No active session.');
       return;
@@ -595,7 +595,7 @@ export class GameScene extends Phaser.Scene {
 
       // Update stored token with new one
       if (room.reconnectionToken) {
-        localStorage.setItem('bangerActiveRoom', JSON.stringify({
+        sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
           token: room.reconnectionToken,
           timestamp: Date.now()
         }));
