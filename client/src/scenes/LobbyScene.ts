@@ -518,16 +518,14 @@ export class LobbyScene extends Phaser.Scene {
             preferredRole: data.assignedRole
           });
 
-          // Pre-select the assigned role
-          this.selectedRole = data.assignedRole;
-
           console.log('Joined matchmaking lobby:', this.room.id);
           this.showLobbyView();
 
-          // Auto-select assigned role after lobby view loads
-          this.time.delayedCall(500, () => {
+          // Select assigned role AFTER showLobbyView (which resets selectedRole)
+          // Use a short delay to ensure characterPanelUpdaters are registered
+          this.time.delayedCall(100, () => {
             if (this.room && data.assignedRole) {
-              this.room.send('selectRole', { role: data.assignedRole });
+              this.selectRole(data.assignedRole);
             }
           });
         } catch (e) {
