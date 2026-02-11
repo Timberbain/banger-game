@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 5 of 7 (Multiplayer Lobbies)
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Complete
-Last activity: 2026-02-10 — Completed 05-07-PLAN.md (Reconnection Failures & Disconnect Ghosting)
+Last activity: 2026-02-11 — Completed 05-10-PLAN.md (Scene Reuse + Reconnect Error Handling)
 
-Progress: [█████████░] 88% (15 of 17 plans complete: Phase 1-4 done, Phase 5: 5/7 done)
+Progress: [█████████░] 89% (16 of 18 plans complete: Phase 1-4 done, Phase 5: 6/7 done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
-- Average duration: 7.3 min
-- Total execution time: 1.8 hours
+- Total plans completed: 16
+- Average duration: 7.1 min
+- Total execution time: 1.9 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [█████████░] 88% (15 of 17 plans complete: Phase 1
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
 | 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
-| 05-multiplayer-lobbies | 5 | 16 min | 3.2 min |
+| 05-multiplayer-lobbies | 6 | 18 min | 3.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (3 min), 05-02 (3 min), 05-03 (2 min), 05-04 (5 min), 05-07 (3 min)
-- Trend: Phase 5 maintaining excellent velocity (avg 3.2 min), gap closures resolving UAT blockers efficiently
+- Last 5 plans: 05-02 (3 min), 05-03 (2 min), 05-04 (5 min), 05-07 (3 min), 05-10 (2 min)
+- Trend: Phase 5 maintaining excellent velocity (avg 3.0 min), gap closures resolving UAT blockers efficiently
 
 *Updated after each plan completion*
 | Phase 05 P02 | 3 | 2 tasks | 6 files |
@@ -44,6 +44,8 @@ Progress: [█████████░] 88% (15 of 17 plans complete: Phase 1
 | Phase 05 P06 | 4 | 2 tasks | 3 files |
 | Phase 05 P04 | 5 | 2 tasks | 2 files |
 | Phase 05 P07 | 3 | 2 tasks | 3 files |
+| Phase 05 P11 | 88 | 2 tasks | 1 files |
+| Phase 05 P10 | 1.7 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -130,11 +132,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-10 (phase execution)
-Stopped at: Completed 05-07-PLAN.md (Reconnection Failures & Disconnect Ghosting) — Phase 5: 5 of 7 plans complete
-Resume file: .planning/phases/05-multiplayer-lobbies/05-07-SUMMARY.md
+Last session: 2026-02-11 (phase execution)
+Stopped at: Completed 05-10-PLAN.md (Scene Reuse + Reconnect Error Handling) — Phase 5: 6 of 7 plans complete
+Resume file: .planning/phases/05-multiplayer-lobbies/05-10-SUMMARY.md
 
-**Phase 5 In Progress (5 of 7):**
+**Phase 5 In Progress (6 of 7):**
 - 05-01 Complete: Server-side lobby infrastructure
   - LobbyRoom with character selection (role validation, conflict detection)
   - Ready system with 3-second countdown (requires 1 paran + 1 faran + 1 baran)
@@ -176,7 +178,14 @@ Resume file: .planning/phases/05-multiplayer-lobbies/05-07-SUMMARY.md
   - LobbyScene: 3-attempt retry with 800ms delay for F5 reconnection
   - GameScene: full Schema state listener re-registration after reconnect
   - Extracted handlePlayerChange() helper for code reuse
-- Next: 05-05, 05-06 (remaining gap closures) then Phase 5 complete or Phase 6
+- 05-10 Complete: Scene reuse + reconnect error handling (gap closure v3)
+  - GameScene: explicit member variable reset in create() for scene reuse safety
+  - Unified status text to single matchState Schema listener (removed competing writers)
+  - GameRoom: onUncaughtException handler enabling Colyseus framework error wrapping
+  - Defensive player validation in reconnection success path
+  - Process-level uncaughtException and unhandledRejection handlers in index.ts
+  - Fixes intermittent Baran controls on second match and reconnect crashes
+- Next: 05-11 (final gap closure) then Phase 5 complete
 
 **Phase 4 Complete (3 of 3):**
 - 04-01 Complete: Match lifecycle state machine (WAITING → PLAYING → ENDED)
