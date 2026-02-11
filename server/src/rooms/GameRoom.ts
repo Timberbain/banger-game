@@ -234,9 +234,14 @@ export class GameRoom extends Room<GameState> {
       try {
         await this.allowReconnection(client, LOBBY_CONFIG.MATCH_RECONNECT_GRACE);
 
-        // Successfully reconnected
-        player.connected = true;
-        player.inputQueue = []; // Clear stale inputs
+        // Successfully reconnected -- validate player still exists
+        const reconnectedPlayer = this.state.players.get(client.sessionId);
+        if (!reconnectedPlayer) {
+          console.warn(`Player ${client.sessionId} reconnected but player object was removed`);
+          return;
+        }
+        reconnectedPlayer.connected = true;
+        reconnectedPlayer.inputQueue = [];
         console.log(`Player reconnected: ${client.sessionId}`);
       } catch (e) {
         // Grace period expired or reconnection failed
@@ -500,5 +505,12 @@ export class GameRoom extends Room<GameState> {
 
   onDispose() {
     console.log(`GameRoom disposed: ${this.roomId}`);
+  }
+
+  onUncaughtException(err: Error, methodName: string) {
+    console.error(`[GameRoom] Uncaught exception in ${methodName}:`, err.message);
+    console.error(err.stack);
+    // Do NOT rethrow -- let the room continue running for other players
+    // Only dispose if the error is truly unrecoverable
   }
 }

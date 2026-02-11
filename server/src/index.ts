@@ -76,6 +76,18 @@ app.get('/rooms/find', async (req, res) => {
 // Add Colyseus monitor for dev debugging
 app.use("/colyseus", monitor());
 
+// Process-level error safety net -- prevent unhandled errors from crashing server
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err.message);
+  console.error(err.stack);
+  // Log but don't exit -- Colyseus rooms should handle their own errors
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[FATAL] Unhandled rejection at:', promise, 'reason:', reason);
+  // Log but don't exit
+});
+
 // Start server
 httpServer.listen(SERVER_CONFIG.port, () => {
   console.log(`Banger server listening on ws://localhost:${SERVER_CONFIG.port}`);
