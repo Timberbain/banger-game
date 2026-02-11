@@ -296,9 +296,9 @@ export class LobbyScene extends Phaser.Scene {
     this.htmlInput.style.outline = 'none';
     this.htmlInput.style.zIndex = '1000';
     document.body.appendChild(this.htmlInput);
-    this.htmlInput.focus();
 
     // Disable Phaser keyboard capture while HTML input is focused
+    // CRITICAL: Register event listeners BEFORE calling focus() so they catch the synchronous focus event
     this.htmlInput.addEventListener('focus', () => {
       if (this.input.keyboard) {
         this.input.keyboard.enabled = false;
@@ -311,6 +311,8 @@ export class LobbyScene extends Phaser.Scene {
         this.input.keyboard.enableGlobalCapture();
       }
     });
+
+    this.htmlInput.focus();
 
     // Join button
     const joinButton = this.add.text(400, 380, 'Join', {
