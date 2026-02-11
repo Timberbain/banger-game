@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 05-multiplayer-lobbies
 source: 05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md
 started: 2026-02-11T09:00:00Z
-updated: 2026-02-11T09:10:00Z
+updated: 2026-02-11T09:20:00Z
 ---
 
 ## Current Test
@@ -75,37 +75,54 @@ skipped: 0
   reason: "User reported: The controls of one of the guardians (Baran) is not responding. This looks like an intermittent failure. Status text is still inconsistent - Paran shows 'Waiting for players... 0/3', Faran shows nothing, Baran shows 'Match started!'."
   severity: major
   test: 5
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Two bugs: (1) Phaser scene reuse: scene.start() doesn't re-run constructor, so stale prediction/connected/playerSprites persist from previous match. Baran's input goes through stale PredictionSystem. (2) Three competing statusText writers race: initial sync check, listen('matchState') immediate callback, and onAdd player count — all unsynchronized. listen() fires with immediate=true by default, duplicating the initial check. onAdd guard (count < 3) prevents showing 3/3."
+  artifacts:
+    - path: "client/src/scenes/GameScene.ts"
+      issue: "Lines 10-48: member variables only initialized in constructor, not reset in create(). Lines 102-109, 142-148, 203-207: three competing statusText writers"
+  missing:
+    - "Add init() or reset block at top of create() to reset ALL member variables (room, connected, prediction, playerSprites, remotePlayers, matchEnded, isSpectating etc.)"
+    - "Replace three statusText writers with single unified approach: listen('matchState') as sole source of truth, remove initial sync check, onAdd only updates count display"
+  debug_session: ".planning/debug/lobby-game-transition-v2.md"
 
 - truth: "Matchmaking pre-assigned roles are visually highlighted with green border when entering lobby"
   status: failed
   reason: "User reported: When entering the lobby - the pre selected roles are not highlighted with green. The roles are assigned, but I have to click the role to give it a green border."
   severity: minor
   test: 6
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "showLobbyView() at line 568 unconditionally resets selectedRole to null, clobbering the value set by matchFound handler at line 522. The delayed room.send('selectRole') at line 530 bypasses the client-side selectRole() method which handles UI state (sets selectedRole AND triggers characterPanelUpdaters)."
+  artifacts:
+    - path: "client/src/scenes/LobbyScene.ts"
+      issue: "Line 568: showLobbyView() resets selectedRole=null. Lines 522-531: matchFound sets role then calls showLobbyView (clobbers it), delayed send bypasses selectRole() UI method"
+  missing:
+    - "After showLobbyView(), call this.selectRole(data.assignedRole) which properly sets selectedRole, sends server message, AND triggers panel updaters"
+    - "Remove the manual selectedRole set at line 522 and the delayed room.send at lines 528-531"
+  debug_session: ".planning/debug/lobby-char-select-no-highlight.md"
 
 - truth: "Browser refresh reconnects the refreshed player without disrupting other connected players"
   status: failed
   reason: "User reported: It worked for the browser that I closed and then reopened, however for the other ones it didnt reconnect. Instead it says reconnecting and counting, after a while it returns to the lobby."
   severity: major
   test: 8
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "GameRoom is missing onUncaughtException handler. In Colyseus 0.15, the framework only wraps setSimulationInterval/clock/onMessage callbacks in try/catch when onUncaughtException is defined. Without it, any unhandled error during reconnection propagates to Node.js event loop, crashing the process. ts-node-dev --respawn silently restarts, terminating ALL WebSocket connections for ALL clients."
+  artifacts:
+    - path: "server/src/rooms/GameRoom.ts"
+      issue: "Class level: missing onUncaughtException handler. Lines 234-249: onLeave reconnection path has no defensive checks. Lines 277-435: fixedTick runs without try/catch wrapper"
+  missing:
+    - "Add onUncaughtException(err, methodName) handler to GameRoom class to enable Colyseus try/catch wrapping"
+    - "Add defensive checks in reconnection success path (validate player still exists/alive)"
+    - "Add process.on('uncaughtException') and process.on('unhandledRejection') to server entry point as safety net"
+  debug_session: ".planning/debug/reconnect-disrupts-other-players.md"
 
 - truth: "Lobby refresh reconnection works reliably, preserving seat and role selection"
   status: failed
   reason: "User reported: This only works some times - most of the times it still goes back to the lobby. When it doesnt work, I see a quick flash of yellow text trying to reconnect. Think hard of how to fix this."
   severity: major
   test: 10
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Lobby reconnection at line 51 makes a single reconnect attempt with zero retries. Server needs ~9s (ping timeout) to detect F5 disconnect and register token in _reconnections map. Client's single attempt fires in ~1s, before server has processed the disconnect. The game reconnection path already has 12 retries with 1000ms delay, but this fix was never applied to lobby reconnection."
+  artifacts:
+    - path: "client/src/scenes/LobbyScene.ts"
+      issue: "Lines 50-70: single reconnect attempt with no retry loop. Lines 114-132: game reconnection has MAX_RETRIES=12, RETRY_DELAY=1000 (the fix that was never applied to lobby)"
+  missing:
+    - "Add same retry loop to lobby reconnection (12 retries, 1000ms delay) matching the game reconnection pattern at lines 114-132"
+    - "Show reconnection attempt progress in status text"
+  debug_session: ".planning/debug/lobby-reconnect-flaky.md"
