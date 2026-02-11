@@ -101,9 +101,9 @@ Plans:
   4. Matchmaking fills rooms with 3 players (1 Paran + 2 guardians)
   5. Lobby shows connected players and readiness state
   6. Player selects character before match begins
-  7. Match begins with countdown after all 3 players ready
+  7. Match begin with countdown after all 3 players ready
   8. Player can reconnect to active match within grace period (30-60s)
-**Plans:** 11 plans
+**Plans:** 12 plans
 
 Plans:
 - [x] 05-01-PLAN.md — Server lobby infrastructure (LobbyRoom, LobbyState, MatchmakingQueue, room codes)
@@ -117,6 +117,7 @@ Plans:
 - [x] 05-09-PLAN.md — Gap closure v2: Consistent game status text via Schema listener
 - [x] 05-10-PLAN.md — Gap closure v3: GameScene state reset + server crash protection
 - [x] 05-11-PLAN.md — Gap closure v3: Matchmaking role highlight + lobby reconnect retry
+- [ ] 05-12-PLAN.md — Gap closure v4: S key input fix + sessionStorage for reconnection tokens
 
 ### Phase 6: Accounts & Stats
 **Goal**: Players have persistent accounts with tracked stats
@@ -159,10 +160,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Core Movement | 2/2 | ✓ Complete | 2026-02-10 |
 | 3. Combat System | 2/2 | ✓ Complete | 2026-02-10 |
 | 4. Match Lifecycle & Maps | 3/3 | ✓ Complete | 2026-02-10 |
-| 5. Multiplayer Lobbies | 11/11 | ✓ Complete | 2026-02-11 |
+| 5. Multiplayer Lobbies | 11/12 | In progress | - |
 | 6. Accounts & Stats | 0/TBD | Not started | - |
 | 7. UX Polish | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-11 (Phase 5 complete — all 11 plans + verification passed)*
+*Last updated: 2026-02-11 (Phase 5 gap closure v4 — plan 12 created)*
