@@ -302,11 +302,13 @@ export class LobbyScene extends Phaser.Scene {
     this.htmlInput.addEventListener('focus', () => {
       if (this.input.keyboard) {
         this.input.keyboard.enabled = false;
+        this.input.keyboard.disableGlobalCapture();
       }
     });
     this.htmlInput.addEventListener('blur', () => {
       if (this.input.keyboard) {
         this.input.keyboard.enabled = true;
+        this.input.keyboard.enableGlobalCapture();
       }
     });
 
