@@ -119,6 +119,27 @@ Plans:
 - [x] 05-12-PLAN.md — Gap closure v4: S key input fix + sessionStorage for reconnection tokens
 - [x] 05-13-PLAN.md — Gap closure v5: Fix focus event listener race condition for WASD in room code input
 
+### Phase 05.1: Arena Collisions & Paran Contact Kill (INSERTED)
+
+**Goal:** Tile-based obstacle collision for all players, Paran contact kill mechanic, projectile-wall destruction, and destructible obstacles with 3 durability tiers across all 4 maps
+**Depends on:** Phase 5
+**Requirements**: GAME-07, GAME-08, MAP-03
+**Success Criteria** (what must be TRUE):
+  1. All players physically collide with tile-based obstacles and cannot pass through them
+  2. Paran loses ALL velocity on collision with any wall or obstacle (core momentum penalty)
+  3. Paran instantly kills guardians on body collision (contact kill, any speed, no HP threshold)
+  4. Projectiles destroyed on contact with walls/obstacles; destructible obstacles take damage
+  5. Destructible obstacles have 3 tiers (Light/Medium/Heavy) with distinct visuals and HP
+  6. Paran instant-breaks any destructible obstacle on contact (wrecking ball mechanic)
+  7. All 4 maps updated with strategic obstacle layouts
+  8. Client prediction matches server collision (no jitter or wall-clipping)
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05.1-01-PLAN.md -- Shared collision infrastructure, tileset expansion, map obstacle layouts
+- [ ] 05.1-02-PLAN.md -- Server collision enforcement, contact kill, projectile-wall, destructible obstacles
+- [ ] 05.1-03-PLAN.md -- Client prediction collision integration, obstacle destruction rendering
+
 ### Phase 6: UX Polish
 **Goal**: Game has polished interface, audio, and onboarding
 **Depends on**: Phase 5
@@ -147,6 +168,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Combat System | 2/2 | ✓ Complete | 2026-02-10 |
 | 4. Match Lifecycle & Maps | 3/3 | ✓ Complete | 2026-02-10 |
 | 5. Multiplayer Lobbies | 13/13 | ✓ Complete | 2026-02-11 |
+| 5.1 Arena Collisions & Contact Kill | 0/3 | Not started | - |
 | 6. UX Polish | 0/TBD | Not started | - |
 
 ---
