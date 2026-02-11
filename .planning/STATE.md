@@ -9,18 +9,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 5 of 7 (Multiplayer Lobbies)
-Plan: 6 of 7
+Phase: 5 of 5 (Multiplayer Lobbies)
+Plan: 11 of 11
 Status: Complete
-Last activity: 2026-02-11 — Completed 05-10-PLAN.md (Scene Reuse + Reconnect Error Handling)
+Last activity: 2026-02-11 — Completed 05-11-PLAN.md (Lobby Role Highlight & Reconnection Retry)
 
-Progress: [█████████░] 89% (16 of 18 plans complete: Phase 1-4 done, Phase 5: 6/7 done)
+Progress: [██████████] 100% (21 of 21 plans complete: All phases 1-5 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
-- Average duration: 7.1 min
+- Total plans completed: 21
+- Average duration: 5.5 min
 - Total execution time: 1.9 hours
 
 **By Phase:**
@@ -31,11 +31,11 @@ Progress: [█████████░] 89% (16 of 18 plans complete: Phase 1
 | 02-core-movement | 2 | 29 min | 14.5 min |
 | 03-combat-system | 2 | 48 min | 24.0 min |
 | 04-match-lifecycle-maps | 3 | 17 min | 5.7 min |
-| 05-multiplayer-lobbies | 6 | 18 min | 3.0 min |
+| 05-multiplayer-lobbies | 11 | 20 min | 1.8 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-02 (3 min), 05-03 (2 min), 05-04 (5 min), 05-07 (3 min), 05-10 (2 min)
-- Trend: Phase 5 maintaining excellent velocity (avg 3.0 min), gap closures resolving UAT blockers efficiently
+- Last 5 plans: 05-04 (5 min), 05-07 (3 min), 05-10 (2 min), 05-11 (1.5 min), 05-08/09 (gap closures)
+- Trend: Phase 5 exceptional velocity (avg 1.8 min), gap closures extremely efficient
 
 *Updated after each plan completion*
 | Phase 05 P02 | 3 | 2 tasks | 6 files |
@@ -121,6 +121,8 @@ Recent decisions affecting current work:
 - [Phase 05-07]: Separate dcLabels map from eliminatedTexts to prevent label collision
 - [Phase 05-07]: 3 retries with 800ms delay for F5 reconnection to handle WebSocket close race condition
 - [Phase 05-07]: Extract handlePlayerChange() helper to deduplicate onChange logic between initial connection and reconnection
+- [Phase 05-11]: Call selectRole() method for matchmaking role assignment (handles both server AND UI updates)
+- [Phase 05-11]: 12-retry loop with 1000ms intervals for lobby reconnection (matches proven game pattern)
 
 ### Pending Todos
 
@@ -133,10 +135,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-11 (phase execution)
-Stopped at: Completed 05-10-PLAN.md (Scene Reuse + Reconnect Error Handling) — Phase 5: 6 of 7 plans complete
-Resume file: .planning/phases/05-multiplayer-lobbies/05-10-SUMMARY.md
+Stopped at: Completed 05-11-PLAN.md (Lobby Role Highlight & Reconnection Retry) — Phase 5: COMPLETE (11/11 plans)
+Resume file: .planning/phases/05-multiplayer-lobbies/05-11-SUMMARY.md
 
-**Phase 5 In Progress (6 of 7):**
+**Phase 5 Complete (11 of 11):**
 - 05-01 Complete: Server-side lobby infrastructure
   - LobbyRoom with character selection (role validation, conflict detection)
   - Ready system with 3-second countdown (requires 1 paran + 1 faran + 1 baran)
