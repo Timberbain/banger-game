@@ -58,6 +58,28 @@ export class GameScene extends Phaser.Scene {
   }
 
   async create(data?: { room?: Room }) {
+    // Reset all mutable state for scene reuse (Phaser scene.start() skips constructor)
+    this.room = null;
+    this.connected = false;
+    this.prediction = null;
+    this.interpolation = new InterpolationSystem();
+    this.remotePlayers = new Set();
+    this.playerSprites = new Map();
+    this.playerLabels = new Map();
+    this.projectileSprites = new Map();
+    this.projectileVelocities = new Map();
+    this.healthBars = new Map();
+    this.eliminatedTexts = new Map();
+    this.dcLabels = new Map();
+    this.directionPressOrder = [];
+    this.prevKeyState = { left: false, right: false, up: false, down: false };
+    this.localRole = '';
+    this.spectatorTarget = null;
+    this.isSpectating = false;
+    this.matchEnded = false;
+    this.finalStats = null;
+    this.matchWinner = "";
+
     // Check if room was provided from LobbyScene
     const providedRoom = data?.room;
 
@@ -98,15 +120,6 @@ export class GameScene extends Phaser.Scene {
       }
 
       this.connected = true;
-      // Check initial matchState -- don't show "waiting" if match already started
-      if (this.room.state.matchState === 'playing') {
-        this.statusText.setText('Match started!');
-        this.time.delayedCall(2000, () => {
-          if (!this.matchEnded) this.statusText.setVisible(false);
-        });
-      } else {
-        this.statusText.setText(`Waiting for players... (${this.room.state.players.size}/3)`);
-      }
 
       // Store reconnection token
       if (this.room.reconnectionToken) {
@@ -138,24 +151,24 @@ export class GameScene extends Phaser.Scene {
         this.load.start();
       });
 
-      // Schema-based matchState listener -- reliable regardless of join timing
+      // Schema-based matchState listener -- sole source of truth for status text
       this.room.state.listen("matchState", (value: string) => {
-        if (value === 'playing' && !this.matchEnded) {
+        if (this.matchEnded) return;
+        if (value === 'playing') {
           this.statusText.setText('Match started!');
           this.time.delayedCall(2000, () => {
             if (!this.matchEnded) this.statusText.setVisible(false);
           });
+        } else if (value === 'waiting') {
+          const count = this.room ? this.room.state.players.size : 0;
+          this.statusText.setText(`Waiting for players... (${count}/3)`);
+          this.statusText.setVisible(true);
         }
       });
 
-      // Keep matchStart handler as backup (idempotent with Schema listener)
+      // Keep matchStart handler for backward compatibility (Schema listener handles display)
       this.room.onMessage("matchStart", () => {
-        if (!this.matchEnded) {
-          this.statusText.setText('Match started!');
-          this.time.delayedCall(2000, () => {
-            if (!this.matchEnded) this.statusText.setVisible(false);
-          });
-        }
+        console.log('matchStart received (handled by Schema listener)');
       });
 
       // Listen for match end broadcast (includes final stats)
@@ -198,14 +211,6 @@ export class GameScene extends Phaser.Scene {
         console.log('Player joined:', sessionId);
 
         const isLocal = sessionId === this.room!.sessionId;
-
-        // Update waiting status
-        if (!this.matchEnded && this.room!.state.matchState !== 'playing') {
-          const count = this.room!.state.players.size;
-          if (count < 3) {
-            this.statusText.setText(`Waiting for players... (${count}/3)`);
-          }
-        }
 
         // Determine initial role-based visuals
         const role = player.role || 'faran'; // Default to faran if role not yet assigned
@@ -691,24 +696,24 @@ export class GameScene extends Phaser.Scene {
   private attachRoomListeners() {
     if (!this.room) return;
 
-    // Schema-based matchState listener for reconnection
+    // Schema-based matchState listener -- sole source of truth for status text
     this.room.state.listen("matchState", (value: string) => {
-      if (value === 'playing' && !this.matchEnded) {
+      if (this.matchEnded) return;
+      if (value === 'playing') {
         this.statusText.setText('Match started!');
         this.time.delayedCall(2000, () => {
           if (!this.matchEnded) this.statusText.setVisible(false);
         });
+      } else if (value === 'waiting') {
+        const count = this.room ? this.room.state.players.size : 0;
+        this.statusText.setText(`Waiting for players... (${count}/3)`);
+        this.statusText.setVisible(true);
       }
     });
 
-    // Re-attach message listeners
+    // Keep matchStart handler for backward compatibility (Schema listener handles display)
     this.room.onMessage("matchStart", () => {
-      if (!this.matchEnded) {
-        this.statusText.setText('Match started!');
-        this.time.delayedCall(2000, () => {
-          if (!this.matchEnded) this.statusText.setVisible(false);
-        });
-      }
+      console.log('matchStart received (handled by Schema listener)');
     });
 
     this.room.onMessage("matchEnd", (data: any) => {
