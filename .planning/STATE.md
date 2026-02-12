@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Plan 1 of 7 complete
+**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Plan 5 of 7 complete
 
 ## Current Position
 
 Phase: 6 of 6 (UX Polish)
-Plan: 1 of 7
+Plan: 5 of 7
 Status: In Progress
-Last activity: 2026-02-12 — Completed 06-01-PLAN.md (Foundation Server & Client Config)
+Last activity: 2026-02-12 — Completed 06-05-PLAN.md (Audio System)
 
-Progress: [████------] 40% (28 of 34 plans complete: Phase 6 started)
+Progress: [████████--] 80% (32 of 34 plans complete: Phase 6 progressing)
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [████------] 40% (28 of 34 plans complete: Phase 6 started)
 | Phase 05.1 P03 | 3 | 2 tasks | 2 files |
 | Phase 05.1 P04 | 2 | 1 tasks | 1 files |
 | Phase 06 P01 | 2 | 2 tasks | 6 files |
+| Phase 06 P05 | 5 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,12 @@ Recent decisions affecting current work:
 - [Phase 06-01]: Kill broadcast uses player names/roles (not sessionIds) for display
 - [Phase 06-01]: No kill broadcast for disconnect deaths -- only combat kills
 - [Phase 06-01]: HUDScene transparent background via rgba(0,0,0,0) for overlay rendering
+- [Phase 06-05]: jsfxr Params objects (not arrays) for sound definitions -- matches API structure
+- [Phase 06-05]: Health cache map for detecting damage/death via onChange delta
+- [Phase 06-05]: Paran wall impact via client-side velocity delta (prevSpeed > 30, curSpeed < 1)
+- [Phase 06-05]: Speed whoosh rate-limited to 1/sec to prevent audio spam
+- [Phase 06-05]: Simple +/- buttons for volume controls (not sliders) for minimal complexity
+- [Phase 06-05]: AudioManager on Phaser registry for cross-scene persistence
 
 ### Pending Todos
 
@@ -165,8 +172,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (phase execution)
-Stopped at: Completed 06-01-PLAN.md (Foundation Server & Client Config) — Phase 6: 1/7 plans
-Resume file: .planning/phases/06-ux-polish/06-01-SUMMARY.md
+Stopped at: Completed 06-05-PLAN.md (Audio System) — Phase 6: 5/7 plans
+Resume file: .planning/phases/06-ux-polish/06-05-SUMMARY.md
 
 **Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
