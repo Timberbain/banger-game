@@ -81,8 +81,6 @@ export class GameScene extends Phaser.Scene {
   private audioManager: AudioManager | null = null;
   private playerHealthCache: Map<string, number> = new Map();
   private lastWhooshTime: number = 0;
-  private prevPredictionVx: number = 0;
-  private prevPredictionVy: number = 0;
 
   // Visual effects
   private particleFactory: ParticleFactory | null = null;
@@ -135,8 +133,6 @@ export class GameScene extends Phaser.Scene {
     this.matchWinner = "";
     this.playerHealthCache = new Map();
     this.lastWhooshTime = 0;
-    this.prevPredictionVx = 0;
-    this.prevPredictionVy = 0;
     this.remotePrevPos = new Map();
     this.currentTilesetKey = '';
     this.hudLaunched = false;

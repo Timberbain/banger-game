@@ -29,6 +29,7 @@ export class PredictionSystem {
   private localState: PlayerState;
   private role: string;
   private collisionGrid: CollisionGrid | null = null;
+  private hadCollision: boolean = false;
 
   constructor(initialState: PlayerState, role: string) {
     this.localState = { ...initialState, role };
@@ -78,6 +79,7 @@ export class PredictionSystem {
         this.localState, COMBAT.playerRadius, this.collisionGrid, prevX, prevY
       );
       if (result.hitX || result.hitY) {
+        this.hadCollision = true;
         if (this.role === 'paran') {
           // Paran wall penalty: lose ALL velocity on any collision
           this.localState.vx = 0;
@@ -142,6 +144,7 @@ export class PredictionSystem {
           this.localState, COMBAT.playerRadius, this.collisionGrid, prevX, prevY
         );
         if (result.hitX || result.hitY) {
+          this.hadCollision = true;
           if (this.role === 'paran') {
             this.localState.vx = 0;
             this.localState.vy = 0;
@@ -160,6 +163,16 @@ export class PredictionSystem {
 
   getState(): PlayerState {
     return this.localState;
+  }
+
+  /**
+   * Returns true if a tile collision occurred since the last call, then resets the flag.
+   * Used by GameScene to trigger wall impact effects only on actual collisions.
+   */
+  getHadCollision(): boolean {
+    const value = this.hadCollision;
+    this.hadCollision = false;
+    return value;
   }
 
   reset(state: PlayerState): void {
