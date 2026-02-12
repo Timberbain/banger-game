@@ -1,11 +1,16 @@
 import { Room, Client } from "colyseus";
 import { GameState, Player, MatchState, PlayerStats } from "../schema/GameState";
 import { Projectile } from "../schema/Projectile";
+import { ObstacleState } from "../schema/Obstacle";
 import { SERVER_CONFIG, GAME_CONFIG } from "../config";
 import { applyMovementPhysics, updateFacingDirection, PHYSICS, ARENA } from "../../../shared/physics";
 import { CHARACTERS, COMBAT } from "../../../shared/characters";
 import { MAPS, MapMetadata } from "../../../shared/maps";
 import { LOBBY_CONFIG } from "../../../shared/lobby";
+import { CollisionGrid, resolveCollisions } from "../../../shared/collisionGrid";
+import { OBSTACLE_TILE_IDS, OBSTACLE_TIER_HP } from "../../../shared/obstacles";
+import * as fs from "fs";
+import * as path from "path";
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
@@ -15,6 +20,7 @@ export class GameRoom extends Room<GameState> {
   private static currentMapIndex: number = 0;
   private mapMetadata!: MapMetadata;
   private roleAssignments?: Record<string, string>;
+  private collisionGrid!: CollisionGrid;
 
   /**
    * Validate input structure and types
@@ -71,6 +77,38 @@ export class GameRoom extends Room<GameState> {
     GameRoom.currentMapIndex++;
 
     console.log(`GameRoom created with map: ${this.mapMetadata.displayName}`);
+
+    // Load Tiled JSON map file and build collision grid
+    const mapPath = path.join(__dirname, '../../../client/public', this.mapMetadata.file);
+    const mapJson = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
+    const wallLayer = mapJson.layers.find((l: any) => l.name === 'Walls');
+
+    this.collisionGrid = new CollisionGrid(
+      wallLayer.data,
+      mapJson.width,
+      mapJson.height,
+      mapJson.tilewidth,
+      OBSTACLE_TILE_IDS.destructible,
+      OBSTACLE_TILE_IDS.indestructible
+    );
+
+    // Initialize destructible obstacles in state for client sync
+    let obstacleCount = 0;
+    for (let y = 0; y < mapJson.height; y++) {
+      for (let x = 0; x < mapJson.width; x++) {
+        const tileId = wallLayer.data[y * mapJson.width + x];
+        if (OBSTACLE_TILE_IDS.destructible.has(tileId)) {
+          const obs = new ObstacleState();
+          obs.tileX = x;
+          obs.tileY = y;
+          obs.maxHp = OBSTACLE_TIER_HP[tileId];
+          obs.hp = obs.maxHp;
+          this.state.obstacles.set(`${x},${y}`, obs);
+          obstacleCount++;
+        }
+      }
+    }
+    console.log(`Collision grid loaded: ${mapJson.width}x${mapJson.height} tiles, ${obstacleCount} destructible obstacles`);
 
     // Set up fixed timestep loop using accumulator pattern
     let elapsedTime = 0;
@@ -259,6 +297,45 @@ export class GameRoom extends Room<GameState> {
     }
   }
 
+  /**
+   * Resolve tile collisions for a player and handle velocity response.
+   * Paran loses ALL velocity on any wall/obstacle hit.
+   * Guardians stop only on the colliding axis.
+   * Paran instantly destroys any destructible obstacle on contact.
+   */
+  private resolvePlayerCollision(player: Player, prevX: number, prevY: number): void {
+    const result = resolveCollisions(player, COMBAT.playerRadius, this.collisionGrid, prevX, prevY);
+
+    if (result.hitX || result.hitY) {
+      // Paran wall penalty: lose ALL velocity on any wall/obstacle hit
+      if (player.role === 'paran') {
+        player.vx = 0;
+        player.vy = 0;
+      } else {
+        // Guardian: zero only the colliding axis
+        if (result.hitX) player.vx = 0;
+        if (result.hitY) player.vy = 0;
+      }
+    }
+
+    // Paran instantly destroys any destructible obstacle on contact
+    if (player.role === 'paran' && result.hitTiles.length > 0) {
+      for (const tile of result.hitTiles) {
+        const key = `${tile.tileX},${tile.tileY}`;
+        const obs = this.state.obstacles.get(key);
+        if (obs && !obs.destroyed) {
+          obs.hp = 0;
+          obs.destroyed = true;
+          this.collisionGrid.clearTile(tile.tileX, tile.tileY);
+        }
+      }
+    }
+
+    // Safety net: clamp to arena bounds (tile border walls handle this normally)
+    player.x = Math.max(0, Math.min(ARENA.width, player.x));
+    player.y = Math.max(0, Math.min(ARENA.height, player.y));
+  }
+
   fixedTick(deltaTime: number) {
     // Guard: only run game logic during PLAYING state
     if (this.state.matchState !== MatchState.PLAYING) {
@@ -276,9 +353,7 @@ export class GameRoom extends Room<GameState> {
     // Fixed delta time for deterministic physics (must match client)
     const FIXED_DT = 1 / 60; // seconds
 
-    // Process all player inputs
-    const noInput: { left: boolean; right: boolean; up: boolean; down: boolean } = { left: false, right: false, up: false, down: false };
-
+    // Process all player inputs and resolve tile collisions
     this.state.players.forEach((player, sessionId) => {
       // Ignore dead player input
       if (player.health <= 0) {
@@ -326,12 +401,19 @@ export class GameRoom extends Room<GameState> {
           }
         }
 
+        // Save position before physics for collision resolution
+        const prevX = player.x;
+        const prevY = player.y;
+
         // Apply character-specific physics
         applyMovementPhysics(player, input, FIXED_DT, {
           acceleration: stats.acceleration,
           drag: stats.drag,
           maxVelocity: stats.maxVelocity,
         });
+
+        // Resolve tile collisions after each physics step
+        this.resolvePlayerCollision(player, prevX, prevY);
 
         // Update facing direction
         updateFacingDirection(player);
@@ -345,36 +427,44 @@ export class GameRoom extends Room<GameState> {
       // and just integrate position. Instant stop only triggers from actual
       // input with no directions, not from missing network frames.
       if (!processedAny) {
+        const prevX = player.x;
+        const prevY = player.y;
         player.x += player.vx * FIXED_DT;
         player.y += player.vy * FIXED_DT;
-      }
-
-      // Store position before clamping for collision detection
-      const prevX = player.x;
-      const prevY = player.y;
-
-      // Clamp player position within arena bounds
-      player.x = Math.max(0, Math.min(ARENA.width, player.x));
-      player.y = Math.max(0, Math.min(ARENA.height, player.y));
-
-      // Check if wall collision occurred
-      const hitWallX = player.x !== prevX;
-      const hitWallY = player.y !== prevY;
-
-      // Paran-specific wall penalty: lose ALL velocity on wall collision
-      if (player.role === "paran" && (hitWallX || hitWallY)) {
-        player.vx = 0;
-        player.vy = 0;
-      } else {
-        // Guardian behavior: only zero the axis that hit the wall
-        if (hitWallX) {
-          player.vx = 0;
-        }
-        if (hitWallY) {
-          player.vy = 0;
-        }
+        // Resolve tile collisions in no-input path too (prevents clipping during network gaps)
+        this.resolvePlayerCollision(player, prevX, prevY);
       }
     });
+
+    // Paran contact kill: check for Paran-guardian body overlap
+    let paranPlayer: Player | null = null;
+    let paranId: string = '';
+    this.state.players.forEach((p, id) => {
+      if (p.role === 'paran' && p.health > 0) { paranPlayer = p; paranId = id; }
+    });
+
+    if (paranPlayer) {
+      const paran = paranPlayer as Player; // TypeScript narrowing helper
+      this.state.players.forEach((target, targetId) => {
+        if (target.role === 'paran') return;
+        if (target.health <= 0) return;
+        if (targetId === paranId) return;
+
+        const dx = paran.x - target.x;
+        const dy = paran.y - target.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < COMBAT.playerRadius * 2) {
+          // Contact kill: instant death regardless of HP
+          target.health = 0;
+          // Track stats
+          const paranStats = this.state.matchStats.get(paranId);
+          if (paranStats) paranStats.kills++;
+          const targetStats = this.state.matchStats.get(targetId);
+          if (targetStats) targetStats.deaths++;
+        }
+      });
+    }
 
     // Process projectiles (iterate backwards for safe removal)
     for (let i = this.state.projectiles.length - 1; i >= 0; i--) {
@@ -391,7 +481,25 @@ export class GameRoom extends Room<GameState> {
         continue;
       }
 
-      // Bounds check
+      // Tile/obstacle collision check (replaces old bounds check)
+      const projTile = this.collisionGrid.worldToTile(proj.x, proj.y);
+      if (this.collisionGrid.isSolid(projTile.tileX, projTile.tileY)) {
+        // Check if destructible obstacle -- damage it
+        const obsKey = `${projTile.tileX},${projTile.tileY}`;
+        const obs = this.state.obstacles.get(obsKey);
+        if (obs && !obs.destroyed) {
+          obs.hp--;
+          if (obs.hp <= 0) {
+            obs.destroyed = true;
+            this.collisionGrid.clearTile(projTile.tileX, projTile.tileY);
+          }
+        }
+        // Destroy projectile on any solid tile contact
+        this.state.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Safety bounds check (in case projectile escapes tile grid)
       if (proj.x < 0 || proj.x > ARENA.width || proj.y < 0 || proj.y > ARENA.height) {
         this.state.projectiles.splice(i, 1);
         continue;
