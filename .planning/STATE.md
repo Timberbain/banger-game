@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Plan 7 of 7 next
+**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Gap closure 06-08 complete
 
 ## Current Position
 
 Phase: 6 of 6 (UX Polish)
 Plan: 7 of 7
 Status: In Progress
-Last activity: 2026-02-12 — Completed 06-06-PLAN.md (Help Screen & Scene Polish)
+Last activity: 2026-02-12 — Completed 06-08-SUMMARY.md (Gap Closure: Wall Impact + Cooldown Bar)
 
 Progress: [█████████░] 91% (34 of 34 plans complete: Phase 6 nearing completion)
 
@@ -59,6 +59,7 @@ Progress: [█████████░] 91% (34 of 34 plans complete: Phase 6
 | Phase 06 P04 | 5 | 2 tasks | 2 files |
 | Phase 06 P06 | 4 | 2 tasks | 4 files |
 | Phase 06 P09 | 3 | 2 tasks | 8 files |
+| Phase 06 P08 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -157,7 +158,8 @@ Recent decisions affecting current work:
 - [Phase 06-01]: HUDScene transparent background via rgba(0,0,0,0) for overlay rendering
 - [Phase 06-05]: jsfxr Params objects (not arrays) for sound definitions -- matches API structure
 - [Phase 06-05]: Health cache map for detecting damage/death via onChange delta
-- [Phase 06-05]: Paran wall impact via client-side velocity delta (prevSpeed > 30, curSpeed < 1)
+- [Phase 06-08]: Paran wall impact via PredictionSystem hadCollision flag (replaces velocity delta heuristic)
+- [Phase 06-08]: Cooldown bar Y=538 (was 553) for 16px gap to player name labels
 - [Phase 06-05]: Speed whoosh rate-limited to 1/sec to prevent audio spam
 - [Phase 06-05]: Simple +/- buttons for volume controls (not sliders) for minimal complexity
 - [Phase 06-05]: AudioManager on Phaser registry for cross-scene persistence
@@ -189,8 +191,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (gap closure execution)
-Stopped at: Completed 06-09 gap closure (Character Color Themes) — Paran=Yellow, Faran=Red, Baran=Green
-Resume file: .planning/phases/06-ux-polish/06-09-SUMMARY.md
+Stopped at: Completed 06-08 gap closure (Wall Impact + Cooldown Bar) — hadCollision flag, cooldown Y=538
+Resume file: .planning/phases/06-ux-polish/06-08-SUMMARY.md
 
 **Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
