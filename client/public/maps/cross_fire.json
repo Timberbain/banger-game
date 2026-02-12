@@ -16,11 +16,11 @@
     {
       "firstgid": 1,
       "columns": 4,
-      "image": "../tilesets/placeholder.png",
+      "image": "../tilesets/solarpunk_tech.png",
       "imageheight": 64,
       "imagewidth": 128,
       "margin": 0,
-      "name": "placeholder",
+      "name": "solarpunk_tech",
       "spacing": 0,
       "tilecount": 8,
       "tileheight": 32,
