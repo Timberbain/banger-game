@@ -1,21 +1,745 @@
 import Phaser from 'phaser';
+import { Room } from 'colyseus.js';
+import { CHARACTERS } from '../../../shared/characters';
+
+/** Role colors for consistent display */
+const ROLE_COLORS: Record<string, string> = {
+  paran: '#ff4444',
+  faran: '#4488ff',
+  baran: '#44cc66',
+};
+
+const ROLE_COLORS_NUM: Record<string, number> = {
+  paran: 0xff4444,
+  faran: 0x4488ff,
+  baran: 0x44cc66,
+};
+
+const MATCH_DURATION_MS = 300000; // 5 minutes
+
+interface KillFeedEntry {
+  text: Phaser.GameObjects.Text;
+  bg: Phaser.GameObjects.Rectangle;
+  addedAt: number;
+}
+
+interface HealthBarUI {
+  bg: Phaser.GameObjects.Rectangle;
+  fill: Phaser.GameObjects.Rectangle;
+  label: Phaser.GameObjects.Text;
+  sessionId: string;
+  isLocal: boolean;
+}
 
 /**
  * HUDScene - Overlay scene for in-game HUD elements.
  * Launched alongside GameScene (not started) so it renders on top.
- * Stub for now -- full implementation in Plan 03.
  */
 export class HUDScene extends Phaser.Scene {
+  // Room reference
+  private room: Room | null = null;
+  private localSessionId: string = '';
+  private localRole: string = '';
+
+  // Health bars
+  private healthBars: HealthBarUI[] = [];
+  private lowHealthFlashTimers: Map<string, Phaser.Time.TimerEvent> = new Map();
+
+  // Match timer
+  private timerText: Phaser.GameObjects.Text | null = null;
+  private timerFlashTimer: Phaser.Time.TimerEvent | null = null;
+  private isTimerFlashing: boolean = false;
+
+  // Kill feed
+  private killFeedEntries: KillFeedEntry[] = [];
+  private killFeedMaxEntries: number = 4;
+  private killFeedFadeDuration: number = 5000;
+
+  // Cooldown display
+  private cooldownBg: Phaser.GameObjects.Rectangle | null = null;
+  private cooldownFill: Phaser.GameObjects.Rectangle | null = null;
+  private lastFireTime: number = 0;
+  private cooldownMs: number = 0;
+
+  // Ping display
+  private pingText: Phaser.GameObjects.Text | null = null;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private currentPing: number = 0;
+
+  // Role identity
+  private roleBanner: Phaser.GameObjects.Text | null = null;
+  private roleReminder: Phaser.GameObjects.Text | null = null;
+
+  // Spectator HUD
+  private spectatorBar: Phaser.GameObjects.Text | null = null;
+  private spectatorInstruction: Phaser.GameObjects.Text | null = null;
+  private isSpectating: boolean = false;
+  private spectatorTargetName: string = '';
+  private spectatorTargetRole: string = '';
+
+  // Match countdown
+  private countdownText: Phaser.GameObjects.Text | null = null;
+
+  // GameScene reference for cross-scene events
+  private gameScene: Phaser.Scene | null = null;
+
   constructor() {
     super({ key: 'HUDScene' });
   }
 
-  create() {
+  create(data: { room: Room; localSessionId: string; localRole: string }) {
+    // Reset ALL member variables for scene reuse (scene.start skips constructor)
+    this.room = null;
+    this.localSessionId = '';
+    this.localRole = '';
+    this.healthBars = [];
+    this.lowHealthFlashTimers = new Map();
+    this.timerText = null;
+    this.timerFlashTimer = null;
+    this.isTimerFlashing = false;
+    this.killFeedEntries = [];
+    this.cooldownBg = null;
+    this.cooldownFill = null;
+    this.lastFireTime = 0;
+    this.cooldownMs = 0;
+    this.pingText = null;
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    this.currentPing = 0;
+    this.roleBanner = null;
+    this.roleReminder = null;
+    this.spectatorBar = null;
+    this.spectatorInstruction = null;
+    this.isSpectating = false;
+    this.spectatorTargetName = '';
+    this.spectatorTargetRole = '';
+    this.countdownText = null;
+    this.gameScene = null;
+
     // Transparent background so GameScene shows through
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
+    // HUD should not scroll with game camera
+    this.cameras.main.setScroll(0, 0);
+
+    // Store references
+    this.room = data.room;
+    this.localSessionId = data.localSessionId;
+    this.localRole = data.localRole;
+
+    // Get GameScene reference for cross-scene events
+    this.gameScene = this.scene.get('GameScene');
+
+    // 1. Create health bars (bottom of screen)
+    this.createHealthBars();
+
+    // 2. Create match timer (top center)
+    this.createMatchTimer();
+
+    // 3. Set up kill feed listener (top-right)
+    this.setupKillFeed();
+
+    // 4. Create cooldown display (above local health bar)
+    this.createCooldownDisplay();
+
+    // 5. Create ping display (top-right corner)
+    this.createPingDisplay();
+
+    // 6. Show role identity banner
+    this.showRoleBanner();
+
+    // 7. Set up spectator HUD (hidden by default)
+    this.createSpectatorHUD();
+
+    // 8. Set up match countdown listener
+    this.setupMatchCountdown();
+
+    // Cross-scene event listeners
+    this.setupCrossSceneEvents();
+
+    // Cleanup on shutdown
+    this.events.on('shutdown', this.onShutdown, this);
+    this.events.on('destroy', this.onShutdown, this);
   }
 
-  update() {
-    // Will be populated in Plan 03
+  update(time: number, _delta: number) {
+    if (!this.room) return;
+
+    // Update health bars
+    this.updateHealthBars();
+
+    // Update match timer
+    this.updateMatchTimer();
+
+    // Update kill feed (fade out old entries)
+    this.updateKillFeed(time);
+
+    // Update cooldown display
+    this.updateCooldownDisplay();
+
+    // Update ping display color
+    this.updatePingDisplay();
+  }
+
+  // =====================
+  // 1. HEALTH BARS
+  // =====================
+
+  private createHealthBars(): void {
+    if (!this.room) return;
+
+    // We'll rebuild health bars when players are available
+    // Use a slight delay to allow state sync
+    this.time.delayedCall(100, () => {
+      this.rebuildHealthBars();
+    });
+
+    // Re-build bars when players are added or removed
+    if (this.room.state.players) {
+      this.room.state.players.onAdd(() => {
+        this.time.delayedCall(50, () => this.rebuildHealthBars());
+      });
+      this.room.state.players.onRemove(() => {
+        this.time.delayedCall(50, () => this.rebuildHealthBars());
+      });
+    }
+  }
+
+  private rebuildHealthBars(): void {
+    // Clean up existing bars
+    for (const bar of this.healthBars) {
+      bar.bg.destroy();
+      bar.fill.destroy();
+      bar.label.destroy();
+    }
+    this.healthBars = [];
+
+    if (!this.room) return;
+
+    // Collect all players
+    const players: { sessionId: string; name: string; role: string; health: number; maxHealth: number }[] = [];
+    this.room.state.players.forEach((player: any, sessionId: string) => {
+      const role = player.role || 'faran';
+      const maxHealth = CHARACTERS[role]?.maxHealth || 100;
+      players.push({
+        sessionId,
+        name: player.name || role,
+        role,
+        health: player.health,
+        maxHealth,
+      });
+    });
+
+    // Sort so local player is in the center
+    const localIdx = players.findIndex(p => p.sessionId === this.localSessionId);
+    if (localIdx > -1) {
+      const local = players.splice(localIdx, 1)[0];
+      // Insert at center
+      const mid = Math.floor(players.length / 2);
+      players.splice(mid, 0, local);
+    }
+
+    const totalPlayers = players.length;
+    const screenWidth = 800;
+    const barY = 575;
+
+    for (let i = 0; i < totalPlayers; i++) {
+      const p = players[i];
+      const isLocal = p.sessionId === this.localSessionId;
+      const barW = isLocal ? 200 : 140;
+      const barH = isLocal ? 16 : 12;
+
+      // Space evenly across bottom
+      const spacing = screenWidth / (totalPlayers + 1);
+      const barX = spacing * (i + 1);
+
+      // Background (dark red)
+      const bg = this.add.rectangle(barX, barY, barW, barH, 0x440000);
+      bg.setOrigin(0.5, 0.5);
+      bg.setDepth(200);
+
+      // Fill (role color)
+      const color = ROLE_COLORS_NUM[p.role] || 0xffffff;
+      const fill = this.add.rectangle(barX - barW / 2, barY, barW, barH, color);
+      fill.setOrigin(0, 0.5);
+      fill.setDepth(201);
+
+      // Label above bar
+      const labelSize = isLocal ? '13px' : '11px';
+      const displayName = isLocal ? `${p.name} (YOU)` : p.name;
+      const label = this.add.text(barX, barY - barH / 2 - 10, displayName, {
+        fontSize: labelSize,
+        color: ROLE_COLORS[p.role] || '#ffffff',
+        fontStyle: 'bold',
+      });
+      label.setOrigin(0.5, 1);
+      label.setDepth(202);
+
+      this.healthBars.push({ bg, fill, label, sessionId: p.sessionId, isLocal });
+    }
+  }
+
+  private updateHealthBars(): void {
+    if (!this.room) return;
+
+    for (const bar of this.healthBars) {
+      const player = this.room.state.players.get(bar.sessionId);
+      if (!player) continue;
+
+      const role = player.role || 'faran';
+      const maxHealth = CHARACTERS[role]?.maxHealth || 100;
+      const healthPct = Math.max(0, player.health / maxHealth);
+      const barW = bar.isLocal ? 200 : 140;
+
+      // Update fill width
+      bar.fill.setSize(barW * healthPct, bar.fill.height);
+
+      // Low health flash effect (below 25%)
+      if (healthPct < 0.25 && healthPct > 0) {
+        if (!this.lowHealthFlashTimers.has(bar.sessionId)) {
+          const timer = this.time.addEvent({
+            delay: 300,
+            loop: true,
+            callback: () => {
+              bar.fill.setAlpha(bar.fill.alpha === 1 ? 0.5 : 1);
+            },
+          });
+          this.lowHealthFlashTimers.set(bar.sessionId, timer);
+        }
+      } else {
+        const existingTimer = this.lowHealthFlashTimers.get(bar.sessionId);
+        if (existingTimer) {
+          existingTimer.destroy();
+          this.lowHealthFlashTimers.delete(bar.sessionId);
+          bar.fill.setAlpha(1);
+        }
+      }
+    }
+  }
+
+  // =====================
+  // 2. MATCH TIMER
+  // =====================
+
+  private createMatchTimer(): void {
+    this.timerText = this.add.text(400, 20, '', {
+      fontSize: '20px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    this.timerText.setOrigin(0.5, 0.5);
+    this.timerText.setDepth(200);
+    this.timerText.setVisible(false); // Hidden until match is playing
+  }
+
+  private updateMatchTimer(): void {
+    if (!this.room || !this.timerText) return;
+
+    const matchState = this.room.state.matchState;
+    if (matchState !== 'playing') {
+      this.timerText.setVisible(false);
+      return;
+    }
+
+    this.timerText.setVisible(true);
+
+    const serverTime = this.room.state.serverTime || 0;
+    const matchStartTime = this.room.state.matchStartTime || 0;
+    const elapsed = serverTime - matchStartTime;
+    const remaining = Math.max(0, MATCH_DURATION_MS - elapsed);
+
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    this.timerText.setText(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+
+    // Low-time warning (last 30 seconds)
+    if (remaining <= 30000 && remaining > 0) {
+      if (!this.isTimerFlashing) {
+        this.isTimerFlashing = true;
+        this.timerText.setColor('#ff0000');
+        this.timerFlashTimer = this.time.addEvent({
+          delay: 500,
+          loop: true,
+          callback: () => {
+            if (this.timerText) {
+              this.timerText.setAlpha(this.timerText.alpha === 1 ? 0.5 : 1);
+            }
+          },
+        });
+      }
+    } else if (this.isTimerFlashing && remaining > 30000) {
+      this.isTimerFlashing = false;
+      if (this.timerFlashTimer) {
+        this.timerFlashTimer.destroy();
+        this.timerFlashTimer = null;
+      }
+      this.timerText.setColor('#ffffff');
+      this.timerText.setAlpha(1);
+    }
+  }
+
+  // =====================
+  // 3. KILL FEED
+  // =====================
+
+  private setupKillFeed(): void {
+    if (!this.room) return;
+
+    this.room.onMessage('kill', (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
+      this.addKillFeedEntry(data);
+    });
+  }
+
+  private addKillFeedEntry(data: { killer: string; victim: string; killerRole: string; victimRole: string }): void {
+    const killFeedX = 790;
+    const baseY = 60;
+
+    // Push existing entries down
+    for (const entry of this.killFeedEntries) {
+      entry.text.y += 28;
+      entry.bg.y += 28;
+    }
+
+    // Create background
+    const displayText = `${data.killer} > ${data.victim}`;
+    const bg = this.add.rectangle(killFeedX, baseY, 180, 22, 0x000000, 0.5);
+    bg.setOrigin(1, 0.5);
+    bg.setDepth(200);
+
+    // Create text with killer colored by role
+    const killerColor = ROLE_COLORS[data.killerRole] || '#ffffff';
+    const text = this.add.text(killFeedX - 8, baseY, displayText, {
+      fontSize: '12px',
+      color: killerColor,
+      fontStyle: 'bold',
+    });
+    text.setOrigin(1, 0.5);
+    text.setDepth(201);
+
+    const entry: KillFeedEntry = {
+      text,
+      bg,
+      addedAt: this.time.now,
+    };
+
+    this.killFeedEntries.unshift(entry);
+
+    // Remove excess entries
+    while (this.killFeedEntries.length > this.killFeedMaxEntries) {
+      const removed = this.killFeedEntries.pop()!;
+      removed.text.destroy();
+      removed.bg.destroy();
+    }
+  }
+
+  private updateKillFeed(time: number): void {
+    const now = this.time.now;
+    const toRemove: number[] = [];
+
+    for (let i = 0; i < this.killFeedEntries.length; i++) {
+      const entry = this.killFeedEntries[i];
+      const age = now - entry.addedAt;
+
+      if (age > this.killFeedFadeDuration) {
+        toRemove.push(i);
+      } else if (age > this.killFeedFadeDuration - 1000) {
+        // Fade out in the last 1 second
+        const fadeProgress = (age - (this.killFeedFadeDuration - 1000)) / 1000;
+        const alpha = 1 - fadeProgress;
+        entry.text.setAlpha(alpha);
+        entry.bg.setAlpha(alpha * 0.5);
+      }
+    }
+
+    // Remove expired entries (reverse order to maintain indices)
+    for (let i = toRemove.length - 1; i >= 0; i--) {
+      const idx = toRemove[i];
+      const entry = this.killFeedEntries[idx];
+      entry.text.destroy();
+      entry.bg.destroy();
+      this.killFeedEntries.splice(idx, 1);
+    }
+  }
+
+  // =====================
+  // 4. COOLDOWN DISPLAY
+  // =====================
+
+  private createCooldownDisplay(): void {
+    // Small bar above the local player's health bar area (center bottom)
+    const barX = 400;
+    const barY = 553; // Above the health bar area
+    const barW = 40;
+    const barH = 6;
+
+    this.cooldownBg = this.add.rectangle(barX, barY, barW, barH, 0x333333);
+    this.cooldownBg.setOrigin(0.5, 0.5);
+    this.cooldownBg.setDepth(200);
+
+    this.cooldownFill = this.add.rectangle(barX - barW / 2, barY, 0, barH, 0xcccc00);
+    this.cooldownFill.setOrigin(0, 0.5);
+    this.cooldownFill.setDepth(201);
+  }
+
+  private updateCooldownDisplay(): void {
+    if (!this.cooldownFill || !this.cooldownBg) return;
+
+    if (this.lastFireTime === 0 || this.cooldownMs === 0) {
+      // No fire yet, show fully ready
+      this.cooldownFill.setSize(40, 6);
+      this.cooldownFill.setFillStyle(0x44cc44); // green = ready
+      return;
+    }
+
+    const elapsed = Date.now() - this.lastFireTime;
+    const progress = Math.min(1, elapsed / this.cooldownMs);
+
+    this.cooldownFill.setSize(40 * progress, 6);
+
+    if (progress >= 1) {
+      this.cooldownFill.setFillStyle(0x44cc44); // green = ready
+    } else {
+      this.cooldownFill.setFillStyle(0xcccc00); // yellow = recharging
+    }
+  }
+
+  // =====================
+  // 5. PING DISPLAY
+  // =====================
+
+  private createPingDisplay(): void {
+    this.pingText = this.add.text(780, 20, '0ms', {
+      fontSize: '12px',
+      color: '#44cc44',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this.pingText.setOrigin(1, 0.5);
+    this.pingText.setDepth(200);
+
+    // Start ping interval
+    if (this.room) {
+      this.pingInterval = setInterval(() => {
+        if (this.room) {
+          this.room.send('ping', { t: Date.now() });
+        }
+      }, 2000);
+
+      this.room.onMessage('pong', (data: { t: number }) => {
+        this.currentPing = Date.now() - data.t;
+      });
+    }
+  }
+
+  private updatePingDisplay(): void {
+    if (!this.pingText) return;
+
+    this.pingText.setText(`${this.currentPing}ms`);
+
+    if (this.currentPing < 50) {
+      this.pingText.setColor('#44cc44'); // green
+    } else if (this.currentPing <= 100) {
+      this.pingText.setColor('#cccc00'); // yellow
+    } else {
+      this.pingText.setColor('#ff4444'); // red
+    }
+  }
+
+  // =====================
+  // 6. ROLE IDENTITY BANNER
+  // =====================
+
+  private showRoleBanner(): void {
+    const roleName = this.localRole.toUpperCase();
+    const roleColor = ROLE_COLORS[this.localRole] || '#ffffff';
+
+    // Large banner: "YOU ARE PARAN"
+    this.roleBanner = this.add.text(400, 280, `YOU ARE ${roleName}`, {
+      fontSize: '48px',
+      color: roleColor,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 6,
+    });
+    this.roleBanner.setOrigin(0.5, 0.5);
+    this.roleBanner.setDepth(300);
+
+    // Fade out after 2s delay, 1s fade
+    this.tweens.add({
+      targets: this.roleBanner,
+      alpha: 0,
+      duration: 1000,
+      delay: 2000,
+      onComplete: () => {
+        if (this.roleBanner) {
+          this.roleBanner.destroy();
+          this.roleBanner = null;
+        }
+      },
+    });
+
+    // Subtle permanent role reminder in top-left
+    this.roleReminder = this.add.text(10, 10, roleName.charAt(0) + roleName.slice(1).toLowerCase(), {
+      fontSize: '14px',
+      color: roleColor,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this.roleReminder.setDepth(200);
+  }
+
+  // =====================
+  // 7. SPECTATOR HUD
+  // =====================
+
+  private createSpectatorHUD(): void {
+    // Hidden by default, shown when spectating
+    this.spectatorBar = this.add.text(400, 540, '', {
+      fontSize: '16px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+      backgroundColor: '#00000088',
+      padding: { x: 12, y: 6 },
+    });
+    this.spectatorBar.setOrigin(0.5, 0.5);
+    this.spectatorBar.setDepth(250);
+    this.spectatorBar.setVisible(false);
+
+    this.spectatorInstruction = this.add.text(400, 565, 'Press TAB to cycle', {
+      fontSize: '12px',
+      color: '#aaaaaa',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this.spectatorInstruction.setOrigin(0.5, 0.5);
+    this.spectatorInstruction.setDepth(250);
+    this.spectatorInstruction.setVisible(false);
+  }
+
+  private showSpectatorHUD(targetName: string, targetRole: string): void {
+    this.isSpectating = true;
+    this.spectatorTargetName = targetName;
+    this.spectatorTargetRole = targetRole;
+
+    if (this.spectatorBar) {
+      const roleColor = ROLE_COLORS[targetRole] || '#ffffff';
+      this.spectatorBar.setText(`SPECTATING: ${targetName} (${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)})`);
+      this.spectatorBar.setColor(roleColor);
+      this.spectatorBar.setVisible(true);
+    }
+    if (this.spectatorInstruction) {
+      this.spectatorInstruction.setVisible(true);
+    }
+  }
+
+  private hideSpectatorHUD(): void {
+    this.isSpectating = false;
+    if (this.spectatorBar) this.spectatorBar.setVisible(false);
+    if (this.spectatorInstruction) this.spectatorInstruction.setVisible(false);
+  }
+
+  // =====================
+  // 8. MATCH COUNTDOWN
+  // =====================
+
+  private setupMatchCountdown(): void {
+    if (!this.room) return;
+
+    // Listen for matchState changing to 'playing'
+    this.room.state.listen('matchState', (value: string) => {
+      if (value === 'playing') {
+        this.showMatchStart();
+      }
+    });
+  }
+
+  private showMatchStart(): void {
+    // Show "FIGHT!" text when match starts
+    this.countdownText = this.add.text(400, 300, 'FIGHT!', {
+      fontSize: '72px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 8,
+    });
+    this.countdownText.setOrigin(0.5, 0.5);
+    this.countdownText.setDepth(400);
+
+    // Fade out after 2 seconds
+    this.tweens.add({
+      targets: this.countdownText,
+      alpha: 0,
+      duration: 1000,
+      delay: 1000,
+      onComplete: () => {
+        if (this.countdownText) {
+          this.countdownText.destroy();
+          this.countdownText = null;
+        }
+      },
+    });
+  }
+
+  // =====================
+  // CROSS-SCENE EVENTS
+  // =====================
+
+  private setupCrossSceneEvents(): void {
+    if (!this.gameScene) return;
+
+    // Listen for fire events from GameScene
+    this.gameScene.events.on('localFired', (data: { fireTime: number; cooldownMs: number }) => {
+      this.lastFireTime = data.fireTime;
+      this.cooldownMs = data.cooldownMs;
+    }, this);
+
+    // Listen for spectator target changes
+    this.gameScene.events.on('spectatorChanged', (data: { targetName: string; targetRole: string }) => {
+      this.showSpectatorHUD(data.targetName, data.targetRole);
+    }, this);
+
+    // Listen for local player death
+    this.gameScene.events.on('localDied', () => {
+      // Spectator HUD will be shown by spectatorChanged event
+    }, this);
+  }
+
+  // =====================
+  // CLEANUP
+  // =====================
+
+  private onShutdown(): void {
+    // Clear ping interval
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+
+    // Clear flash timers
+    if (this.timerFlashTimer) {
+      this.timerFlashTimer.destroy();
+      this.timerFlashTimer = null;
+    }
+
+    for (const timer of this.lowHealthFlashTimers.values()) {
+      timer.destroy();
+    }
+    this.lowHealthFlashTimers.clear();
+
+    // Remove GameScene event listeners
+    if (this.gameScene) {
+      this.gameScene.events.off('localFired', undefined, this);
+      this.gameScene.events.off('spectatorChanged', undefined, this);
+      this.gameScene.events.off('localDied', undefined, this);
+    }
+
+    this.room = null;
   }
 }
