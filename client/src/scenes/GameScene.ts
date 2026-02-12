@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Client, Room } from 'colyseus.js';
 import { PredictionSystem } from '../systems/Prediction';
 import { InterpolationSystem } from '../systems/Interpolation';
+import { AudioManager } from '../systems/AudioManager';
 import { InputState } from '../../../shared/physics';
 import { CHARACTERS } from '../../../shared/characters';
 import { MAPS } from '../../../shared/maps';
@@ -53,6 +54,13 @@ export class GameScene extends Phaser.Scene {
   private finalStats: any = null;
   private matchWinner: string = "";
 
+  // Audio
+  private audioManager: AudioManager | null = null;
+  private playerHealthCache: Map<string, number> = new Map();
+  private lastWhooshTime: number = 0;
+  private prevPredictionVx: number = 0;
+  private prevPredictionVy: number = 0;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -87,6 +95,13 @@ export class GameScene extends Phaser.Scene {
     this.matchEnded = false;
     this.finalStats = null;
     this.matchWinner = "";
+    this.playerHealthCache = new Map();
+    this.lastWhooshTime = 0;
+    this.prevPredictionVx = 0;
+    this.prevPredictionVy = 0;
+
+    // Get AudioManager from registry (initialized in BootScene)
+    this.audioManager = this.registry.get('audioManager') as AudioManager || null;
 
     // Check if room was provided from LobbyScene
     const providedRoom = data?.room;
@@ -167,6 +182,11 @@ export class GameScene extends Phaser.Scene {
           this.time.delayedCall(2000, () => {
             if (!this.matchEnded) this.statusText.setVisible(false);
           });
+          // Audio: match start fanfare + music
+          if (this.audioManager) {
+            this.audioManager.playSFX('match_start_fanfare');
+            this.audioManager.playMusic('audio/match_music.mp3');
+          }
         } else if (value === 'waiting') {
           const count = this.room ? this.room.state.players.size : 0;
           this.statusText.setText(`Waiting for players... (${count}/3)`);
@@ -184,6 +204,12 @@ export class GameScene extends Phaser.Scene {
         this.finalStats = data.stats;
         this.matchWinner = data.winner;
         this.matchEnded = true;
+
+        // Audio: match end fanfare + stop music
+        if (this.audioManager) {
+          this.audioManager.playSFX('match_end_fanfare');
+          this.audioManager.stopMusic();
+        }
 
         // Clear reconnection token on match end
         sessionStorage.removeItem('bangerActiveRoom');
@@ -472,7 +498,29 @@ export class GameScene extends Phaser.Scene {
     })();
 
     if (hasInput || hasVelocity || input.fire) {
+      // Audio: play role-specific shoot sound on fire
+      if (input.fire && this.audioManager && this.localRole) {
+        this.audioManager.playSFX(`${this.localRole}_shoot`);
+      }
+
       this.prediction.sendInput(input, this.room);
+    }
+
+    // Audio: Paran wall impact detection (velocity drops to ~zero from non-zero)
+    if (this.localRole === 'paran' && this.audioManager && this.prediction) {
+      const pState = this.prediction.getState();
+      const prevSpeed = Math.abs(this.prevPredictionVx) + Math.abs(this.prevPredictionVy);
+      const curSpeed = Math.abs(pState.vx) + Math.abs(pState.vy);
+      if (prevSpeed > 30 && curSpeed < 1) {
+        this.audioManager.playSFX('wall_impact');
+      }
+      // Speed whoosh: play when Paran reaches high speed (rate-limited to once per second)
+      if (curSpeed > 200 && time - this.lastWhooshTime > 1000) {
+        this.audioManager.playSFX('speed_whoosh');
+        this.lastWhooshTime = time;
+      }
+      this.prevPredictionVx = pState.vx;
+      this.prevPredictionVy = pState.vy;
     }
 
     // Update local player sprite from prediction state
@@ -646,6 +694,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePlayerChange(player: any, sessionId: string, isLocal: boolean) {
+    // Audio: detect health changes for hit/death sounds
+    if (this.audioManager && player.role) {
+      const prevHealth = this.playerHealthCache.get(sessionId);
+      if (prevHealth !== undefined && player.health < prevHealth) {
+        if (player.health <= 0) {
+          this.audioManager.playSFX(`${player.role}_death`);
+        } else {
+          this.audioManager.playSFX(`${player.role}_hit`);
+        }
+      }
+      this.playerHealthCache.set(sessionId, player.health);
+    }
+
     // Update visuals when role changes
     if (player.role) {
       const sprite = this.playerSprites.get(sessionId);
@@ -736,6 +797,11 @@ export class GameScene extends Phaser.Scene {
         this.time.delayedCall(2000, () => {
           if (!this.matchEnded) this.statusText.setVisible(false);
         });
+        // Audio: match start fanfare + music (reconnect path)
+        if (this.audioManager) {
+          this.audioManager.playSFX('match_start_fanfare');
+          this.audioManager.playMusic('audio/match_music.mp3');
+        }
       } else if (value === 'waiting') {
         const count = this.room ? this.room.state.players.size : 0;
         this.statusText.setText(`Waiting for players... (${count}/3)`);
@@ -752,6 +818,13 @@ export class GameScene extends Phaser.Scene {
       this.finalStats = data.stats;
       this.matchWinner = data.winner;
       this.matchEnded = true;
+
+      // Audio: match end fanfare + stop music (reconnect path)
+      if (this.audioManager) {
+        this.audioManager.playSFX('match_end_fanfare');
+        this.audioManager.stopMusic();
+      }
+
       sessionStorage.removeItem('bangerActiveRoom');
 
       this.scene.launch("VictoryScene", {

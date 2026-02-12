@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Client, Room } from 'colyseus.js';
 import { LOBBY_CONFIG, VALID_ROLES } from '../../../shared/lobby';
 import { CHARACTERS } from '../../../shared/characters';
+import { AudioManager } from '../systems/AudioManager';
 
 export class LobbyScene extends Phaser.Scene {
   private client!: Client;
@@ -15,6 +16,9 @@ export class LobbyScene extends Phaser.Scene {
   private htmlInput: HTMLInputElement | null = null;
   private characterPanelUpdaters: (() => void)[] = [];
 
+  // Audio
+  private audioManager: AudioManager | null = null;
+
   constructor() {
     super({ key: 'LobbyScene' });
   }
@@ -22,6 +26,9 @@ export class LobbyScene extends Phaser.Scene {
   async create() {
     // Initialize Colyseus client
     this.client = new Client('ws://localhost:2567');
+
+    // Get AudioManager from registry (initialized in BootScene)
+    this.audioManager = this.registry.get('audioManager') as AudioManager || null;
 
     // Set default player name (could be from localStorage later)
     this.playerName = localStorage.getItem('playerName') || `Player${Math.floor(Math.random() * 1000)}`;
@@ -231,10 +238,16 @@ export class LobbyScene extends Phaser.Scene {
       button.on('pointerout', () => {
         button.setBackgroundColor(`#${btn.color.toString(16).padStart(6, '0')}`);
       });
-      button.on('pointerdown', btn.handler);
+      button.on('pointerdown', () => {
+        if (this.audioManager) this.audioManager.playSFX('button_click');
+        btn.handler();
+      });
 
       this.uiElements.push(button);
     });
+
+    // Volume controls at bottom of menu
+    this.createVolumeControls(520);
   }
 
   private async createPrivateRoom() {
@@ -325,6 +338,7 @@ export class LobbyScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     joinButton.on('pointerdown', () => {
+      if (this.audioManager) this.audioManager.playSFX('button_click');
       if (this.htmlInput) {
         const code = this.htmlInput.value.trim().toUpperCase();
         if (code.length === LOBBY_CONFIG.ROOM_CODE_LENGTH) {
@@ -345,7 +359,10 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    backButton.on('pointerdown', () => this.showMainMenu());
+    backButton.on('pointerdown', () => {
+      if (this.audioManager) this.audioManager.playSFX('button_click');
+      this.showMainMenu();
+    });
     this.uiElements.push(backButton);
 
     // Enter key to submit
@@ -430,7 +447,10 @@ export class LobbyScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
-      button.on('pointerdown', () => this.joinMatchmaking(r.role));
+      button.on('pointerdown', () => {
+        if (this.audioManager) this.audioManager.playSFX('button_click');
+        this.joinMatchmaking(r.role);
+      });
       this.uiElements.push(button);
     });
 
@@ -444,7 +464,10 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    backButton.on('pointerdown', () => this.showMainMenu());
+    backButton.on('pointerdown', () => {
+      if (this.audioManager) this.audioManager.playSFX('button_click');
+      this.showMainMenu();
+    });
     this.uiElements.push(backButton);
   }
 
@@ -656,6 +679,8 @@ export class LobbyScene extends Phaser.Scene {
       if (value > 0) {
         countdownText.setText(String(value));
         countdownText.setVisible(true);
+        // Audio: countdown beep
+        if (this.audioManager) this.audioManager.playSFX('countdown_beep');
       } else {
         countdownText.setVisible(false);
       }
@@ -763,6 +788,7 @@ export class LobbyScene extends Phaser.Scene {
       // Click handler
       panel.on('pointerdown', () => {
         if (this.isRoleAvailable(char.role)) {
+          if (this.audioManager) this.audioManager.playSFX('button_click');
           this.selectRole(char.role);
         }
       });
@@ -905,6 +931,7 @@ export class LobbyScene extends Phaser.Scene {
     }
 
     readyButton.on('pointerdown', () => {
+      if (this.audioManager) this.audioManager.playSFX('ready_chime');
       if (this.room) {
         this.room.send('toggleReady');
       }
@@ -941,6 +968,52 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     return count === 0; // Each role can only have one player
+  }
+
+  private createVolumeControls(startY: number) {
+    if (!this.audioManager) return;
+
+    const controls = [
+      { label: 'Music', get: () => this.audioManager!.getMusicVolume(), set: (v: number) => this.audioManager!.setMusicVolume(v) },
+      { label: 'SFX', get: () => this.audioManager!.getSFXVolume(), set: (v: number) => this.audioManager!.setSFXVolume(v) },
+    ];
+
+    controls.forEach((ctrl, index) => {
+      const y = startY + index * 35;
+      const labelText = this.add.text(280, y, ctrl.label + ':', {
+        fontSize: '16px', color: '#aaaaaa'
+      }).setOrigin(0, 0.5);
+      this.uiElements.push(labelText);
+
+      const volText = this.add.text(400, y, `${Math.round(ctrl.get() * 100)}%`, {
+        fontSize: '16px', color: '#ffffff'
+      }).setOrigin(0.5, 0.5);
+      this.uiElements.push(volText);
+
+      // Minus button
+      const minusBtn = this.add.text(350, y, ' - ', {
+        fontSize: '18px', color: '#ffffff', backgroundColor: '#555555',
+        padding: { x: 6, y: 2 }
+      }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
+      minusBtn.on('pointerdown', () => {
+        const newVal = Math.max(0, ctrl.get() - 0.1);
+        ctrl.set(newVal);
+        volText.setText(`${Math.round(newVal * 100)}%`);
+      });
+      this.uiElements.push(minusBtn);
+
+      // Plus button
+      const plusBtn = this.add.text(450, y, ' + ', {
+        fontSize: '18px', color: '#ffffff', backgroundColor: '#555555',
+        padding: { x: 6, y: 2 }
+      }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
+      plusBtn.on('pointerdown', () => {
+        const newVal = Math.min(1, ctrl.get() + 0.1);
+        ctrl.set(newVal);
+        volText.setText(`${Math.round(newVal * 100)}%`);
+      });
+      this.uiElements.push(plusBtn);
+    });
   }
 
   private clearUI() {
