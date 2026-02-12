@@ -471,7 +471,7 @@ export class HUDScene extends Phaser.Scene {
   private createCooldownDisplay(): void {
     // Small bar above the local player's health bar area (center bottom)
     const barX = 400;
-    const barY = 553; // Above the health bar area
+    const barY = 538; // Above the health bar area (15px gap to name labels at ~557)
     const barW = 40;
     const barH = 6;
 
