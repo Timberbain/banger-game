@@ -56,6 +56,7 @@ Progress: [████████░-] 85% (33 of 34 plans complete: Phase 6 p
 | Phase 06 P05 | 5 | 2 tasks | 7 files |
 | Phase 06 P02 | 8 | 2 tasks | 16 files |
 | Phase 06 P03 | 4 | 2 tasks | 2 files |
+| Phase 06 P04 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,9 @@ Recent decisions affecting current work:
 - [Phase 06-03]: Cross-scene events (localFired, spectatorChanged, localDied) for decoupled HUD updates
 - [Phase 06-03]: HUD launch from createPlayerSprite (when role known), stop on matchEnd and returnToLobby
 - [Phase 06-03]: FIGHT! text on match start (no 3-2-1 countdown -- match auto-starts on 3 players)
+- [Phase 06]: ROLE_COLOR constant for consistent particle tinting across all visual effects
+- [Phase 06]: Speed line rate limiting every 3 frames to prevent particle spam
+- [Phase 06]: ParticleFactory initialized after tilemap loads to ensure texture availability
 
 ### Pending Todos
 
@@ -179,8 +183,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (phase execution)
-Stopped at: Completed 06-03-PLAN.md (HUD Scene) — Phase 6: 4/7 summaries on disk (01, 02, 03, 05)
-Resume file: .planning/phases/06-ux-polish/06-03-SUMMARY.md
+Stopped at: Completed 06-04-PLAN.md (Visual Feedback & Particle Effects) — Phase 6: 5/7 summaries on disk (01, 02, 03, 04, 05)
+Resume file: .planning/phases/06-ux-polish/06-04-SUMMARY.md
 
 **Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
