@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Plan 5 of 7 complete
+**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Plan 6 of 7 complete
 
 ## Current Position
 
 Phase: 6 of 6 (UX Polish)
-Plan: 5 of 7
+Plan: 6 of 7
 Status: In Progress
-Last activity: 2026-02-12 — Completed 06-05-PLAN.md (Audio System)
+Last activity: 2026-02-12 — Completed 06-03-PLAN.md (HUD Scene)
 
-Progress: [████████--] 80% (32 of 34 plans complete: Phase 6 progressing)
+Progress: [████████░-] 85% (33 of 34 plans complete: Phase 6 progressing)
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [████████--] 80% (32 of 34 plans complete: Phase 6 pro
 | Phase 06 P01 | 2 | 2 tasks | 6 files |
 | Phase 06 P05 | 5 | 2 tasks | 7 files |
 | Phase 06 P02 | 8 | 2 tasks | 16 files |
+| Phase 06 P03 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,9 @@ Recent decisions affecting current work:
 - [Phase 06-05]: AudioManager on Phaser registry for cross-scene persistence
 - [Phase 06]: Python PIL for asset generation (canvas not installed); horizontal strip spritesheet layout
 - [Phase 06]: Velocity-based animation selection with 5px/s idle threshold; death animation locks animation state
+- [Phase 06-03]: Cross-scene events (localFired, spectatorChanged, localDied) for decoupled HUD updates
+- [Phase 06-03]: HUD launch from createPlayerSprite (when role known), stop on matchEnd and returnToLobby
+- [Phase 06-03]: FIGHT! text on match start (no 3-2-1 countdown -- match auto-starts on 3 players)
 
 ### Pending Todos
 
@@ -175,8 +179,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (phase execution)
-Stopped at: Completed 06-02-PLAN.md (Pixel Art Assets & Sprite Integration) — Phase 6: 3/7 summaries on disk (01, 02, 05)
-Resume file: .planning/phases/06-ux-polish/06-02-SUMMARY.md
+Stopped at: Completed 06-03-PLAN.md (HUD Scene) — Phase 6: 4/7 summaries on disk (01, 02, 03, 05)
+Resume file: .planning/phases/06-ux-polish/06-03-SUMMARY.md
 
 **Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
