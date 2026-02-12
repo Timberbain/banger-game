@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 5.1 of 6 (Arena Collisions & Contact Kill)
-Plan: 1 of 3
-Status: In Progress
-Last activity: 2026-02-12 — Completed 05.1-01-PLAN.md (Shared Collision Infrastructure)
+Plan: 3 of 3
+Status: Complete
+Last activity: 2026-02-12 — Completed 05.1-03-PLAN.md (Client Prediction Collision & Obstacle Sync)
 
-Progress: [███-------] 33% (24 of 26 plans complete: Phase 5.1 plan 1 of 3 done)
+Progress: [██████████] 100% (26 of 26 plans complete: Phase 5.1 COMPLETE)
 
 ## Performance Metrics
 
@@ -49,6 +49,8 @@ Progress: [███-------] 33% (24 of 26 plans complete: Phase 5.1 plan 1 of 3
 | Phase 05 P12 | 2 | 2 tasks | 2 files |
 | Phase 05 P13 | 0.6 | 1 tasks | 1 files |
 | Phase 05.1 P01 | 7 | 2 tasks | 7 files |
+| Phase 05.1 P02 | 3 | 2 tasks | 4 files |
+| Phase 05.1 P03 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -132,6 +134,13 @@ Recent decisions affecting current work:
 - [Phase 05.1-01]: Pure TypeScript collision grid with no Phaser/server deps for shared use
 - [Phase 05.1-01]: Axis-separated AABB resolution (X first with prevY, then Y with resolved X) for stable corners
 - [Phase 05.1-01]: Three obstacle tiers: Heavy(5HP brown), Medium(3HP orange), Light(2HP gold)
+- [Phase 05.1-02]: Collision resolution after EACH applyMovementPhysics call for precision
+- [Phase 05.1-02]: Paran contact kill via circle overlap (dist < playerRadius*2), Paran keeps velocity
+- [Phase 05.1-02]: Projectile center-point tile check sufficient (4px radius vs 32px tile)
+- [Phase 05.1-02]: Edge clamp kept as safety net only, tile border walls handle collision response
+- [Phase 05.1-03]: Shared CollisionGrid by reference between GameScene and PredictionSystem (single source of truth)
+- [Phase 05.1-03]: Bidirectional race condition handling for tilemap/prediction init order
+- [Phase 05.1-03]: Obstacle listeners guarded by state.obstacles existence check for forward compatibility
 
 ### Pending Todos
 
@@ -148,16 +157,28 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (phase execution)
-Stopped at: Completed 05.1-01-PLAN.md (Shared Collision Infrastructure) — Phase 5.1: 1/3 plans done
-Resume file: .planning/phases/05.1-arenas-should-have-obstacles-and-walls-that-players-collides-with-also-paran-should-be-able-to-instantly-kill-faran-or-baran-when-he-collides-with-them/05.1-01-SUMMARY.md
+Stopped at: Completed 05.1-03-PLAN.md (Client Prediction Collision & Obstacle Sync) — Phase 5.1: COMPLETE (3/3 plans)
+Resume file: .planning/phases/05.1-arenas-should-have-obstacles-and-walls-that-players-collides-with-also-paran-should-be-able-to-instantly-kill-faran-or-baran-when-he-collides-with-them/05.1-03-SUMMARY.md
 
-**Phase 5.1 In Progress (1 of 3):**
+**Phase 5.1 Complete (3 of 3):**
 - 05.1-01 Complete: Shared collision infrastructure
   - CollisionGrid class: AABB-vs-tile collision with axis-separated resolution
   - OBSTACLE_TILES constants: wall=3, heavy=4(5HP), medium=5(3HP), light=6(2HP)
   - Tileset expanded with 3 visually distinct destructible obstacle tiles
   - All 4 map JSONs updated with strategically placed obstacles (6-14 per map)
   - Pure TypeScript, no Phaser/server deps -- shared by server and client prediction
+- 05.1-02 Complete: Server-side collision enforcement
+  - ObstacleState Schema for destructible obstacle sync to clients
+  - Tile collision resolution in fixedTick for all players
+  - Paran contact kill (instant guardian death on body overlap)
+  - Projectile-wall destruction and destructible obstacle HP tracking
+  - ARENA dimensions corrected to 800x608
+- 05.1-03 Complete: Client prediction collision and obstacle sync
+  - PredictionSystem applies resolveCollisions after every physics step (sendInput + reconcile replay)
+  - GameScene builds CollisionGrid from Tiled JSON wall layer data, passes to PredictionSystem
+  - Obstacle destruction listeners update collision grid and tilemap visuals in real-time
+  - Reconnection listeners handle already-destroyed obstacles on rejoin
+  - Paran wall penalty (full velocity loss) and guardian per-axis stopping in client prediction
 
 **Phase 5 Complete (13 of 13):**
 - 05-01 Complete: Server-side lobby infrastructure
