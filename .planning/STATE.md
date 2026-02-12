@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 05.1 COMPLETE — Next: Phase 6 (UX Polish)
+**Current focus:** Phase 05.1 COMPLETE (including gap closure) — Next: Phase 6 (UX Polish)
 
 ## Current Position
 
 Phase: 5.1 of 6 (Arena Collisions & Contact Kill)
-Plan: 3 of 3
+Plan: 4 of 4
 Status: Complete
-Last activity: 2026-02-12 — Completed 05.1-03-PLAN.md (Client Prediction Collision & Obstacle Sync)
+Last activity: 2026-02-12 — Completed 05.1-04-PLAN.md (Collision Boundary Fix - gap closure)
 
-Progress: [██████████] 100% (26 of 26 plans complete: Phase 5.1 COMPLETE)
+Progress: [██████████] 100% (27 of 27 plans complete: Phase 5.1 COMPLETE with gap closure)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [██████████] 100% (26 of 26 plans complete: Phase 
 | Phase 05.1 P01 | 7 | 2 tasks | 7 files |
 | Phase 05.1 P02 | 3 | 2 tasks | 4 files |
 | Phase 05.1 P03 | 3 | 2 tasks | 2 files |
+| Phase 05.1 P04 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,8 @@ Recent decisions affecting current work:
 - [Phase 05.1-03]: Shared CollisionGrid by reference between GameScene and PredictionSystem (single source of truth)
 - [Phase 05.1-03]: Bidirectional race condition handling for tilemap/prediction init order
 - [Phase 05.1-03]: Obstacle listeners guarded by state.obstacles existence check for forward compatibility
+- [Phase 05.1-04]: COLLISION_EPSILON (0.001) offset for right/bottom push-backs and tile range calcs to fix Math.floor boundary asymmetry
+- [Phase 05.1-04]: Epsilon only on RIGHT/DOWN directions; LEFT/UP already correct due to Math.floor rounding behavior
 
 ### Pending Todos
 
@@ -157,10 +160,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (phase execution)
-Stopped at: Completed 05.1-03-PLAN.md (Client Prediction Collision & Obstacle Sync) — Phase 5.1: COMPLETE (3/3 plans)
-Resume file: .planning/phases/05.1-arenas-should-have-obstacles-and-walls-that-players-collides-with-also-paran-should-be-able-to-instantly-kill-faran-or-baran-when-he-collides-with-them/05.1-03-SUMMARY.md
+Stopped at: Completed 05.1-04-PLAN.md (Collision Boundary Fix - gap closure) — Phase 5.1: COMPLETE (4/4 plans)
+Resume file: .planning/phases/05.1-arenas-should-have-obstacles-and-walls-that-players-collides-with-also-paran-should-be-able-to-instantly-kill-faran-or-baran-when-he-collides-with-them/05.1-04-SUMMARY.md
 
-**Phase 5.1 Complete (3 of 3):**
+**Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
   - CollisionGrid class: AABB-vs-tile collision with axis-separated resolution
   - OBSTACLE_TILES constants: wall=3, heavy=4(5HP), medium=5(3HP), light=6(2HP)
@@ -179,6 +182,12 @@ Resume file: .planning/phases/05.1-arenas-should-have-obstacles-and-walls-that-p
   - Obstacle destruction listeners update collision grid and tilemap visuals in real-time
   - Reconnection listeners handle already-destroyed obstacles on rejoin
   - Paran wall penalty (full velocity loss) and guardian per-axis stopping in client prediction
+- 05.1-04 Complete: Collision boundary fix (gap closure)
+  - COLLISION_EPSILON (0.001) constant for sub-pixel boundary offset
+  - Epsilon on RIGHT/DOWN push-backs prevents exact tile boundary re-collision
+  - Epsilon on right/bottom tile range calcs prevents Math.floor mapping into solid tile
+  - Fixes UAT failures: wall jitter, super speed, wall clipping on right/bottom edges
+  - Both server and client prediction get fix via shared import
 
 **Phase 5 Complete (13 of 13):**
 - 05-01 Complete: Server-side lobby infrastructure
