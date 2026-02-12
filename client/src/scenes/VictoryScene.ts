@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { ParticleFactory } from '../systems/ParticleFactory';
+import { AudioManager } from '../systems/AudioManager';
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -17,12 +19,18 @@ export class VictoryScene extends Phaser.Scene {
     const didWin = (winner === "paran" && localRole === "paran") ||
                    (winner === "guardians" && localRole !== "paran");
 
-    // Victory/Defeat title
+    // Color wash overlay (between black overlay and content)
+    const washColor = didWin ? 0x00ff00 : 0xff0000;
+    const washAlpha = 0.15;
+    this.add.rectangle(400, 300, 800, 600, washColor, washAlpha).setDepth(0.5);
+
+    // Victory/Defeat title -- solarpunk styled
     const titleText = didWin ? "VICTORY!" : "DEFEAT";
-    const titleColor = didWin ? "#00ff00" : "#ff0000";
+    const titleColor = didWin ? "#d4a746" : "#cc3333";
     this.add.text(400, 60, titleText, {
       fontSize: '64px',
       color: titleColor,
+      fontFamily: 'monospace',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 4
@@ -32,7 +40,8 @@ export class VictoryScene extends Phaser.Scene {
     const winnerLabel = winner === "paran" ? "Paran Wins!" : "Guardians Win!";
     this.add.text(400, 130, winnerLabel, {
       fontSize: '24px',
-      color: '#ffffff'
+      color: '#ffffff',
+      fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(1);
 
     // Match duration
@@ -41,25 +50,27 @@ export class VictoryScene extends Phaser.Scene {
     const seconds = durationSec % 60;
     this.add.text(400, 165, `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`, {
       fontSize: '16px',
-      color: '#aaaaaa'
+      color: '#aaaaaa',
+      fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(1);
 
-    // Stats header
+    // Stats header -- golden
     this.add.text(400, 210, "MATCH STATISTICS", {
       fontSize: '22px',
-      color: '#ffff00',
+      color: '#d4a746',
+      fontFamily: 'monospace',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(1);
 
     // Table header row
     const headerY = 250;
     const cols = { name: 100, role: 250, kills: 340, deaths: 400, damage: 470, accuracy: 570 };
-    this.add.text(cols.name, headerY, "Player", { fontSize: '14px', color: '#888888' }).setDepth(1);
-    this.add.text(cols.role, headerY, "Role", { fontSize: '14px', color: '#888888' }).setDepth(1);
-    this.add.text(cols.kills, headerY, "K", { fontSize: '14px', color: '#888888' }).setDepth(1);
-    this.add.text(cols.deaths, headerY, "D", { fontSize: '14px', color: '#888888' }).setDepth(1);
-    this.add.text(cols.damage, headerY, "Damage", { fontSize: '14px', color: '#888888' }).setDepth(1);
-    this.add.text(cols.accuracy, headerY, "Accuracy", { fontSize: '14px', color: '#888888' }).setDepth(1);
+    this.add.text(cols.name, headerY, "Player", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
+    this.add.text(cols.role, headerY, "Role", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
+    this.add.text(cols.kills, headerY, "K", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
+    this.add.text(cols.deaths, headerY, "D", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
+    this.add.text(cols.damage, headerY, "Damage", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
+    this.add.text(cols.accuracy, headerY, "Accuracy", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
 
     // Header underline
     const line = this.add.graphics();
@@ -71,8 +82,13 @@ export class VictoryScene extends Phaser.Scene {
     let yOffset = headerY + 35;
     Object.entries(stats).forEach(([sessionId, playerStats]: [string, any]) => {
       const isLocal = sessionId === localSessionId;
-      const color = isLocal ? '#ffff00' : '#ffffff';
-      const style = { fontSize: '16px', color, fontStyle: isLocal ? 'bold' : 'normal' };
+      const color = isLocal ? '#d4a746' : '#ffffff';
+      const style: Phaser.Types.GameObjects.Text.TextStyle = {
+        fontSize: '16px',
+        color,
+        fontFamily: 'monospace',
+        fontStyle: isLocal ? 'bold' : 'normal',
+      };
 
       // Highlight row for local player
       if (isLocal) {
@@ -99,20 +115,45 @@ export class VictoryScene extends Phaser.Scene {
       yOffset += 35;
     });
 
-    // Return to Lobby button
+    // Return to Lobby button -- solarpunk styled
     const button = this.add.text(400, 500, "Return to Lobby", {
-      fontSize: '24px',
+      fontSize: '22px',
       color: '#ffffff',
-      backgroundColor: '#0066cc',
+      fontFamily: 'monospace',
+      backgroundColor: '#2d5a2d',
       padding: { x: 24, y: 12 }
     })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .setDepth(2);
 
-    button.on('pointerover', () => button.setBackgroundColor('#0088ff'));
-    button.on('pointerout', () => button.setBackgroundColor('#0066cc'));
-    button.on('pointerdown', () => this.returnToLobby(room));
+    button.on('pointerover', () => button.setBackgroundColor('#3d7a3d'));
+    button.on('pointerout', () => button.setBackgroundColor('#2d5a2d'));
+    button.on('pointerdown', () => {
+      // Play button click if audio available
+      const audioManager = this.registry.get('audioManager') as AudioManager | null;
+      if (audioManager) audioManager.playSFX('button_click');
+      this.returnToLobby(room);
+    });
+
+    // --- Particle Effects ---
+    const particleFactory = new ParticleFactory(this);
+    const particleColor = didWin ? 0x00ff00 : 0xff4444;
+
+    // Multiple victory/defeat bursts at different positions
+    particleFactory.victoryBurst(200, 100, particleColor);
+    particleFactory.victoryBurst(600, 100, particleColor);
+    particleFactory.victoryBurst(400, 200, particleColor);
+
+    // Delayed secondary bursts for staggered celebration
+    this.time.delayedCall(400, () => {
+      particleFactory.victoryBurst(150, 200, particleColor);
+      particleFactory.victoryBurst(650, 200, particleColor);
+    });
+    this.time.delayedCall(800, () => {
+      particleFactory.victoryBurst(300, 120, particleColor);
+      particleFactory.victoryBurst(500, 120, particleColor);
+    });
   }
 
   private returnToLobby(room: any) {

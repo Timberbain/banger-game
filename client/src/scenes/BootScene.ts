@@ -23,7 +23,7 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     // Initialize AudioManager and generate all SFX from jsfxr
-    // Audio context will be unlocked by user clicks in LobbyScene
+    // Audio context will be unlocked by user click on "Click to Start" below
     const audioManager = new AudioManager();
     audioManager.init();
     this.registry.set('audioManager', audioManager);
@@ -88,25 +88,91 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    // Simple loading/title screen
-    this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+    // --- Solarpunk Title Screen ---
 
+    // Dark green background
+    this.add.rectangle(400, 300, 800, 600, 0x0d1f0d);
+
+    // Decorative golden sparkles (small circles at random positions)
+    const sparkleGfx = this.add.graphics();
+    sparkleGfx.fillStyle(0xd4a746, 0.4);
+    for (let i = 0; i < 30; i++) {
+      const sx = Phaser.Math.Between(40, 760);
+      const sy = Phaser.Math.Between(40, 560);
+      const sr = Phaser.Math.FloatBetween(1, 3);
+      sparkleGfx.fillCircle(sx, sy, sr);
+    }
+
+    // Vine-like decorative lines
+    const vineGfx = this.add.graphics();
+    vineGfx.lineStyle(1, 0x4a7c3f, 0.3);
+    // Left vine
+    vineGfx.beginPath();
+    vineGfx.moveTo(50, 100);
+    vineGfx.lineTo(60, 200);
+    vineGfx.lineTo(45, 300);
+    vineGfx.lineTo(65, 400);
+    vineGfx.lineTo(50, 500);
+    vineGfx.strokePath();
+    // Right vine
+    vineGfx.beginPath();
+    vineGfx.moveTo(750, 100);
+    vineGfx.lineTo(740, 200);
+    vineGfx.lineTo(755, 300);
+    vineGfx.lineTo(735, 400);
+    vineGfx.lineTo(750, 500);
+    vineGfx.strokePath();
+
+    // BANGER title -- large, golden, with green stroke
     this.add.text(
       this.cameras.main.centerX,
-      this.cameras.main.centerY - 40,
+      this.cameras.main.centerY - 60,
       'BANGER',
-      { fontSize: '48px', color: '#ffffff', fontFamily: 'Arial', fontStyle: 'bold' }
+      {
+        fontSize: '64px',
+        color: '#d4a746',
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#1a2e1a',
+        strokeThickness: 6,
+      }
     ).setOrigin(0.5);
 
+    // Subtitle
     this.add.text(
       this.cameras.main.centerX,
-      this.cameras.main.centerY + 20,
-      'Loading...',
-      { fontSize: '16px', color: '#aaaaaa', fontFamily: 'Arial' }
+      this.cameras.main.centerY,
+      'Asymmetric Arena Combat',
+      {
+        fontSize: '18px',
+        color: '#ffffff',
+        fontFamily: 'monospace',
+      }
     ).setOrigin(0.5);
 
-    // Transition to LobbyScene after brief delay
-    this.time.delayedCall(500, () => {
+    // Click to Start text (ensures audio context unlock via user interaction)
+    const clickText = this.add.text(
+      this.cameras.main.centerX,
+      this.cameras.main.centerY + 80,
+      'Click to Start',
+      {
+        fontSize: '22px',
+        color: '#4a7c3f',
+        fontFamily: 'monospace',
+      }
+    ).setOrigin(0.5);
+
+    // Pulsing alpha animation on click text
+    this.tweens.add({
+      targets: clickText,
+      alpha: 0.4,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Wait for user click to transition (unlocks audio context)
+    this.input.once('pointerdown', () => {
       this.scene.start('LobbyScene');
     });
   }

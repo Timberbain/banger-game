@@ -201,30 +201,62 @@ export class LobbyScene extends Phaser.Scene {
     sessionStorage.removeItem('bangerLobbyRoom');
     this.currentView = 'menu';
 
-    // Dark background
-    const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+    // Solarpunk dark green background
+    const bg = this.add.rectangle(400, 300, 800, 600, 0x0d1f0d);
     this.uiElements.push(bg);
 
-    // Title
-    const title = this.add.text(400, 150, 'BANGER', {
-      fontSize: '48px',
-      color: '#ffffff',
-      fontFamily: 'Arial',
-      fontStyle: 'bold'
+    // Subtle vine decorations
+    const vineGfx = this.add.graphics();
+    vineGfx.lineStyle(1, 0x4a7c3f, 0.25);
+    vineGfx.beginPath();
+    vineGfx.moveTo(30, 80); vineGfx.lineTo(40, 180); vineGfx.lineTo(25, 280);
+    vineGfx.lineTo(45, 380); vineGfx.lineTo(30, 480);
+    vineGfx.strokePath();
+    vineGfx.beginPath();
+    vineGfx.moveTo(770, 80); vineGfx.lineTo(760, 180); vineGfx.lineTo(775, 280);
+    vineGfx.lineTo(755, 380); vineGfx.lineTo(770, 480);
+    vineGfx.strokePath();
+    // Small golden solar dots
+    vineGfx.fillStyle(0xd4a746, 0.3);
+    for (let i = 0; i < 15; i++) {
+      vineGfx.fillCircle(
+        Phaser.Math.Between(60, 740),
+        Phaser.Math.Between(60, 540),
+        Phaser.Math.FloatBetween(1, 2)
+      );
+    }
+    this.uiElements.push(vineGfx);
+
+    // Title -- golden with green stroke
+    const title = this.add.text(400, 120, 'BANGER', {
+      fontSize: '52px',
+      color: '#d4a746',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      stroke: '#1a2e1a',
+      strokeThickness: 4,
     }).setOrigin(0.5);
     this.uiElements.push(title);
 
-    // Menu buttons
+    // Decorative line under title
+    const lineGfx = this.add.graphics();
+    lineGfx.lineStyle(2, 0xd4a746, 0.5);
+    lineGfx.lineBetween(250, 150, 550, 150);
+    this.uiElements.push(lineGfx);
+
+    // Menu buttons -- solarpunk themed
     const buttons = [
-      { text: 'Create Private Room', color: 0x0066cc, y: 260, handler: () => this.createPrivateRoom() },
-      { text: 'Join Private Room', color: 0x0066cc, y: 330, handler: () => this.showJoinInput() },
-      { text: 'Find Match', color: 0x00aa44, y: 400, handler: () => this.showRoleSelectForMatchmaking() },
+      { text: 'Create Private Room', color: 0x2d5a2d, hoverColor: 0x3d7a3d, y: 220, handler: () => this.createPrivateRoom() },
+      { text: 'Join Private Room', color: 0x2d5a2d, hoverColor: 0x3d7a3d, y: 290, handler: () => this.showJoinInput() },
+      { text: 'Find Match', color: 0x8b6d3c, hoverColor: 0xab8d5c, y: 360, handler: () => this.showRoleSelectForMatchmaking() },
+      { text: 'How to Play', color: 0x2a4a5a, hoverColor: 0x3a6a7a, y: 430, handler: () => this.scene.start('HelpScene') },
     ];
 
     buttons.forEach(btn => {
       const button = this.add.text(400, btn.y, btn.text, {
-        fontSize: '24px',
+        fontSize: '22px',
         color: '#ffffff',
+        fontFamily: 'monospace',
         backgroundColor: `#${btn.color.toString(16).padStart(6, '0')}`,
         padding: { x: 24, y: 12 }
       })
@@ -232,8 +264,7 @@ export class LobbyScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
 
       button.on('pointerover', () => {
-        const brighterColor = btn.color + 0x002222;
-        button.setBackgroundColor(`#${brighterColor.toString(16).padStart(6, '0')}`);
+        button.setBackgroundColor(`#${btn.hoverColor.toString(16).padStart(6, '0')}`);
       });
       button.on('pointerout', () => {
         button.setBackgroundColor(`#${btn.color.toString(16).padStart(6, '0')}`);
@@ -613,8 +644,8 @@ export class LobbyScene extends Phaser.Scene {
     this.selectedRole = null;
     this.currentView = 'lobby';
 
-    // Background
-    const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
+    // Solarpunk dark green background
+    const bg = this.add.rectangle(400, 300, 800, 600, 0x0d1f0d);
     this.uiElements.push(bg);
 
     // Room code display -- use listener because state may not be synced yet
@@ -741,7 +772,8 @@ export class LobbyScene extends Phaser.Scene {
     const titleY = this.room.state.isPrivate ? 100 : 60;
     const title = this.add.text(400, titleY, 'Select Character', {
       fontSize: '22px',
-      color: '#ffffff',
+      color: '#d4a746',
+      fontFamily: 'monospace',
       fontStyle: 'bold'
     }).setOrigin(0.5);
     this.uiElements.push(title);
@@ -760,20 +792,23 @@ export class LobbyScene extends Phaser.Scene {
     characters.forEach((char, index) => {
       const x = startX + index * spacing;
 
-      // Character panel background
-      const panel = this.add.rectangle(x, panelY, 140, 120, 0x333333);
-      panel.setStrokeStyle(2, 0x666666);
+      // Character panel background -- solarpunk styled
+      const panel = this.add.rectangle(x, panelY, 140, 120, 0x1a2e1a);
+      panel.setStrokeStyle(2, 0x4a7c3f);
       panel.setInteractive({ useHandCursor: true });
       this.uiElements.push(panel);
 
-      // Character color square
-      const colorSquare = this.add.rectangle(x, panelY - 15, 60, 60, char.color);
-      this.uiElements.push(colorSquare);
+      // Character sprite (idle animation) instead of colored square
+      const sprite = this.add.sprite(x, panelY - 15, char.role);
+      sprite.play(`${char.role}-idle`);
+      sprite.setScale(2);
+      this.uiElements.push(sprite);
 
       // Character name
       const nameText = this.add.text(x, panelY + 30, char.name, {
         fontSize: '16px',
         color: '#ffffff',
+        fontFamily: 'monospace',
         fontStyle: 'bold'
       }).setOrigin(0.5);
       this.uiElements.push(nameText);
@@ -781,7 +816,8 @@ export class LobbyScene extends Phaser.Scene {
       // Character description
       const descText = this.add.text(x, panelY + 50, char.desc, {
         fontSize: '12px',
-        color: '#aaaaaa'
+        color: '#aaaaaa',
+        fontFamily: 'monospace'
       }).setOrigin(0.5);
       this.uiElements.push(descText);
 
@@ -802,17 +838,17 @@ export class LobbyScene extends Phaser.Scene {
           panel.setStrokeStyle(4, 0x00ff00);
         } else if (!isAvailable) {
           panel.setAlpha(0.5);
-          colorSquare.setAlpha(0.5);
+          sprite.setAlpha(0.5);
           nameText.setAlpha(0.5);
           descText.setAlpha(0.5);
-          panel.setStrokeStyle(2, 0x666666);
+          panel.setStrokeStyle(2, 0x4a7c3f);
           panel.disableInteractive();
         } else {
           panel.setAlpha(1);
-          colorSquare.setAlpha(1);
+          sprite.setAlpha(1);
           nameText.setAlpha(1);
           descText.setAlpha(1);
-          panel.setStrokeStyle(2, 0x666666);
+          panel.setStrokeStyle(2, 0x4a7c3f);
           panel.setInteractive({ useHandCursor: true });
         }
       };
