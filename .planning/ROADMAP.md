@@ -152,16 +152,20 @@ Plans:
   4. Controls tutorial/help screen accessible from menu
   5. Connection quality indicator visible during gameplay
   6. Pixel art sprites and tileset with solarpunk aesthetic exist
-**Plans:** 7 plans
+**Plans:** 11 plans (8 gap closure)
 
 Plans:
-- [ ] 06-01-PLAN.md -- Server match timer, kill broadcast, ping handler, client config
-- [ ] 06-02-PLAN.md -- Pixel art assets (spritesheets, tilesets, particles) and sprite integration
-- [ ] 06-03-PLAN.md -- HUD Scene overlay (health, timer, kill feed, cooldown, ping, role identity)
-- [ ] 06-04-PLAN.md -- Particle effects and visual feedback (flash, trails, speed lines, explosions)
-- [ ] 06-05-PLAN.md -- Audio system (jsfxr SFX, music, volume controls)
-- [ ] 06-06-PLAN.md -- Help screen, lobby art polish, victory screen enhancement
-- [ ] 06-07-PLAN.md -- Visual verification checkpoint (human-verify)
+- [x] 06-01-PLAN.md — Server match timer, kill broadcast, ping handler, client config
+- [x] 06-02-PLAN.md — Pixel art assets (spritesheets, tilesets, particles) and sprite integration
+- [x] 06-03-PLAN.md — HUD Scene overlay (health, timer, kill feed, cooldown, ping, role identity)
+- [x] 06-04-PLAN.md — Particle effects and visual feedback (flash, trails, speed lines, explosions)
+- [x] 06-05-PLAN.md — Audio system (jsfxr SFX, music, volume controls)
+- [x] 06-06-PLAN.md — Help screen, lobby art polish, victory screen enhancement
+- [x] 06-07-PLAN.md — Visual verification checkpoint (human-verify)
+- [x] 06-08-PLAN.md — Gap closure: Wall impact particles + cooldown bar position
+- [x] 06-09-PLAN.md — Gap closure: Character color themes (Paran yellow, Faran red, Baran green)
+- [x] 06-10-PLAN.md — Gap closure: Map redesign for Paran viability (3+ tile corridors)
+- [ ] 06-11-PLAN.md — Gap closure: UAT issues (shoot sound, HUD positions, guardian sounds, button click)
 
 ## Progress
 
@@ -176,8 +180,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4. Match Lifecycle & Maps | 3/3 | ✓ Complete | 2026-02-10 |
 | 5. Multiplayer Lobbies | 13/13 | ✓ Complete | 2026-02-11 |
 | 5.1 Arena Collisions & Contact Kill | 4/4 | ✓ Complete | 2026-02-12 |
-| 6. UX Polish | 0/TBD | Not started | - |
+| 6. UX Polish | 10/11 | In Progress | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-12 (Phase 05.1 gap closure — collision boundary fix)*
+*Last updated: 2026-02-12 (Phase 6 gap closure planning — UAT issues)*
