@@ -13,7 +13,7 @@ export const PHYSICS = {
 
 export const ARENA = {
   width: 800,
-  height: 600,
+  height: 608, // 19 tiles x 32px = 608 (matches actual map pixel dimensions)
 };
 
 export const NETWORK = {

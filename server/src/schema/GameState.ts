@@ -1,6 +1,7 @@
 import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema";
 import { InputState } from "../../../shared/physics";
 import { Projectile } from "./Projectile";
+import { ObstacleState } from "./Obstacle";
 
 export enum MatchState {
   WAITING = "waiting",
@@ -44,4 +45,5 @@ export class GameState extends Schema {
   @type("number") matchEndTime: number = 0;
   @type({ map: PlayerStats }) matchStats = new MapSchema<PlayerStats>();
   @type("string") winner: string = "";
+  @type({ map: ObstacleState }) obstacles = new MapSchema<ObstacleState>();
 }
