@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 5 COMPLETE — Next: Phase 6 (UX Polish)
+**Current focus:** Phase 5.1 IN PROGRESS — Arena Collisions & Contact Kill
 
 ## Current Position
 
-Phase: 5 of 6 (Multiplayer Lobbies)
-Plan: 13 of 13
-Status: Complete
-Last activity: 2026-02-11 — Completed 05-13-PLAN.md (UAT v5 Gap Closure - Focus event listener race condition)
+Phase: 5.1 of 6 (Arena Collisions & Contact Kill)
+Plan: 1 of 3
+Status: In Progress
+Last activity: 2026-02-12 — Completed 05.1-01-PLAN.md (Shared Collision Infrastructure)
 
-Progress: [██████████] 100% (23 of 23 plans complete: All phases 1-5 complete)
+Progress: [███-------] 33% (24 of 26 plans complete: Phase 5.1 plan 1 of 3 done)
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [██████████] 100% (23 of 23 plans complete: All ph
 | Phase 05 P10 | 1.7 | 2 tasks | 3 files |
 | Phase 05 P12 | 2 | 2 tasks | 2 files |
 | Phase 05 P13 | 0.6 | 1 tasks | 1 files |
+| Phase 05.1 P01 | 7 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -128,10 +129,17 @@ Recent decisions affecting current work:
 - [Phase 05]: Global keyboard capture control via disableGlobalCapture/enableGlobalCapture for HTML input coexistence with Phaser
 - [Phase 05]: sessionStorage instead of localStorage for reconnection tokens to enable per-tab isolation
 - [Phase 05-13]: Register focus event listeners BEFORE calling focus() to catch synchronous focus event
+- [Phase 05.1-01]: Pure TypeScript collision grid with no Phaser/server deps for shared use
+- [Phase 05.1-01]: Axis-separated AABB resolution (X first with prevY, then Y with resolved X) for stable corners
+- [Phase 05.1-01]: Three obstacle tiers: Heavy(5HP brown), Medium(3HP orange), Light(2HP gold)
 
 ### Pending Todos
 
 None yet.
+
+### Roadmap Evolution
+
+- Phase 05.1 inserted after Phase 5: arenas should have obstacles and walls that players collides with. Also, Paran should be able to instantly kill Faran or Baran when he collides with them (URGENT)
 
 ### Blockers/Concerns
 
@@ -139,9 +147,17 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-11 (phase execution)
-Stopped at: Completed 05-13-PLAN.md (UAT v5 Gap Closure - Focus event listener race condition) — Phase 5: COMPLETE (13/13 plans)
-Resume file: .planning/phases/05-multiplayer-lobbies/05-13-SUMMARY.md
+Last session: 2026-02-12 (phase execution)
+Stopped at: Completed 05.1-01-PLAN.md (Shared Collision Infrastructure) — Phase 5.1: 1/3 plans done
+Resume file: .planning/phases/05.1-arenas-should-have-obstacles-and-walls-that-players-collides-with-also-paran-should-be-able-to-instantly-kill-faran-or-baran-when-he-collides-with-them/05.1-01-SUMMARY.md
+
+**Phase 5.1 In Progress (1 of 3):**
+- 05.1-01 Complete: Shared collision infrastructure
+  - CollisionGrid class: AABB-vs-tile collision with axis-separated resolution
+  - OBSTACLE_TILES constants: wall=3, heavy=4(5HP), medium=5(3HP), light=6(2HP)
+  - Tileset expanded with 3 visually distinct destructible obstacle tiles
+  - All 4 map JSONs updated with strategically placed obstacles (6-14 per map)
+  - Pure TypeScript, no Phaser/server deps -- shared by server and client prediction
 
 **Phase 5 Complete (13 of 13):**
 - 05-01 Complete: Server-side lobby infrastructure
