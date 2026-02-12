@@ -133,12 +133,13 @@ Plans:
   6. Paran instant-breaks any destructible obstacle on contact (wrecking ball mechanic)
   7. All 4 maps updated with strategic obstacle layouts
   8. Client prediction matches server collision (no jitter or wall-clipping)
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
 - [x] 05.1-01-PLAN.md -- Shared collision infrastructure, tileset expansion, map obstacle layouts
 - [x] 05.1-02-PLAN.md -- Server collision enforcement, contact kill, projectile-wall, destructible obstacles
 - [x] 05.1-03-PLAN.md -- Client prediction collision integration, obstacle destruction rendering
+- [ ] 05.1-04-PLAN.md -- Gap closure: Fix Math.floor boundary asymmetry in right/bottom collision resolution
 
 ### Phase 6: UX Polish
 **Goal**: Game has polished interface, audio, and onboarding
@@ -168,9 +169,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Combat System | 2/2 | ✓ Complete | 2026-02-10 |
 | 4. Match Lifecycle & Maps | 3/3 | ✓ Complete | 2026-02-10 |
 | 5. Multiplayer Lobbies | 13/13 | ✓ Complete | 2026-02-11 |
-| 5.1 Arena Collisions & Contact Kill | 3/3 | ✓ Complete | 2026-02-12 |
+| 5.1 Arena Collisions & Contact Kill | 3/4 | In Progress (gap closure) | - |
 | 6. UX Polish | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-12 (Phase 05.1 complete — Arena Collisions & Contact Kill)*
+*Last updated: 2026-02-12 (Phase 05.1 gap closure — collision boundary fix)*
