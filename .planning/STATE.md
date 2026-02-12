@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 5.1 IN PROGRESS — Arena Collisions & Contact Kill
+**Current focus:** Phase 05.1 COMPLETE — Next: Phase 6 (UX Polish)
 
 ## Current Position
 

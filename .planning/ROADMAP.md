@@ -136,9 +136,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05.1-01-PLAN.md -- Shared collision infrastructure, tileset expansion, map obstacle layouts
-- [ ] 05.1-02-PLAN.md -- Server collision enforcement, contact kill, projectile-wall, destructible obstacles
-- [ ] 05.1-03-PLAN.md -- Client prediction collision integration, obstacle destruction rendering
+- [x] 05.1-01-PLAN.md -- Shared collision infrastructure, tileset expansion, map obstacle layouts
+- [x] 05.1-02-PLAN.md -- Server collision enforcement, contact kill, projectile-wall, destructible obstacles
+- [x] 05.1-03-PLAN.md -- Client prediction collision integration, obstacle destruction rendering
 
 ### Phase 6: UX Polish
 **Goal**: Game has polished interface, audio, and onboarding
@@ -168,9 +168,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Combat System | 2/2 | ✓ Complete | 2026-02-10 |
 | 4. Match Lifecycle & Maps | 3/3 | ✓ Complete | 2026-02-10 |
 | 5. Multiplayer Lobbies | 13/13 | ✓ Complete | 2026-02-11 |
-| 5.1 Arena Collisions & Contact Kill | 0/3 | Not started | - |
+| 5.1 Arena Collisions & Contact Kill | 3/3 | ✓ Complete | 2026-02-12 |
 | 6. UX Polish | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-11 (Phase 6 removed — Accounts & Stats)*
+*Last updated: 2026-02-12 (Phase 05.1 complete — Arena Collisions & Contact Kill)*
