@@ -80,7 +80,6 @@ export class GameScene extends Phaser.Scene {
   // Audio
   private audioManager: AudioManager | null = null;
   private playerHealthCache: Map<string, number> = new Map();
-  private lastWhooshTime: number = 0;
 
   // Visual effects
   private particleFactory: ParticleFactory | null = null;
@@ -132,7 +131,6 @@ export class GameScene extends Phaser.Scene {
     this.finalStats = null;
     this.matchWinner = "";
     this.playerHealthCache = new Map();
-    this.lastWhooshTime = 0;
     this.remotePrevPos = new Map();
     this.currentTilesetKey = '';
     this.hudLaunched = false;
@@ -457,17 +455,16 @@ export class GameScene extends Phaser.Scene {
     })();
 
     if (hasInput || hasVelocity || input.fire) {
-      // Audio: play role-specific shoot sound on fire
-      if (input.fire && this.audioManager && this.localRole) {
-        this.audioManager.playSFX(`${this.localRole}_shoot`);
-      }
-
-      // Emit localFired event for HUDScene cooldown display (client-side approximation)
+      // Audio + HUD cooldown: only trigger when cooldown has elapsed (matches server fire rate)
       if (input.fire && this.localRole) {
         const cooldownMs = CHARACTERS[this.localRole]?.fireRate || 200;
         const now = Date.now();
         if (now - this.lastLocalFireTime >= cooldownMs) {
           this.lastLocalFireTime = now;
+          // Play role-specific shoot sound only when a projectile would actually be created
+          if (this.audioManager) {
+            this.audioManager.playSFX(`${this.localRole}_shoot`);
+          }
           this.events.emit('localFired', { fireTime: now, cooldownMs });
         }
       }
@@ -489,11 +486,6 @@ export class GameScene extends Phaser.Scene {
         if (wallSprite && this.particleFactory) {
           this.particleFactory.wallImpact(wallSprite.x, wallSprite.y);
         }
-      }
-      // Speed whoosh: play when Paran reaches high speed (rate-limited to once per second)
-      if (curSpeed > 200 && time - this.lastWhooshTime > 1000) {
-        if (this.audioManager) this.audioManager.playSFX('speed_whoosh');
-        this.lastWhooshTime = time;
       }
       // Speed lines: emit every 3 frames when Paran is fast
       this.speedLineFrameCounter++;

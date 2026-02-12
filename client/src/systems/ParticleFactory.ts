@@ -125,24 +125,24 @@ export class ParticleFactory {
 
   /**
    * Paran high speed effect -- speed lines behind the player.
-   * 3 particles emitted opposite to direction of movement.
+   * 5 gold particles emitted opposite to direction of movement.
    * Called per-frame when velocity exceeds threshold (rate-limited by caller).
    */
   speedLines(x: number, y: number, angle: number): void {
     // Emit particles in opposite direction of movement
     const oppositeAngleDeg = Phaser.Math.RadToDeg(angle) + 180;
     const emitter = this.scene.add.particles(x, y, 'particle', {
-      angle: { min: oppositeAngleDeg - 15, max: oppositeAngleDeg + 15 },
-      speed: { min: 100, max: 200 },
-      lifespan: 150,
-      scale: { start: 0.3, end: 0 },
-      alpha: { start: 0.4, end: 0 },
-      tint: 0xffffff,
+      angle: { min: oppositeAngleDeg - 20, max: oppositeAngleDeg + 20 },
+      speed: { min: 120, max: 250 },
+      lifespan: 250,
+      scale: { start: 0.8, end: 0 },
+      alpha: { start: 0.7, end: 0 },
+      tint: 0xffd700, // Paran gold
       emitting: false,
     });
     emitter.setDepth(9); // Below player sprites
-    emitter.explode(3);
-    this.scene.time.delayedCall(200, () => {
+    emitter.explode(5);
+    this.scene.time.delayedCall(300, () => {
       emitter.destroy();
     });
   }

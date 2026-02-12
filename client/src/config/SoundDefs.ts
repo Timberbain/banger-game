@@ -211,20 +211,6 @@ const wall_impact = defaults({
   sound_vol: 0.2,
 });
 
-// Speed whoosh: Wind rushing -- noise, longer, fading
-const speed_whoosh = defaults({
-  wave_type: 3, // noise
-  p_env_attack: 0.1,
-  p_env_sustain: 0.2,
-  p_env_punch: 0,
-  p_env_decay: 0.3,
-  p_base_freq: 0.05,
-  p_freq_ramp: 0.05,
-  p_lpf_freq: 0.3,
-  p_hpf_freq: 0.05,
-  sound_vol: 0.1,
-});
-
 // ============================================================
 // UI SOUNDS
 // ============================================================
@@ -314,7 +300,6 @@ export const SOUND_DEFS: Record<string, SfxrParams> = {
   baran_death,
   // Movement
   wall_impact,
-  speed_whoosh,
   // UI
   button_click,
   countdown_beep,

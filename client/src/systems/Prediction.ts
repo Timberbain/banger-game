@@ -29,7 +29,10 @@ export class PredictionSystem {
   private localState: PlayerState;
   private role: string;
   private collisionGrid: CollisionGrid | null = null;
+  /** True only on the first frame of a new wall contact (rising edge). */
   private hadCollision: boolean = false;
+  /** Tracks whether the player was already against a wall last frame. */
+  private wasAgainstWall: boolean = false;
 
   constructor(initialState: PlayerState, role: string) {
     this.localState = { ...initialState, role };
@@ -78,8 +81,13 @@ export class PredictionSystem {
       const result = resolveCollisions(
         this.localState, COMBAT.playerRadius, this.collisionGrid, prevX, prevY
       );
-      if (result.hitX || result.hitY) {
-        this.hadCollision = true;
+      const hitWall = result.hitX || result.hitY;
+      if (hitWall) {
+        // Rising-edge detection: only signal hadCollision on the FIRST frame of contact
+        if (!this.wasAgainstWall) {
+          this.hadCollision = true;
+        }
+        this.wasAgainstWall = true;
         if (this.role === 'paran') {
           // Paran wall penalty: lose ALL velocity on any collision
           this.localState.vx = 0;
@@ -89,6 +97,8 @@ export class PredictionSystem {
           if (result.hitX) this.localState.vx = 0;
           if (result.hitY) this.localState.vy = 0;
         }
+      } else {
+        this.wasAgainstWall = false;
       }
     }
 
@@ -138,13 +148,13 @@ export class PredictionSystem {
       });
       updateFacingDirection(this.localState);
 
-      // Apply tile collision during replay
+      // Apply tile collision during replay (physics only -- do NOT set hadCollision
+      // because replay is historical, not a new collision event for effects)
       if (this.collisionGrid) {
         const result = resolveCollisions(
           this.localState, COMBAT.playerRadius, this.collisionGrid, prevX, prevY
         );
         if (result.hitX || result.hitY) {
-          this.hadCollision = true;
           if (this.role === 'paran') {
             this.localState.vx = 0;
             this.localState.vy = 0;
