@@ -225,7 +225,7 @@ const button_click = defaults({
   p_base_freq: 0.6,
   p_duty: 0.4,
   p_hpf_freq: 0.3,
-  sound_vol: 0.15,
+  sound_vol: 0.35,
 });
 
 // Countdown beep: Rising tone -- square wave, ascending frequency

@@ -707,6 +707,14 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Play shoot sound for remote projectiles (local player already plays via input handler)
+    if (this.audioManager && this.room && projectile.ownerId !== this.room.sessionId) {
+      const ownerPlayer = this.room.state.players.get(projectile.ownerId);
+      if (ownerPlayer && ownerPlayer.role) {
+        this.audioManager.playSFX(`${ownerPlayer.role}_shoot`);
+      }
+    }
+
     const sprite = this.add.sprite(projectile.x, projectile.y, 'projectiles', frameIndex);
     sprite.setDepth(5);
     this.projectileSprites.set(index, sprite);

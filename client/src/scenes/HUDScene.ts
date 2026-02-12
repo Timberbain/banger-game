@@ -558,7 +558,7 @@ export class HUDScene extends Phaser.Scene {
     const roleColor = ROLE_COLORS[this.localRole] || '#ffffff';
 
     // Large banner: "YOU ARE PARAN"
-    this.roleBanner = this.add.text(400, 280, `YOU ARE ${roleName}`, {
+    this.roleBanner = this.add.text(400, 200, `YOU ARE ${roleName}`, {
       fontSize: '48px',
       color: roleColor,
       fontStyle: 'bold',
@@ -599,7 +599,7 @@ export class HUDScene extends Phaser.Scene {
 
   private createSpectatorHUD(): void {
     // Hidden by default, shown when spectating
-    this.spectatorBar = this.add.text(400, 540, '', {
+    this.spectatorBar = this.add.text(400, 50, '', {
       fontSize: '16px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -612,7 +612,7 @@ export class HUDScene extends Phaser.Scene {
     this.spectatorBar.setDepth(250);
     this.spectatorBar.setVisible(false);
 
-    this.spectatorInstruction = this.add.text(400, 565, 'Press TAB to cycle', {
+    this.spectatorInstruction = this.add.text(400, 75, 'Press TAB to cycle', {
       fontSize: '12px',
       color: '#aaaaaa',
       stroke: '#000000',
