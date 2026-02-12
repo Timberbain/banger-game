@@ -60,6 +60,7 @@ Progress: [█████████░] 91% (34 of 34 plans complete: Phase 6
 | Phase 06 P06 | 4 | 2 tasks | 4 files |
 | Phase 06 P09 | 3 | 2 tasks | 8 files |
 | Phase 06 P08 | 2 | 2 tasks | 3 files |
+| Phase 06 P10 | 4 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,8 @@ Recent decisions affecting current work:
 - [Phase 06-06]: Character sprites with idle animation replace colored squares in lobby selection
 - [Phase 06-06]: Monospace font family for consistent solarpunk aesthetic across all scenes
 - [Phase 06]: Paran yellow #ffcc00 for Pac-Man identity, Faran red #ff4444 for ninja identity
+- [Phase 06]: Replace interior indestructible walls with destructible obstacles for Paran-viable map design
+- [Phase 06]: Minimum 3-tile-wide passages required in all maps for safe Paran cardinal movement
 
 ### Pending Todos
 
@@ -191,8 +194,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (gap closure execution)
-Stopped at: Completed 06-08 gap closure (Wall Impact + Cooldown Bar) — hadCollision flag, cooldown Y=538
-Resume file: .planning/phases/06-ux-polish/06-08-SUMMARY.md
+Stopped at: Completed 06-10 gap closure (Map Redesign for Paran Viability) — 3 maps redesigned with 3+ tile corridors
+Resume file: .planning/phases/06-ux-polish/06-10-SUMMARY.md
 
 **Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
