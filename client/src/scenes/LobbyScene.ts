@@ -463,8 +463,8 @@ export class LobbyScene extends Phaser.Scene {
 
     // Role buttons
     const roles = [
-      { role: 'paran', label: 'Paran (1v2)', color: 0xff4444, y: 230 },
-      { role: 'faran', label: 'Faran (Guardian)', color: 0x4488ff, y: 310 },
+      { role: 'paran', label: 'Paran (1v2)', color: 0xffcc00, y: 230 },
+      { role: 'faran', label: 'Faran (Guardian)', color: 0xff4444, y: 310 },
       { role: 'baran', label: 'Baran (Guardian)', color: 0x44ff88, y: 390 },
     ];
 
@@ -784,8 +784,8 @@ export class LobbyScene extends Phaser.Scene {
     const startX = 400 - spacing;
 
     const characters = [
-      { role: 'paran', name: 'Paran', color: 0xff4444, desc: 'Force - 150HP' },
-      { role: 'faran', name: 'Faran', color: 0x4488ff, desc: 'Guardian - 50HP' },
+      { role: 'paran', name: 'Paran', color: 0xffcc00, desc: 'Force - 150HP' },
+      { role: 'faran', name: 'Faran', color: 0xff4444, desc: 'Guardian - 50HP' },
       { role: 'baran', name: 'Baran', color: 0x44ff88, desc: 'Guardian - 50HP' },
     ];
 

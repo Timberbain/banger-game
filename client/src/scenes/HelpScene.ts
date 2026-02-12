@@ -66,7 +66,7 @@ export class HelpScene extends Phaser.Scene {
         role: 'paran',
         name: 'Paran',
         subtitle: 'The Force',
-        color: '#ff4444',
+        color: '#ffcc00',
         stats: 'HP: 150 | Dmg: 40 | Fire: 1/sec',
         details: [
           'Cardinal movement only',
@@ -83,7 +83,7 @@ export class HelpScene extends Phaser.Scene {
         role: 'faran',
         name: 'Faran',
         subtitle: 'Guardian',
-        color: '#4488ff',
+        color: '#ff4444',
         stats: 'HP: 50 | Dmg: 10 | Fire: 5/sec',
         details: [
           '8-directional movement',
@@ -176,8 +176,8 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(winTitle);
 
     const winConditions = [
-      { text: 'Paran wins: Eliminate both guardians', color: '#ff4444' },
-      { text: 'Guardians win: Eliminate Paran OR survive 5 minutes', color: '#4488ff' },
+      { text: 'Paran wins: Eliminate both guardians', color: '#ffcc00' },
+      { text: 'Guardians win: Eliminate Paran OR survive 5 minutes', color: '#ff4444' },
     ];
     winConditions.forEach((wc, i) => {
       const t = this.add.text(400, winY + 25 + i * 22, wc.text, {

@@ -4,14 +4,14 @@ import { CHARACTERS } from '../../../shared/characters';
 
 /** Role colors for consistent display */
 const ROLE_COLORS: Record<string, string> = {
-  paran: '#ff4444',
-  faran: '#4488ff',
+  paran: '#ffcc00',
+  faran: '#ff4444',
   baran: '#44cc66',
 };
 
 const ROLE_COLORS_NUM: Record<string, number> = {
-  paran: 0xff4444,
-  faran: 0x4488ff,
+  paran: 0xffcc00,
+  faran: 0xff4444,
   baran: 0x44cc66,
 };
 

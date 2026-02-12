@@ -19,8 +19,8 @@ const PROJECTILE_FRAME: Record<string, number> = {
 
 /** Map of role name to color tint for particles */
 const ROLE_COLOR: Record<string, number> = {
-  paran: 0xd4a746,  // gold
-  faran: 0x4488ff,  // blue
+  paran: 0xffd700,  // gold/yellow
+  faran: 0xff4444,  // red
   baran: 0x44cc66,  // green
 };
 
@@ -479,12 +479,13 @@ export class GameScene extends Phaser.Scene {
       this.prediction.sendInput(input, this.room);
     }
 
-    // Paran wall impact + speed effects (velocity drops to ~zero from non-zero)
+    // Paran wall impact + speed effects
     if (this.localRole === 'paran' && this.prediction) {
       const pState = this.prediction.getState();
-      const prevSpeed = Math.abs(this.prevPredictionVx) + Math.abs(this.prevPredictionVy);
       const curSpeed = Math.abs(pState.vx) + Math.abs(pState.vy);
-      if (prevSpeed > 30 && curSpeed < 1) {
+
+      // Wall impact: only trigger on actual tile collision (not direction changes or stops)
+      if (this.prediction.getHadCollision()) {
         // Audio: wall impact sound
         if (this.audioManager) this.audioManager.playSFX('wall_impact');
         // Visual: wall impact dust particles
@@ -507,8 +508,6 @@ export class GameScene extends Phaser.Scene {
           this.particleFactory.speedLines(speedSprite.x, speedSprite.y, angle);
         }
       }
-      this.prevPredictionVx = pState.vx;
-      this.prevPredictionVy = pState.vy;
     }
 
     // Update local player sprite from prediction state
@@ -732,11 +731,11 @@ export class GameScene extends Phaser.Scene {
 
     // Create projectile trail particle effect
     if (this.particleFactory) {
-      let trailColor = 0x4488ff; // default blue
+      let trailColor = 0xff4444; // default red (faran)
       if (this.room) {
         const ownerPlayer = this.room.state.players.get(projectile.ownerId);
         if (ownerPlayer && ownerPlayer.role) {
-          trailColor = ROLE_COLOR[ownerPlayer.role] || 0x4488ff;
+          trailColor = ROLE_COLOR[ownerPlayer.role] || 0xff4444;
         }
       }
       const trail = this.particleFactory.createTrail(sprite, trailColor);
