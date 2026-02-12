@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 05.1 COMPLETE (including gap closure) — Next: Phase 6 (UX Polish)
+**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Plan 1 of 7 complete
 
 ## Current Position
 
-Phase: 5.1 of 6 (Arena Collisions & Contact Kill)
-Plan: 4 of 4
-Status: Complete
-Last activity: 2026-02-12 — Completed 05.1-04-PLAN.md (Collision Boundary Fix - gap closure)
+Phase: 6 of 6 (UX Polish)
+Plan: 1 of 7
+Status: In Progress
+Last activity: 2026-02-12 — Completed 06-01-PLAN.md (Foundation Server & Client Config)
 
-Progress: [██████████] 100% (27 of 27 plans complete: Phase 5.1 COMPLETE with gap closure)
+Progress: [████------] 40% (28 of 34 plans complete: Phase 6 started)
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [██████████] 100% (27 of 27 plans complete: Phase 
 | Phase 05.1 P02 | 3 | 2 tasks | 4 files |
 | Phase 05.1 P03 | 3 | 2 tasks | 2 files |
 | Phase 05.1 P04 | 2 | 1 tasks | 1 files |
+| Phase 06 P01 | 2 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,10 @@ Recent decisions affecting current work:
 - [Phase 05.1-03]: Obstacle listeners guarded by state.obstacles existence check for forward compatibility
 - [Phase 05.1-04]: COLLISION_EPSILON (0.001) offset for right/bottom push-backs and tile range calcs to fix Math.floor boundary asymmetry
 - [Phase 05.1-04]: Epsilon only on RIGHT/DOWN directions; LEFT/UP already correct due to Math.floor rounding behavior
+- [Phase 06-01]: MATCH_DURATION_MS = 300000 (5 min) for aggressive Paran play
+- [Phase 06-01]: Kill broadcast uses player names/roles (not sessionIds) for display
+- [Phase 06-01]: No kill broadcast for disconnect deaths -- only combat kills
+- [Phase 06-01]: HUDScene transparent background via rgba(0,0,0,0) for overlay rendering
 
 ### Pending Todos
 
@@ -160,8 +165,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12 (phase execution)
-Stopped at: Completed 05.1-04-PLAN.md (Collision Boundary Fix - gap closure) — Phase 5.1: COMPLETE (4/4 plans)
-Resume file: .planning/phases/05.1-arenas-should-have-obstacles-and-walls-that-players-collides-with-also-paran-should-be-able-to-instantly-kill-faran-or-baran-when-he-collides-with-them/05.1-04-SUMMARY.md
+Stopped at: Completed 06-01-PLAN.md (Foundation Server & Client Config) — Phase 6: 1/7 plans
+Resume file: .planning/phases/06-ux-polish/06-01-SUMMARY.md
 
 **Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
