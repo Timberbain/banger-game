@@ -3,7 +3,9 @@ import { Client, Room } from 'colyseus.js';
 import { PredictionSystem } from '../systems/Prediction';
 import { InterpolationSystem } from '../systems/Interpolation';
 import { AudioManager } from '../systems/AudioManager';
+import { ParticleFactory } from '../systems/ParticleFactory';
 import { InputState } from '../../../shared/physics';
+import { CHARACTERS } from '../../../shared/characters';
 import { MAPS } from '../../../shared/maps';
 import { CollisionGrid } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS } from '../../../shared/obstacles';
@@ -13,6 +15,13 @@ const PROJECTILE_FRAME: Record<string, number> = {
   paran: 0,
   faran: 1,
   baran: 2,
+};
+
+/** Map of role name to color tint for particles */
+const ROLE_COLOR: Record<string, number> = {
+  paran: 0xd4a746,  // gold
+  faran: 0x4488ff,  // blue
+  baran: 0x44cc66,  // green
 };
 
 /** Map of map name to tileset key and image path */
@@ -75,11 +84,21 @@ export class GameScene extends Phaser.Scene {
   private prevPredictionVx: number = 0;
   private prevPredictionVy: number = 0;
 
+  // Visual effects
+  private particleFactory: ParticleFactory | null = null;
+  private prevHealth: Map<string, number> = new Map();
+  private projectileTrails: Map<number, Phaser.GameObjects.Particles.ParticleEmitter> = new Map();
+  private speedLineFrameCounter: number = 0;
+
   // Track previous position for remote player velocity estimation
   private remotePrevPos: Map<string, { x: number; y: number }> = new Map();
 
   // Current map tileset key for dynamic loading
   private currentTilesetKey: string = '';
+
+  // HUD scene tracking
+  private hudLaunched: boolean = false;
+  private lastLocalFireTime: number = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -120,6 +139,13 @@ export class GameScene extends Phaser.Scene {
     this.prevPredictionVy = 0;
     this.remotePrevPos = new Map();
     this.currentTilesetKey = '';
+    this.hudLaunched = false;
+    this.lastLocalFireTime = 0;
+    if (this.particleFactory) { this.particleFactory.destroy(); }
+    this.particleFactory = null;
+    this.prevHealth = new Map();
+    this.projectileTrails = new Map();
+    this.speedLineFrameCounter = 0;
 
     // Get AudioManager from registry (initialized in BootScene)
     this.audioManager = this.registry.get('audioManager') as AudioManager || null;
@@ -242,6 +268,10 @@ export class GameScene extends Phaser.Scene {
         // Clear reconnection token on match end
         sessionStorage.removeItem('bangerActiveRoom');
 
+        // Stop HUDScene before launching victory overlay
+        this.scene.stop('HUDScene');
+        this.hudLaunched = false;
+
         // Launch victory scene as overlay
         this.scene.launch("VictoryScene", {
           winner: data.winner,
@@ -329,12 +359,33 @@ export class GameScene extends Phaser.Scene {
       // Set initial spectator target to first alive player
       this.spectatorTarget = this.getNextAlivePlayer(null);
       this.statusText.setText('SPECTATING - Press Tab to cycle players');
+
+      // Emit localDied event for HUDScene
+      this.events.emit('localDied');
+
+      // Emit spectatorChanged for initial target
+      if (this.spectatorTarget) {
+        const targetPlayer = this.room.state.players.get(this.spectatorTarget);
+        this.events.emit('spectatorChanged', {
+          targetName: targetPlayer?.name || 'Unknown',
+          targetRole: targetPlayer?.role || 'unknown',
+        });
+      }
     }
 
     if (this.isSpectating && !this.matchEnded) {
       // Cycle through alive players with Tab key
       if (Phaser.Input.Keyboard.JustDown(this.tabKey)) {
         this.spectatorTarget = this.getNextAlivePlayer(this.spectatorTarget);
+
+        // Emit spectatorChanged for HUDScene
+        if (this.spectatorTarget) {
+          const targetPlayer = this.room.state.players.get(this.spectatorTarget);
+          this.events.emit('spectatorChanged', {
+            targetName: targetPlayer?.name || 'Unknown',
+            targetRole: targetPlayer?.role || 'unknown',
+          });
+        }
       }
 
       // Follow spectator target with camera
@@ -403,6 +454,16 @@ export class GameScene extends Phaser.Scene {
       // Audio: play role-specific shoot sound on fire
       if (input.fire && this.audioManager && this.localRole) {
         this.audioManager.playSFX(`${this.localRole}_shoot`);
+      }
+
+      // Emit localFired event for HUDScene cooldown display (client-side approximation)
+      if (input.fire && this.localRole) {
+        const cooldownMs = CHARACTERS[this.localRole]?.fireRate || 200;
+        const now = Date.now();
+        if (now - this.lastLocalFireTime >= cooldownMs) {
+          this.lastLocalFireTime = now;
+          this.events.emit('localFired', { fireTime: now, cooldownMs });
+        }
       }
 
       this.prediction.sendInput(input, this.room);
@@ -568,6 +629,16 @@ export class GameScene extends Phaser.Scene {
       if (this.collisionGrid) {
         this.prediction.setCollisionGrid(this.collisionGrid);
       }
+
+      // Launch HUDScene once when local player is identified and role is known
+      if (!this.hudLaunched && this.room) {
+        this.hudLaunched = true;
+        this.scene.launch('HUDScene', {
+          room: this.room,
+          localSessionId: this.room.sessionId,
+          localRole: this.localRole,
+        });
+      }
     } else {
       // Remote player: use interpolation
       this.remotePlayers.add(sessionId);
@@ -634,6 +705,19 @@ export class GameScene extends Phaser.Scene {
       vy: projectile.vy,
     });
 
+    // Create projectile trail particle effect
+    if (this.particleFactory) {
+      let trailColor = 0x4488ff; // default blue
+      if (this.room) {
+        const ownerPlayer = this.room.state.players.get(projectile.ownerId);
+        if (ownerPlayer && ownerPlayer.role) {
+          trailColor = ROLE_COLOR[ownerPlayer.role] || 0x4488ff;
+        }
+      }
+      const trail = this.particleFactory.createTrail(sprite, trailColor);
+      this.projectileTrails.set(index, trail);
+    }
+
     projectile.onChange(() => {
       // Server correction: snap to authoritative position
       sprite.x = projectile.x;
@@ -653,6 +737,22 @@ export class GameScene extends Phaser.Scene {
   private removeProjectileSprite(key: string): void {
     const index = parseInt(key, 10);
     const sprite = this.projectileSprites.get(index);
+
+    // Projectile impact particles at last known position
+    if (sprite && this.particleFactory) {
+      // Determine color from velocity map (trail may already know)
+      const trail = this.projectileTrails.get(index);
+      // Use a default spark color; the trail tint is already set per-role
+      this.particleFactory.projectileImpact(sprite.x, sprite.y, 0xffaa44);
+    }
+
+    // Clean up trail emitter
+    const trail = this.projectileTrails.get(index);
+    if (trail && this.particleFactory) {
+      this.particleFactory.destroyTrail(trail);
+      this.projectileTrails.delete(index);
+    }
+
     if (sprite) {
       sprite.destroy();
       this.projectileSprites.delete(index);
@@ -711,6 +811,16 @@ export class GameScene extends Phaser.Scene {
       // Re-attach state listeners
       this.attachRoomListeners();
 
+      // Re-launch HUDScene after reconnection if it was stopped
+      if (!this.hudLaunched && this.localRole) {
+        this.hudLaunched = true;
+        this.scene.launch('HUDScene', {
+          room: this.room,
+          localSessionId: this.room.sessionId,
+          localRole: this.localRole,
+        });
+      }
+
       // Update status
       this.statusText.setText(`Reconnected: ${room.sessionId}`);
 
@@ -721,14 +831,35 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePlayerChange(player: any, sessionId: string, isLocal: boolean) {
-    // Audio: detect health changes for hit/death sounds
-    if (this.audioManager && player.role) {
+    // Audio + visual effects: detect health changes for hit/death
+    if (player.role) {
       const prevHealth = this.playerHealthCache.get(sessionId);
       if (prevHealth !== undefined && player.health < prevHealth) {
+        const sprite = this.playerSprites.get(sessionId);
+        const roleColor = ROLE_COLOR[player.role] || 0xffffff;
+
         if (player.health <= 0) {
-          this.audioManager.playSFX(`${player.role}_death`);
+          // Death: audio + explosion particles
+          if (this.audioManager) this.audioManager.playSFX(`${player.role}_death`);
+          if (sprite && this.particleFactory) {
+            this.particleFactory.deathExplosion(sprite.x, sprite.y, roleColor);
+          }
         } else {
-          this.audioManager.playSFX(`${player.role}_hit`);
+          // Damage: audio + sprite flash + hit burst
+          if (this.audioManager) this.audioManager.playSFX(`${player.role}_hit`);
+          if (sprite && this.particleFactory) {
+            this.particleFactory.hitBurst(sprite.x, sprite.y, roleColor);
+          }
+          // Sprite flash: white -> red -> clear
+          if (sprite) {
+            sprite.setTintFill(0xffffff);
+            this.time.delayedCall(100, () => {
+              if (sprite.active) sprite.setTint(0xff0000);
+            });
+            this.time.delayedCall(200, () => {
+              if (sprite.active) sprite.clearTint();
+            });
+          }
         }
       }
       this.playerHealthCache.set(sessionId, player.health);
@@ -859,6 +990,10 @@ export class GameScene extends Phaser.Scene {
 
       sessionStorage.removeItem('bangerActiveRoom');
 
+      // Stop HUDScene before launching victory overlay (reconnect path)
+      this.scene.stop('HUDScene');
+      this.hudLaunched = false;
+
       this.scene.launch("VictoryScene", {
         winner: data.winner,
         stats: data.stats,
@@ -940,6 +1075,10 @@ export class GameScene extends Phaser.Scene {
     this.statusText.setText(message);
     sessionStorage.removeItem('bangerActiveRoom');
 
+    // Stop HUDScene before transitioning to lobby
+    this.scene.stop('HUDScene');
+    this.hudLaunched = false;
+
     this.time.delayedCall(3000, () => {
       this.scene.start('LobbyScene');
     });
@@ -990,6 +1129,9 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+
+    // Initialize particle effects after tilemap is ready
+    this.particleFactory = new ParticleFactory(this);
 
     console.log(`Tilemap ${mapKey} created successfully`);
   }
