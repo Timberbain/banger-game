@@ -272,6 +272,16 @@ export class GameScene extends Phaser.Scene {
         this.scene.stop('HUDScene');
         this.hudLaunched = false;
 
+        // Victory/defeat particle burst
+        if (this.particleFactory && this.room) {
+          const localStats = data.stats[this.room.sessionId];
+          const localRole = localStats?.role || '';
+          const didWin = (data.winner === 'paran' && localRole === 'paran') ||
+                         (data.winner === 'guardians' && localRole !== 'paran');
+          const burstColor = didWin ? 0x00ff00 : 0xff0000;
+          this.particleFactory.victoryBurst(400, 300, burstColor);
+        }
+
         // Launch victory scene as overlay
         this.scene.launch("VictoryScene", {
           winner: data.winner,
@@ -469,18 +479,33 @@ export class GameScene extends Phaser.Scene {
       this.prediction.sendInput(input, this.room);
     }
 
-    // Audio: Paran wall impact detection (velocity drops to ~zero from non-zero)
-    if (this.localRole === 'paran' && this.audioManager && this.prediction) {
+    // Paran wall impact + speed effects (velocity drops to ~zero from non-zero)
+    if (this.localRole === 'paran' && this.prediction) {
       const pState = this.prediction.getState();
       const prevSpeed = Math.abs(this.prevPredictionVx) + Math.abs(this.prevPredictionVy);
       const curSpeed = Math.abs(pState.vx) + Math.abs(pState.vy);
       if (prevSpeed > 30 && curSpeed < 1) {
-        this.audioManager.playSFX('wall_impact');
+        // Audio: wall impact sound
+        if (this.audioManager) this.audioManager.playSFX('wall_impact');
+        // Visual: wall impact dust particles
+        const wallSprite = this.playerSprites.get(this.room.sessionId);
+        if (wallSprite && this.particleFactory) {
+          this.particleFactory.wallImpact(wallSprite.x, wallSprite.y);
+        }
       }
       // Speed whoosh: play when Paran reaches high speed (rate-limited to once per second)
       if (curSpeed > 200 && time - this.lastWhooshTime > 1000) {
-        this.audioManager.playSFX('speed_whoosh');
+        if (this.audioManager) this.audioManager.playSFX('speed_whoosh');
         this.lastWhooshTime = time;
+      }
+      // Speed lines: emit every 3 frames when Paran is fast
+      this.speedLineFrameCounter++;
+      if (curSpeed > 200 && this.particleFactory && this.speedLineFrameCounter % 3 === 0) {
+        const speedSprite = this.playerSprites.get(this.room.sessionId);
+        if (speedSprite) {
+          const angle = Math.atan2(pState.vy, pState.vx);
+          this.particleFactory.speedLines(speedSprite.x, speedSprite.y, angle);
+        }
       }
       this.prevPredictionVx = pState.vx;
       this.prevPredictionVy = pState.vy;
@@ -993,6 +1018,16 @@ export class GameScene extends Phaser.Scene {
       // Stop HUDScene before launching victory overlay (reconnect path)
       this.scene.stop('HUDScene');
       this.hudLaunched = false;
+
+      // Victory/defeat particle burst (reconnect path)
+      if (this.particleFactory && this.room) {
+        const localStats = data.stats[this.room.sessionId];
+        const localRole = localStats?.role || '';
+        const didWin = (data.winner === 'paran' && localRole === 'paran') ||
+                       (data.winner === 'guardians' && localRole !== 'paran');
+        const burstColor = didWin ? 0x00ff00 : 0xff0000;
+        this.particleFactory.victoryBurst(400, 300, burstColor);
+      }
 
       this.scene.launch("VictoryScene", {
         winner: data.winner,
