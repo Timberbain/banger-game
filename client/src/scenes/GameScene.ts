@@ -5,6 +5,8 @@ import { InterpolationSystem } from '../systems/Interpolation';
 import { InputState } from '../../../shared/physics';
 import { CHARACTERS } from '../../../shared/characters';
 import { MAPS } from '../../../shared/maps';
+import { CollisionGrid } from '../../../shared/collisionGrid';
+import { OBSTACLE_TILE_IDS } from '../../../shared/obstacles';
 
 export class GameScene extends Phaser.Scene {
   private client!: Client;
@@ -38,6 +40,10 @@ export class GameScene extends Phaser.Scene {
   private healthBars: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private eliminatedTexts: Map<string, Phaser.GameObjects.Text> = new Map();
   private dcLabels: Map<string, Phaser.GameObjects.Text> = new Map();
+
+  // Collision grid for client prediction
+  private collisionGrid: CollisionGrid | null = null;
+  private wallsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
 
   // Spectator mode
   private spectatorTarget: string | null = null;
@@ -74,6 +80,8 @@ export class GameScene extends Phaser.Scene {
     this.directionPressOrder = [];
     this.prevKeyState = { left: false, right: false, up: false, down: false };
     this.localRole = '';
+    this.collisionGrid = null;
+    this.wallsLayer = null;
     this.spectatorTarget = null;
     this.isSpectating = false;
     this.matchEnded = false;
@@ -263,6 +271,11 @@ export class GameScene extends Phaser.Scene {
             vy: player.vy || 0,
             angle: player.angle || 0,
           }, role);
+
+          // Pass collision grid if tilemap already loaded (race condition handling)
+          if (this.collisionGrid) {
+            this.prediction.setCollisionGrid(this.collisionGrid);
+          }
         } else {
           // Remote player: use interpolation
           this.remotePlayers.add(sessionId);
@@ -347,6 +360,25 @@ export class GameScene extends Phaser.Scene {
         }
         this.projectileVelocities.delete(index);
       });
+
+      // Listen for obstacle state changes (destruction)
+      if (this.room.state.obstacles) {
+        this.room.state.obstacles.onAdd((obstacle: any, key: string) => {
+          obstacle.onChange(() => {
+            if (obstacle.destroyed) {
+              // Update collision grid for prediction (shared reference)
+              if (this.collisionGrid) {
+                this.collisionGrid.clearTile(obstacle.tileX, obstacle.tileY);
+              }
+
+              // Update tilemap visual: remove obstacle tile
+              if (this.wallsLayer) {
+                this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
+              }
+            }
+          });
+        });
+      }
     } catch (e) {
       console.error('Connection failed:', e);
       this.statusText.setText('Connection failed - is server running?');
@@ -796,6 +828,11 @@ export class GameScene extends Phaser.Scene {
           vx: player.vx || 0, vy: player.vy || 0,
           angle: player.angle || 0,
         }, role);
+
+        // Pass collision grid if tilemap already loaded (race condition handling)
+        if (this.collisionGrid) {
+          this.prediction.setCollisionGrid(this.collisionGrid);
+        }
       } else {
         this.remotePlayers.add(sessionId);
       }
@@ -854,6 +891,31 @@ export class GameScene extends Phaser.Scene {
       if (sprite) { sprite.destroy(); this.projectileSprites.delete(index); }
       this.projectileVelocities.delete(index);
     });
+
+    // Re-attach obstacle listeners for reconnection
+    if (this.room.state.obstacles) {
+      this.room.state.obstacles.onAdd((obstacle: any, key: string) => {
+        // Handle already-destroyed obstacles (reconnection catches up)
+        if (obstacle.destroyed) {
+          if (this.collisionGrid) {
+            this.collisionGrid.clearTile(obstacle.tileX, obstacle.tileY);
+          }
+          if (this.wallsLayer) {
+            this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
+          }
+        }
+        obstacle.onChange(() => {
+          if (obstacle.destroyed) {
+            if (this.collisionGrid) {
+              this.collisionGrid.clearTile(obstacle.tileX, obstacle.tileY);
+            }
+            if (this.wallsLayer) {
+              this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
+            }
+          }
+        });
+      });
+    }
   }
 
   private returnToLobby(message: string) {
@@ -883,6 +945,31 @@ export class GameScene extends Phaser.Scene {
     }
 
     wallsLayer.setCollisionByExclusion([-1, 0]);
+
+    // Store walls layer reference for obstacle destruction rendering
+    this.wallsLayer = wallsLayer;
+
+    // Build collision grid from map data for client prediction
+    const mapData = this.cache.tilemap.get(mapKey);
+    if (mapData) {
+      const wallLayerData = mapData.data.layers.find((l: any) => l.name === 'Walls');
+      if (wallLayerData) {
+        this.collisionGrid = new CollisionGrid(
+          wallLayerData.data,
+          mapData.data.width,
+          mapData.data.height,
+          mapData.data.tilewidth,
+          OBSTACLE_TILE_IDS.destructible,
+          OBSTACLE_TILE_IDS.indestructible
+        );
+
+        // Pass collision grid to prediction system
+        if (this.prediction) {
+          this.prediction.setCollisionGrid(this.collisionGrid);
+        }
+      }
+    }
+
     console.log(`Tilemap ${mapKey} created successfully`);
   }
 }
