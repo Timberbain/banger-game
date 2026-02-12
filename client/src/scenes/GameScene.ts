@@ -4,16 +4,31 @@ import { PredictionSystem } from '../systems/Prediction';
 import { InterpolationSystem } from '../systems/Interpolation';
 import { AudioManager } from '../systems/AudioManager';
 import { InputState } from '../../../shared/physics';
-import { CHARACTERS } from '../../../shared/characters';
 import { MAPS } from '../../../shared/maps';
 import { CollisionGrid } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS } from '../../../shared/obstacles';
 
+/** Map of role name to projectile spritesheet frame index */
+const PROJECTILE_FRAME: Record<string, number> = {
+  paran: 0,
+  faran: 1,
+  baran: 2,
+};
+
+/** Map of map name to tileset key and image path */
+const MAP_TILESET_INFO: Record<string, { key: string; image: string; name: string }> = {
+  test_arena: { key: 'tileset_ruins', image: 'tilesets/solarpunk_ruins.png', name: 'solarpunk_ruins' },
+  corridor_chaos: { key: 'tileset_living', image: 'tilesets/solarpunk_living.png', name: 'solarpunk_living' },
+  cross_fire: { key: 'tileset_tech', image: 'tilesets/solarpunk_tech.png', name: 'solarpunk_tech' },
+  pillars: { key: 'tileset_mixed', image: 'tilesets/solarpunk_mixed.png', name: 'solarpunk_mixed' },
+};
+
 export class GameScene extends Phaser.Scene {
   private client!: Client;
   private room: Room | null = null;
-  private playerSprites: Map<string, Phaser.GameObjects.Rectangle> = new Map();
-  private playerLabels: Map<string, Phaser.GameObjects.Text> = new Map();
+  private playerSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+  private playerRoles: Map<string, string> = new Map();
+  private playerAnimKeys: Map<string, string> = new Map();
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
@@ -36,9 +51,8 @@ export class GameScene extends Phaser.Scene {
   private localRole: string = '';
 
   // Combat rendering
-  private projectileSprites: Map<number, Phaser.GameObjects.Arc> = new Map();
+  private projectileSprites: Map<number, Phaser.GameObjects.Sprite> = new Map();
   private projectileVelocities: Map<number, { vx: number; vy: number }> = new Map();
-  private healthBars: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private eliminatedTexts: Map<string, Phaser.GameObjects.Text> = new Map();
   private dcLabels: Map<string, Phaser.GameObjects.Text> = new Map();
 
@@ -61,14 +75,19 @@ export class GameScene extends Phaser.Scene {
   private prevPredictionVx: number = 0;
   private prevPredictionVy: number = 0;
 
+  // Track previous position for remote player velocity estimation
+  private remotePrevPos: Map<string, { x: number; y: number }> = new Map();
+
+  // Current map tileset key for dynamic loading
+  private currentTilesetKey: string = '';
+
   constructor() {
     super({ key: 'GameScene' });
   }
 
   preload() {
-    // Tileset image is always the same — load it here
-    this.load.image('tiles', 'tilesets/placeholder.png');
     // Tilemap JSON loaded dynamically in create() after receiving mapName from server
+    // Tileset image also loaded dynamically per-map
   }
 
   async create(data?: { room?: Room }) {
@@ -79,10 +98,10 @@ export class GameScene extends Phaser.Scene {
     this.interpolation = new InterpolationSystem();
     this.remotePlayers = new Set();
     this.playerSprites = new Map();
-    this.playerLabels = new Map();
+    this.playerRoles = new Map();
+    this.playerAnimKeys = new Map();
     this.projectileSprites = new Map();
     this.projectileVelocities = new Map();
-    this.healthBars = new Map();
     this.eliminatedTexts = new Map();
     this.dcLabels = new Map();
     this.directionPressOrder = [];
@@ -99,6 +118,8 @@ export class GameScene extends Phaser.Scene {
     this.lastWhooshTime = 0;
     this.prevPredictionVx = 0;
     this.prevPredictionVy = 0;
+    this.remotePrevPos = new Map();
+    this.currentTilesetKey = '';
 
     // Get AudioManager from registry (initialized in BootScene)
     this.audioManager = this.registry.get('audioManager') as AudioManager || null;
@@ -165,6 +186,13 @@ export class GameScene extends Phaser.Scene {
         const mapKey = mapData?.name || "test_arena";
 
         console.log(`Loading map: ${mapName} from ${mapFile}`);
+
+        // Load per-map tileset image
+        const tilesetInfo = MAP_TILESET_INFO[mapKey] || MAP_TILESET_INFO.test_arena;
+        this.currentTilesetKey = tilesetInfo.key;
+        if (!this.textures.exists(tilesetInfo.key)) {
+          this.load.image(tilesetInfo.key, tilesetInfo.image);
+        }
 
         // Load the tilemap JSON dynamically
         this.load.tilemapTiledJSON(mapKey, mapFile);
@@ -243,148 +271,22 @@ export class GameScene extends Phaser.Scene {
       // Listen for players joining
       this.room.state.players.onAdd((player: any, sessionId: string) => {
         console.log('Player joined:', sessionId);
-
-        const isLocal = sessionId === this.room!.sessionId;
-
-        // Determine initial role-based visuals
-        const role = player.role || 'faran'; // Default to faran if role not yet assigned
-        const isParan = role === 'paran';
-        const size = isParan ? 32 : 24;
-        let color: number;
-        if (isParan) {
-          color = 0xff4444; // Red for Paran
-        } else {
-          color = isLocal ? 0x00ff88 : 0x4488ff; // Green for local guardian, blue for remote
-        }
-
-        // Create a colored rectangle as placeholder player sprite
-        const rect = this.add.rectangle(player.x, player.y, size, size, color);
-        rect.setDepth(10); // Above tilemap
-        this.playerSprites.set(sessionId, rect);
-
-        // Create health bar above player
-        const healthBar = this.add.graphics();
-        healthBar.setDepth(11);
-        this.healthBars.set(sessionId, healthBar);
-        this.updateHealthBar(sessionId, player.health, role);
-
-        // Add player name text above sprite
-        const nameText = this.add.text(
-          player.x,
-          player.y - 20,
-          player.name || sessionId.slice(0, 6),
-          {
-            fontSize: '12px',
-            color: '#ffffff',
-          }
-        );
-        nameText.setOrigin(0.5);
-        nameText.setDepth(11);
-        this.playerLabels.set(sessionId, nameText);
-
-        // Common onChange handler for role and health updates
-        player.onChange(() => {
-          this.handlePlayerChange(player, sessionId, isLocal);
-        });
-
-        if (isLocal) {
-          // Local player: initialize prediction system with role
-          this.localRole = role;
-          this.prediction = new PredictionSystem({
-            x: player.x,
-            y: player.y,
-            vx: player.vx || 0,
-            vy: player.vy || 0,
-            angle: player.angle || 0,
-          }, role);
-
-          // Pass collision grid if tilemap already loaded (race condition handling)
-          if (this.collisionGrid) {
-            this.prediction.setCollisionGrid(this.collisionGrid);
-          }
-        } else {
-          // Remote player: use interpolation
-          this.remotePlayers.add(sessionId);
-        }
+        this.createPlayerSprite(player, sessionId);
       });
 
       // Listen for players leaving
       this.room.state.players.onRemove((player: any, sessionId: string) => {
         console.log('Player left:', sessionId);
-
-        // If spectating this player, switch target
-        if (this.spectatorTarget === sessionId) {
-          this.spectatorTarget = this.getNextAlivePlayer(sessionId);
-        }
-
-        // Clean up interpolation buffer for remote players
-        if (this.remotePlayers.has(sessionId)) {
-          this.interpolation.removePlayer(sessionId);
-          this.remotePlayers.delete(sessionId);
-        }
-
-        const sprite = this.playerSprites.get(sessionId);
-        if (sprite) {
-          sprite.destroy();
-          this.playerSprites.delete(sessionId);
-        }
-        const label = this.playerLabels.get(sessionId);
-        if (label) {
-          label.destroy();
-          this.playerLabels.delete(sessionId);
-        }
-        const healthBar = this.healthBars.get(sessionId);
-        if (healthBar) {
-          healthBar.destroy();
-          this.healthBars.delete(sessionId);
-        }
-        const eliminatedText = this.eliminatedTexts.get(sessionId);
-        if (eliminatedText) {
-          eliminatedText.destroy();
-          this.eliminatedTexts.delete(sessionId);
-        }
-        const dcLabel = this.dcLabels.get(sessionId);
-        if (dcLabel) {
-          dcLabel.destroy();
-          this.dcLabels.delete(sessionId);
-        }
+        this.removePlayerSprite(sessionId);
       });
 
       // Listen for projectiles
       this.room.state.projectiles.onAdd((projectile: any, key: string) => {
-        const index = parseInt(key, 10);
-        const color = projectile.ownerId === this.room!.sessionId ? 0xffff00 : 0xff6600;
-        const circle = this.add.circle(projectile.x, projectile.y, 4, color);
-        circle.setDepth(5);
-        this.projectileSprites.set(index, circle);
-
-        // Store velocity for client-side interpolation
-        this.projectileVelocities.set(index, {
-          vx: projectile.vx,
-          vy: projectile.vy,
-        });
-
-        projectile.onChange(() => {
-          // Server correction: snap to authoritative position
-          circle.x = projectile.x;
-          circle.y = projectile.y;
-
-          // Update velocities if they changed (shouldn't normally, but handle it)
-          this.projectileVelocities.set(index, {
-            vx: projectile.vx,
-            vy: projectile.vy,
-          });
-        });
+        this.createProjectileSprite(projectile, key);
       });
 
       this.room.state.projectiles.onRemove((projectile: any, key: string) => {
-        const index = parseInt(key, 10);
-        const sprite = this.projectileSprites.get(index);
-        if (sprite) {
-          sprite.destroy();
-          this.projectileSprites.delete(index);
-        }
-        this.projectileVelocities.delete(index);
+        this.removeProjectileSprite(key);
       });
 
       // Listen for obstacle state changes (destruction)
@@ -461,11 +363,11 @@ export class GameScene extends Phaser.Scene {
     const dirs = ['left', 'right', 'up', 'down'] as const;
     for (const dir of dirs) {
       if (rawInput[dir] && !this.prevKeyState[dir]) {
-        // Key just pressed — push to end (most recent)
+        // Key just pressed -- push to end (most recent)
         this.directionPressOrder = this.directionPressOrder.filter(d => d !== dir);
         this.directionPressOrder.push(dir);
       } else if (!rawInput[dir] && this.prevKeyState[dir]) {
-        // Key released — remove from order
+        // Key released -- remove from order
         this.directionPressOrder = this.directionPressOrder.filter(d => d !== dir);
       }
       this.prevKeyState[dir] = rawInput[dir];
@@ -489,7 +391,7 @@ export class GameScene extends Phaser.Scene {
       input = { ...rawInput, fire: this.fireKey.isDown };
     }
 
-    // Send input every frame — acceleration physics needs one input per tick
+    // Send input every frame -- acceleration physics needs one input per tick
     // to match server simulation. Only skip if truly idle (no keys, no velocity).
     const hasInput = input.left || input.right || input.up || input.down;
     const hasVelocity = (() => {
@@ -530,12 +432,11 @@ export class GameScene extends Phaser.Scene {
     if (localSprite) {
       localSprite.x = state.x;
       localSprite.y = state.y;
-      // Optionally: localSprite.rotation = state.angle;
     }
-    const localLabel = this.playerLabels.get(localSessionId);
-    if (localLabel) {
-      localLabel.x = state.x;
-      localLabel.y = state.y - 20;
+
+    // Animate local player based on velocity
+    if (localSprite && this.localRole) {
+      this.updatePlayerAnimation(localSessionId, this.localRole, state.vx, state.vy);
     }
     }
 
@@ -549,27 +450,28 @@ export class GameScene extends Phaser.Scene {
       if (interpolated) {
         const sprite = this.playerSprites.get(sessionId);
         if (sprite) {
+          // Estimate velocity from position delta for animation
+          const prevPos = this.remotePrevPos.get(sessionId);
+          if (prevPos) {
+            const estimatedVx = (interpolated.x - prevPos.x) * 60; // rough px/s
+            const estimatedVy = (interpolated.y - prevPos.y) * 60;
+            const role = this.playerRoles.get(sessionId);
+            if (role) {
+              this.updatePlayerAnimation(sessionId, role, estimatedVx, estimatedVy);
+            }
+          }
+          this.remotePrevPos.set(sessionId, { x: interpolated.x, y: interpolated.y });
+
           sprite.x = interpolated.x;
           sprite.y = interpolated.y;
-          // Optionally: sprite.rotation = interpolated.angle;
-        }
-        const label = this.playerLabels.get(sessionId);
-        if (label) {
-          label.x = interpolated.x;
-          label.y = interpolated.y - 20;
         }
       }
     }
 
-    // Update health bar and eliminated text positions
+    // Update eliminated text and DC label positions
     this.room.state.players.forEach((player: any, sessionId: string) => {
       const sprite = this.playerSprites.get(sessionId);
       if (sprite) {
-        const healthBar = this.healthBars.get(sessionId);
-        if (healthBar) {
-          // Position health bar above sprite
-          this.drawHealthBar(healthBar, sprite.x, sprite.y - 25, player.health, player.role);
-        }
         const eliminatedText = this.eliminatedTexts.get(sessionId);
         if (eliminatedText) {
           eliminatedText.x = sprite.x;
@@ -595,42 +497,167 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private updateHealthBar(sessionId: string, health: number, role: string): void {
-    const healthBar = this.healthBars.get(sessionId);
-    if (healthBar) {
-      const sprite = this.playerSprites.get(sessionId);
-      if (sprite) {
-        this.drawHealthBar(healthBar, sprite.x, sprite.y - 25, health, role);
+  /**
+   * Determine and play the appropriate walk/idle animation based on velocity.
+   * Only calls sprite.play() if the animation key changes (avoids restart).
+   */
+  private updatePlayerAnimation(sessionId: string, role: string, vx: number, vy: number): void {
+    const sprite = this.playerSprites.get(sessionId);
+    if (!sprite || !sprite.active) return;
+
+    // Don't override death animation
+    const currentAnim = this.playerAnimKeys.get(sessionId) || '';
+    if (currentAnim.endsWith('-death')) return;
+
+    let animKey: string;
+    const absVx = Math.abs(vx);
+    const absVy = Math.abs(vy);
+    const moving = absVx > 5 || absVy > 5;
+
+    if (moving) {
+      if (absVx >= absVy) {
+        animKey = vx > 0 ? `${role}-walk-right` : `${role}-walk-left`;
+      } else {
+        animKey = vy > 0 ? `${role}-walk-down` : `${role}-walk-up`;
       }
+    } else {
+      animKey = `${role}-idle`;
+    }
+
+    if (animKey !== currentAnim) {
+      sprite.play(animKey);
+      this.playerAnimKeys.set(sessionId, animKey);
     }
   }
 
-  private drawHealthBar(
-    graphics: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
-    health: number,
-    role: string
-  ): void {
-    graphics.clear();
+  /**
+   * Create a player sprite with animated spritesheet.
+   * Used by both initial onAdd and reconnect onAdd handlers.
+   */
+  private createPlayerSprite(player: any, sessionId: string): void {
+    const isLocal = sessionId === this.room!.sessionId;
 
-    const maxHealth = role ? CHARACTERS[role]?.maxHealth || 50 : 50;
-    const healthPercent = Math.max(0, health) / maxHealth;
+    // Determine role
+    const role = player.role || 'faran';
 
-    const barWidth = 30;
-    const barHeight = 4;
-    const barX = x - barWidth / 2;
-    const barY = y;
+    // Create sprite using the role's spritesheet
+    const sprite = this.add.sprite(player.x, player.y, role);
+    sprite.setDepth(10);
+    sprite.play(`${role}-idle`);
+    this.playerSprites.set(sessionId, sprite);
+    this.playerRoles.set(sessionId, role);
+    this.playerAnimKeys.set(sessionId, `${role}-idle`);
 
-    // Background (red)
-    graphics.fillStyle(0x990000, 1);
-    graphics.fillRect(barX, barY, barWidth, barHeight);
+    // Common onChange handler for role and health updates
+    player.onChange(() => {
+      this.handlePlayerChange(player, sessionId, isLocal);
+    });
 
-    // Foreground (green)
-    graphics.fillStyle(0x00ff00, 1);
-    graphics.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+    if (isLocal) {
+      // Local player: initialize prediction system with role
+      this.localRole = role;
+      this.prediction = new PredictionSystem({
+        x: player.x,
+        y: player.y,
+        vx: player.vx || 0,
+        vy: player.vy || 0,
+        angle: player.angle || 0,
+      }, role);
 
-    graphics.setPosition(0, 0); // Graphics object uses world coordinates
+      // Pass collision grid if tilemap already loaded (race condition handling)
+      if (this.collisionGrid) {
+        this.prediction.setCollisionGrid(this.collisionGrid);
+      }
+    } else {
+      // Remote player: use interpolation
+      this.remotePlayers.add(sessionId);
+    }
+  }
+
+  /**
+   * Remove a player sprite and all associated objects.
+   */
+  private removePlayerSprite(sessionId: string): void {
+    // If spectating this player, switch target
+    if (this.spectatorTarget === sessionId) {
+      this.spectatorTarget = this.getNextAlivePlayer(sessionId);
+    }
+
+    // Clean up interpolation buffer for remote players
+    if (this.remotePlayers.has(sessionId)) {
+      this.interpolation.removePlayer(sessionId);
+      this.remotePlayers.delete(sessionId);
+    }
+    this.remotePrevPos.delete(sessionId);
+
+    const sprite = this.playerSprites.get(sessionId);
+    if (sprite) {
+      sprite.destroy();
+      this.playerSprites.delete(sessionId);
+    }
+    this.playerRoles.delete(sessionId);
+    this.playerAnimKeys.delete(sessionId);
+    const eliminatedText = this.eliminatedTexts.get(sessionId);
+    if (eliminatedText) {
+      eliminatedText.destroy();
+      this.eliminatedTexts.delete(sessionId);
+    }
+    const dcLabel = this.dcLabels.get(sessionId);
+    if (dcLabel) {
+      dcLabel.destroy();
+      this.dcLabels.delete(sessionId);
+    }
+  }
+
+  /**
+   * Create a projectile sprite from the role-specific spritesheet.
+   */
+  private createProjectileSprite(projectile: any, key: string): void {
+    const index = parseInt(key, 10);
+
+    // Determine projectile frame from owner's role
+    let frameIndex = 1; // default to faran
+    if (this.room) {
+      const ownerPlayer = this.room.state.players.get(projectile.ownerId);
+      if (ownerPlayer && ownerPlayer.role) {
+        frameIndex = PROJECTILE_FRAME[ownerPlayer.role] ?? 1;
+      }
+    }
+
+    const sprite = this.add.sprite(projectile.x, projectile.y, 'projectiles', frameIndex);
+    sprite.setDepth(5);
+    this.projectileSprites.set(index, sprite);
+
+    // Store velocity for client-side interpolation
+    this.projectileVelocities.set(index, {
+      vx: projectile.vx,
+      vy: projectile.vy,
+    });
+
+    projectile.onChange(() => {
+      // Server correction: snap to authoritative position
+      sprite.x = projectile.x;
+      sprite.y = projectile.y;
+
+      // Update velocities if they changed
+      this.projectileVelocities.set(index, {
+        vx: projectile.vx,
+        vy: projectile.vy,
+      });
+    });
+  }
+
+  /**
+   * Remove a projectile sprite.
+   */
+  private removeProjectileSprite(key: string): void {
+    const index = parseInt(key, 10);
+    const sprite = this.projectileSprites.get(index);
+    if (sprite) {
+      sprite.destroy();
+      this.projectileSprites.delete(index);
+    }
+    this.projectileVelocities.delete(index);
   }
 
   private getNextAlivePlayer(currentTarget: string | null): string | null {
@@ -707,25 +734,20 @@ export class GameScene extends Phaser.Scene {
       this.playerHealthCache.set(sessionId, player.health);
     }
 
-    // Update visuals when role changes
+    // Update stored role if it changed
     if (player.role) {
-      const sprite = this.playerSprites.get(sessionId);
-      if (sprite) {
-        const isParan = player.role === 'paran';
-        const size = isParan ? 32 : 24;
-        let color: number;
-        if (isParan) {
-          color = 0xff4444;
-        } else {
-          color = isLocal ? 0x00ff88 : 0x4488ff;
+      const currentRole = this.playerRoles.get(sessionId);
+      if (currentRole !== player.role) {
+        this.playerRoles.set(sessionId, player.role);
+        // Re-set sprite texture to match new role
+        const sprite = this.playerSprites.get(sessionId);
+        if (sprite) {
+          sprite.setTexture(player.role);
+          sprite.play(`${player.role}-idle`);
+          this.playerAnimKeys.set(sessionId, `${player.role}-idle`);
         }
-        sprite.setSize(size, size);
-        sprite.setFillStyle(color);
       }
     }
-
-    // Update health bar
-    this.updateHealthBar(sessionId, player.health, player.role);
 
     // Handle disconnected state (using dcLabels map)
     if (!player.connected && player.health > 0) {
@@ -742,7 +764,19 @@ export class GameScene extends Phaser.Scene {
       }
     } else if (player.health <= 0) {
       const sprite = this.playerSprites.get(sessionId);
-      if (sprite) sprite.setAlpha(0.3);
+      if (sprite) {
+        // Play death animation
+        const role = this.playerRoles.get(sessionId) || 'faran';
+        const deathKey = `${role}-death`;
+        if (this.playerAnimKeys.get(sessionId) !== deathKey) {
+          sprite.play(deathKey);
+          this.playerAnimKeys.set(sessionId, deathKey);
+          // On animation complete, dim the sprite
+          sprite.once('animationcomplete', () => {
+            sprite.setAlpha(0.3);
+          });
+        }
+      }
       const dcLabel = this.dcLabels.get(sessionId);
       if (dcLabel) { dcLabel.destroy(); this.dcLabels.delete(sessionId); }
       if (!this.eliminatedTexts.has(sessionId)) {
@@ -774,8 +808,6 @@ export class GameScene extends Phaser.Scene {
         const state = this.prediction.getState();
         const sprite = this.playerSprites.get(sessionId);
         if (sprite) { sprite.x = state.x; sprite.y = state.y; }
-        const label = this.playerLabels.get(sessionId);
-        if (label) { label.x = state.x; label.y = state.y - 20; }
       }
     } else {
       this.interpolation.addSnapshot(sessionId, {
@@ -850,10 +882,9 @@ export class GameScene extends Phaser.Scene {
     this.room.state.players.onAdd((player: any, sessionId: string) => {
       console.log('Player joined (after reconnect):', sessionId);
 
-      const isLocal = sessionId === this.room!.sessionId;
-
       // Skip if sprite already exists (player was already present before reconnect)
       if (this.playerSprites.has(sessionId)) {
+        const isLocal = sessionId === this.room!.sessionId;
         // Still need to re-register onChange
         player.onChange(() => {
           this.handlePlayerChange(player, sessionId, isLocal);
@@ -861,108 +892,22 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      // Create new player visual (same logic as create())
-      const role = player.role || 'faran';
-      const isParan = role === 'paran';
-      const size = isParan ? 32 : 24;
-      let color: number;
-      if (isParan) {
-        color = 0xff4444;
-      } else {
-        color = isLocal ? 0x00ff88 : 0x4488ff;
-      }
-
-      const rect = this.add.rectangle(player.x, player.y, size, size, color);
-      rect.setDepth(10);
-      this.playerSprites.set(sessionId, rect);
-
-      const healthBar = this.add.graphics();
-      healthBar.setDepth(11);
-      this.healthBars.set(sessionId, healthBar);
-      this.updateHealthBar(sessionId, player.health, role);
-
-      const nameText = this.add.text(
-        player.x, player.y - 20,
-        player.name || sessionId.slice(0, 6),
-        { fontSize: '12px', color: '#ffffff' }
-      );
-      nameText.setOrigin(0.5);
-      nameText.setDepth(11);
-      this.playerLabels.set(sessionId, nameText);
-
-      player.onChange(() => {
-        this.handlePlayerChange(player, sessionId, isLocal);
-      });
-
-      if (isLocal) {
-        this.localRole = role;
-        this.prediction = new PredictionSystem({
-          x: player.x, y: player.y,
-          vx: player.vx || 0, vy: player.vy || 0,
-          angle: player.angle || 0,
-        }, role);
-
-        // Pass collision grid if tilemap already loaded (race condition handling)
-        if (this.collisionGrid) {
-          this.prediction.setCollisionGrid(this.collisionGrid);
-        }
-      } else {
-        this.remotePlayers.add(sessionId);
-      }
+      // Create new player sprite (same logic as create())
+      this.createPlayerSprite(player, sessionId);
     });
 
     this.room.state.players.onRemove((player: any, sessionId: string) => {
       console.log('Player left (after reconnect):', sessionId);
-
-      if (this.spectatorTarget === sessionId) {
-        this.spectatorTarget = this.getNextAlivePlayer(sessionId);
-      }
-
-      if (this.remotePlayers.has(sessionId)) {
-        this.interpolation.removePlayer(sessionId);
-        this.remotePlayers.delete(sessionId);
-      }
-
-      const sprite = this.playerSprites.get(sessionId);
-      if (sprite) { sprite.destroy(); this.playerSprites.delete(sessionId); }
-      const label = this.playerLabels.get(sessionId);
-      if (label) { label.destroy(); this.playerLabels.delete(sessionId); }
-      const healthBar = this.healthBars.get(sessionId);
-      if (healthBar) { healthBar.destroy(); this.healthBars.delete(sessionId); }
-      const eliminatedText = this.eliminatedTexts.get(sessionId);
-      if (eliminatedText) { eliminatedText.destroy(); this.eliminatedTexts.delete(sessionId); }
-      const dcLabel = this.dcLabels.get(sessionId);
-      if (dcLabel) { dcLabel.destroy(); this.dcLabels.delete(sessionId); }
+      this.removePlayerSprite(sessionId);
     });
 
     // Re-attach projectile listeners
     this.room.state.projectiles.onAdd((projectile: any, key: string) => {
-      const index = parseInt(key, 10);
-      const color = projectile.ownerId === this.room!.sessionId ? 0xffff00 : 0xff6600;
-      const circle = this.add.circle(projectile.x, projectile.y, 4, color);
-      circle.setDepth(5);
-      this.projectileSprites.set(index, circle);
-
-      this.projectileVelocities.set(index, {
-        vx: projectile.vx,
-        vy: projectile.vy,
-      });
-
-      projectile.onChange(() => {
-        circle.x = projectile.x;
-        circle.y = projectile.y;
-        this.projectileVelocities.set(index, {
-          vx: projectile.vx,
-          vy: projectile.vy,
-        });
-      });
+      this.createProjectileSprite(projectile, key);
     });
 
     this.room.state.projectiles.onRemove((projectile: any, key: string) => {
-      const index = parseInt(key, 10);
-      const sprite = this.projectileSprites.get(index);
-      if (sprite) { sprite.destroy(); this.projectileSprites.delete(index); }
-      this.projectileVelocities.delete(index);
+      this.removeProjectileSprite(key);
     });
 
     // Re-attach obstacle listeners for reconnection
@@ -1002,10 +947,13 @@ export class GameScene extends Phaser.Scene {
 
   private createTilemap(mapKey: string): void {
     const map = this.make.tilemap({ key: mapKey });
-    const tileset = map.addTilesetImage('placeholder', 'tiles');
+
+    // Get the tileset name from the map JSON (per-map tileset names)
+    const tilesetInfo = MAP_TILESET_INFO[mapKey] || MAP_TILESET_INFO.test_arena;
+    const tileset = map.addTilesetImage(tilesetInfo.name, tilesetInfo.key);
 
     if (!tileset) {
-      console.error('Failed to load tileset');
+      console.error(`Failed to load tileset for map ${mapKey} (name=${tilesetInfo.name}, key=${tilesetInfo.key})`);
       return;
     }
 
