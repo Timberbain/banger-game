@@ -4,6 +4,9 @@
  * Used by both server (authoritative) and client (prediction)
  */
 
+/** Small offset to prevent exact tile-boundary positions from mapping back into solid tiles via Math.floor */
+const COLLISION_EPSILON = 0.001;
+
 /** Information about a single tile in the collision grid */
 export interface TileInfo {
   solid: boolean;
@@ -137,9 +140,9 @@ export function resolveCollisions(
     const bottom = prevY + radius;
 
     const tileLeft = Math.floor(left / tileSize);
-    const tileRight = Math.floor(right / tileSize);
+    const tileRight = Math.floor((right - COLLISION_EPSILON) / tileSize);
     const tileTop = Math.floor(top / tileSize);
-    const tileBottom = Math.floor(bottom / tileSize);
+    const tileBottom = Math.floor((bottom - COLLISION_EPSILON) / tileSize);
 
     for (let ty = tileTop; ty <= tileBottom; ty++) {
       for (let tx = tileLeft; tx <= tileRight; tx++) {
@@ -149,8 +152,8 @@ export function resolveCollisions(
 
           // Push entity out based on movement direction
           if (entity.x > prevX) {
-            // Moving right: push left edge of tile
-            entity.x = tx * tileSize - radius;
+            // Moving right: push to left edge of solid tile, minus epsilon to avoid boundary re-collision
+            entity.x = tx * tileSize - radius - COLLISION_EPSILON;
           } else if (entity.x < prevX) {
             // Moving left: push to right edge of tile
             entity.x = (tx + 1) * tileSize + radius;
@@ -168,9 +171,9 @@ export function resolveCollisions(
     const bottom = entity.y + radius;
 
     const tileLeft = Math.floor(left / tileSize);
-    const tileRight = Math.floor(right / tileSize);
+    const tileRight = Math.floor((right - COLLISION_EPSILON) / tileSize);
     const tileTop = Math.floor(top / tileSize);
-    const tileBottom = Math.floor(bottom / tileSize);
+    const tileBottom = Math.floor((bottom - COLLISION_EPSILON) / tileSize);
 
     for (let ty = tileTop; ty <= tileBottom; ty++) {
       for (let tx = tileLeft; tx <= tileRight; tx++) {
@@ -180,8 +183,8 @@ export function resolveCollisions(
 
           // Push entity out based on movement direction
           if (entity.y > prevY) {
-            // Moving down: push to top edge of tile
-            entity.y = ty * tileSize - radius;
+            // Moving down: push to top edge of solid tile, minus epsilon to avoid boundary re-collision
+            entity.y = ty * tileSize - radius - COLLISION_EPSILON;
           } else if (entity.y < prevY) {
             // Moving up: push to bottom edge of tile
             entity.y = (ty + 1) * tileSize + radius;
