@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { LobbyScene } from './scenes/LobbyScene';
 import { GameScene } from './scenes/GameScene';
+import { HUDScene } from './scenes/HUDScene';
 import { VictoryScene } from './scenes/VictoryScene';
+import { HelpScene } from './scenes/HelpScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -10,7 +12,8 @@ const config: Phaser.Types.Core.GameConfig = {
   height: 600,
   parent: 'game-container',
   backgroundColor: '#1a1a2e',
-  scene: [BootScene, LobbyScene, GameScene, VictoryScene],
+  pixelArt: true,
+  scene: [BootScene, LobbyScene, GameScene, HUDScene, VictoryScene, HelpScene],
   physics: {
     default: 'arcade',
     arcade: {

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "colyseus.js": "^0.15.28",
+    "jsfxr": "^1.4.0",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
