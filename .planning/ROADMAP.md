@@ -152,10 +152,16 @@ Plans:
   4. Controls tutorial/help screen accessible from menu
   5. Connection quality indicator visible during gameplay
   6. Pixel art sprites and tileset with solarpunk aesthetic exist
-**Plans**: TBD
+**Plans:** 7 plans
 
 Plans:
-- [ ] 06-01: TBD during planning
+- [ ] 06-01-PLAN.md -- Server match timer, kill broadcast, ping handler, client config
+- [ ] 06-02-PLAN.md -- Pixel art assets (spritesheets, tilesets, particles) and sprite integration
+- [ ] 06-03-PLAN.md -- HUD Scene overlay (health, timer, kill feed, cooldown, ping, role identity)
+- [ ] 06-04-PLAN.md -- Particle effects and visual feedback (flash, trails, speed lines, explosions)
+- [ ] 06-05-PLAN.md -- Audio system (jsfxr SFX, music, volume controls)
+- [ ] 06-06-PLAN.md -- Help screen, lobby art polish, victory screen enhancement
+- [ ] 06-07-PLAN.md -- Visual verification checkpoint (human-verify)
 
 ## Progress
 
