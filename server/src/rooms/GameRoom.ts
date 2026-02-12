@@ -12,6 +12,8 @@ import { OBSTACLE_TILE_IDS, OBSTACLE_TIER_HP } from "../../../shared/obstacles";
 import * as fs from "fs";
 import * as path from "path";
 
+const MATCH_DURATION_MS = 5 * 60 * 1000; // 5 minutes -- guardians win on timeout
+
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
   patchRate = SERVER_CONFIG.patchRate; // 1000/60 - must match tick rate for 60Hz sync
@@ -118,6 +120,11 @@ export class GameRoom extends Room<GameState> {
         elapsedTime -= SERVER_CONFIG.fixedTimeStep;
         this.fixedTick(SERVER_CONFIG.fixedTimeStep);
       }
+    });
+
+    // Ping/pong handler: client sends timestamp, server echoes it back for RTT measurement
+    this.onMessage('ping', (client, data) => {
+      client.send('pong', { t: data.t });
     });
 
     // Register message handler for input queueing
@@ -350,6 +357,12 @@ export class GameRoom extends Room<GameState> {
     // Update server time
     this.state.serverTime += deltaTime;
 
+    // Match timer: guardians win if time runs out (forces aggressive Paran play)
+    if (this.state.serverTime - this.state.matchStartTime >= MATCH_DURATION_MS) {
+      this.endMatch("guardians");
+      return;
+    }
+
     // Fixed delta time for deterministic physics (must match client)
     const FIXED_DT = 1 / 60; // seconds
 
@@ -462,6 +475,14 @@ export class GameRoom extends Room<GameState> {
           if (paranStats) paranStats.kills++;
           const targetStats = this.state.matchStats.get(targetId);
           if (targetStats) targetStats.deaths++;
+
+          // Broadcast kill event for HUD kill feed
+          this.broadcast("kill", {
+            killer: paran.name,
+            victim: target.name,
+            killerRole: paran.role,
+            victimRole: target.role,
+          });
         }
       });
     }
@@ -531,6 +552,15 @@ export class GameRoom extends Room<GameState> {
               shooterStats.kills++;
               const targetStats = this.state.matchStats.get(targetId);
               if (targetStats) targetStats.deaths++;
+
+              // Broadcast kill event for HUD kill feed
+              const shooter = this.state.players.get(proj.ownerId);
+              this.broadcast("kill", {
+                killer: shooter?.name || "Unknown",
+                victim: target.name,
+                killerRole: shooter?.role || "unknown",
+                victimRole: target.role,
+              });
             }
           }
 
