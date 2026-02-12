@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with instant turning but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 6 IN PROGRESS (UX Polish) — Gap closure 06-08 complete
+**Current focus:** Phase 6 COMPLETE (UX Polish) — All UAT issues resolved
 
 ## Current Position
 
 Phase: 6 of 6 (UX Polish)
-Plan: 7 of 7
-Status: In Progress
-Last activity: 2026-02-12 — Completed 06-08-SUMMARY.md (Gap Closure: Wall Impact + Cooldown Bar)
+Plan: 11 of 11 (COMPLETE)
+Status: Complete
+Last activity: 2026-02-12 — Completed 06-11-SUMMARY.md (UAT Gap Closure: All 8 Issues)
 
-Progress: [█████████░] 91% (34 of 34 plans complete: Phase 6 nearing completion)
+Progress: [██████████] 100% (all plans complete: Phase 6 finished)
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 91% (34 of 34 plans complete: Phase 6
 | Phase 06 P09 | 3 | 2 tasks | 8 files |
 | Phase 06 P08 | 2 | 2 tasks | 3 files |
 | Phase 06 P10 | 4 | 1 tasks | 3 files |
+| Phase 06 P11 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,9 @@ Recent decisions affecting current work:
 - [Phase 06]: Paran yellow #ffcc00 for Pac-Man identity, Faran red #ff4444 for ninja identity
 - [Phase 06]: Replace interior indestructible walls with destructible obstacles for Paran-viable map design
 - [Phase 06]: Minimum 3-tile-wide passages required in all maps for safe Paran cardinal movement
+- [Phase 06-11]: Rising-edge wall impact detector (wasAgainstWall flag) prevents audio/visual spam while holding against wall
+- [Phase 06-11]: Remote projectile shoot sound in createProjectileSprite, skip local player to avoid double-play
+- [Phase 06-11]: Role banner Y=200 (100px above FIGHT! at Y=300), spectator HUD at Y=50-75 (top, away from health bars)
 
 ### Pending Todos
 
@@ -193,9 +197,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12 (gap closure execution)
-Stopped at: Completed 06-10 gap closure (Map Redesign for Paran Viability) — 3 maps redesigned with 3+ tile corridors
-Resume file: .planning/phases/06-ux-polish/06-10-SUMMARY.md
+Last session: 2026-02-12 (UAT gap closure execution)
+Stopped at: Completed 06-11-PLAN.md — All 8 UAT issues resolved, Phase 6 complete
+Resume file: .planning/phases/06-ux-polish/06-11-SUMMARY.md
 
 **Phase 5.1 Complete (4 of 4):**
 - 05.1-01 Complete: Shared collision infrastructure
