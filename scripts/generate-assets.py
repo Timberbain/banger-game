@@ -21,17 +21,17 @@ os.makedirs(TILESETS_DIR, exist_ok=True)
 # ============================================================
 # Color palette
 # ============================================================
-# Paran: deep red + gold accents
-PARAN_BODY = (204, 51, 51, 255)      # #cc3333
-PARAN_ACCENT = (212, 167, 70, 255)   # #d4a746
-PARAN_DARK = (153, 30, 30, 255)      # darker red for shading
-PARAN_LIGHT = (230, 100, 100, 255)   # lighter red for highlights
+# Paran: yellow + gold accents (Pac-Man look)
+PARAN_BODY = (255, 204, 0, 255)      # #ffcc00
+PARAN_ACCENT = (255, 215, 0, 255)    # #ffd700
+PARAN_DARK = (204, 163, 0, 255)      # darker yellow for shading
+PARAN_LIGHT = (255, 230, 100, 255)   # lighter yellow for highlights
 
-# Faran: blue + teal accents
-FARAN_BODY = (68, 136, 255, 255)     # #4488ff
-FARAN_ACCENT = (68, 187, 170, 255)   # #44bbaa
-FARAN_DARK = (40, 90, 180, 255)
-FARAN_LIGHT = (120, 180, 255, 255)
+# Faran: red + dark red accents (ninja look)
+FARAN_BODY = (255, 68, 68, 255)      # #ff4444
+FARAN_ACCENT = (204, 51, 51, 255)    # #cc3333
+FARAN_DARK = (153, 40, 40, 255)
+FARAN_LIGHT = (255, 120, 120, 255)
 
 # Baran: green + bronze accents
 BARAN_BODY = (68, 204, 102, 255)     # #44cc66
@@ -288,7 +288,7 @@ def generate_faran_frames():
 
     f_s2 = create_frame()
     draw_faran_base(f_s2, 0)
-    draw_rect(f_s2, 14, 0, 17, 4, (150, 220, 255, 255))
+    draw_rect(f_s2, 14, 0, 17, 4, (255, 150, 150, 255))
     frames.append(f_s2)
 
     # Death (20-25)
@@ -442,7 +442,7 @@ def assemble_spritesheet(frames, name):
 # PROJECTILE SPRITESHEET - 3 frames at 8x8
 # ============================================================
 def generate_projectiles():
-    """Generate projectile spritesheet: paran(gold diamond), faran(blue dart), baran(green bolt)."""
+    """Generate projectile spritesheet: paran(gold diamond), faran(red dart), baran(green bolt)."""
     sheet = Image.new("RGBA", (24, 8), TRANSPARENT)
 
     # Frame 0: Paran - gold energy blast (diamond/star)
@@ -468,16 +468,16 @@ def generate_projectiles():
     draw_pixel(f0, 4, 7, (255, 220, 100, 255))
     sheet.paste(f0, (0, 0))
 
-    # Frame 1: Faran - blue dart (thin elongated)
+    # Frame 1: Faran - red dart (thin elongated)
     f1 = Image.new("RGBA", (8, 8), TRANSPARENT)
     # Thin elongated horizontal dart
-    draw_rect(f1, 1, 3, 6, 4, (100, 180, 255, 255))
-    draw_rect(f1, 2, 2, 5, 5, (68, 136, 255, 200))
-    draw_rect(f1, 3, 3, 4, 4, (200, 230, 255, 255))  # bright center
-    draw_pixel(f1, 0, 3, (68, 187, 170, 200))  # teal tip
-    draw_pixel(f1, 0, 4, (68, 187, 170, 200))
-    draw_pixel(f1, 7, 3, (68, 187, 170, 200))  # teal tail
-    draw_pixel(f1, 7, 4, (68, 187, 170, 200))
+    draw_rect(f1, 1, 3, 6, 4, (255, 120, 120, 255))
+    draw_rect(f1, 2, 2, 5, 5, (255, 68, 68, 200))
+    draw_rect(f1, 3, 3, 4, 4, (255, 200, 200, 255))  # bright center
+    draw_pixel(f1, 0, 3, (204, 51, 51, 200))  # dark red tip
+    draw_pixel(f1, 0, 4, (204, 51, 51, 200))
+    draw_pixel(f1, 7, 3, (204, 51, 51, 200))  # dark red tail
+    draw_pixel(f1, 7, 4, (204, 51, 51, 200))
     sheet.paste(f1, (8, 0))
 
     # Frame 2: Baran - green bolt (small square with trail)
