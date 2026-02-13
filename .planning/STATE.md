@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 7 of 12 (HD Viewport & Camera)
-Plan: 7 of 8 in current phase
-Status: Executing
-Last activity: 2026-02-13 -- Completed 07-07 (Camera Race Condition & Look-ahead Tuning)
+Plan: 8 of 8 in current phase
+Status: Phase Complete
+Last activity: 2026-02-13 -- Completed 07-08 (UI Overlap Fixes & Help Redesign)
 
-Progress: [#############.......] 59% (45/~56 plans est. across v1.0+v2.0)
+Progress: [##############......] 61% (46/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -53,6 +53,9 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Gameplay deadzone 20x15, spectator deadzone 60x45 (separate tuning)
 - Camera shake: wall impact 80ms/0.003, damage 100ms/0.005 (local player only)
 - HUD uses viewport-relative W/H percentages, menu scenes use cameras.main.centerX/centerY
+- HUD cooldown bar at H*0.89 (was H*0.92) for clear gap above name label
+- Lobby panel offset titleY+100 (was titleY+70) with Players section shifted +30px
+- Help screen: playful taglines + flavor text, no stats or technical jargon
 
 ### Pending Todos
 
@@ -72,8 +75,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-07-PLAN.md (Camera Race Condition & Look-ahead Tuning)
-Next step: Execute 07-08-PLAN.md
+Stopped at: Completed 07-08-PLAN.md (UI Overlap Fixes & Help Redesign) -- Phase 7 complete
+Next step: Execute Phase 8
 
 ---
-*Updated: 2026-02-13 after 07-07 execution*
+*Updated: 2026-02-13 after 07-08 execution*
