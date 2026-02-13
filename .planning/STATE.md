@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 7 of 12 (HD Viewport & Camera)
-Plan: 2 of 6 in current phase
+Plan: 3 of 6 in current phase
 Status: Executing
-Last activity: 2026-02-13 -- Completed 07-02 (Resolution & Dynamic Bounds)
+Last activity: 2026-02-13 -- Completed 07-03 (BootScene HD Asset Loading)
 
-Progress: [##########..........] 51% (40/~56 plans est. across v1.0+v2.0)
+Progress: [##########..........] 53% (41/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - 36 frames per character: 6-frame walks, 3-frame idle breathing, 3-frame shoot, 6-frame death
 - ARENA constant preserved as fallback default, PredictionSystem uses optional constructor injection for dynamic bounds
 - Removed unused arcade physics block from Phaser config (custom shared physics used)
+- Walk frameRate 8->10 for 6-frame walks (0.6s cycle comparable to old 0.5s), idle 3fps breathing
 
 ### Pending Todos
 
@@ -65,8 +66,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-01-PLAN.md (2x HD Assets) and 07-02-PLAN.md (Resolution & Dynamic Bounds)
-Next step: Execute 07-03-PLAN.md
+Stopped at: Completed 07-03-PLAN.md (BootScene HD Asset Loading)
+Next step: Execute 07-04-PLAN.md
 
 ---
-*Updated: 2026-02-13 after 07-01 execution*
+*Updated: 2026-02-13 after 07-03 execution*
