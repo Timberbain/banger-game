@@ -22,7 +22,7 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(bg);
 
     // Title
-    const title = this.add.text(cx, 40, 'CONTROLS', {
+    const title = this.add.text(cx, 50, 'HOW TO PLAY', {
       fontSize: '32px',
       color: Colors.accent.vine,
       fontFamily: 'monospace',
@@ -35,77 +35,49 @@ export class HelpScene extends Phaser.Scene {
     // Decorative line under title
     const gfx = this.add.graphics();
     gfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color);
-    gfx.lineBetween(cx - 250, 65, cx + 250, 65);
+    gfx.lineBetween(cx - 250, 75, cx + 250, 75);
     this.uiElements.push(gfx);
 
-    // --- General Controls Section ---
-    const generalTitle = this.add.text(cx, 92, 'General', {
-      ...TextStyle.heroHeading,
-      fontSize: '20px',
+    // --- Controls Section (single line) ---
+    const controlsText = this.add.text(cx, 100, 'WASD to move  |  SPACE to shoot  |  TAB to spectate', {
+      fontSize: '14px',
+      color: Colors.text.secondary,
       fontFamily: 'monospace',
     }).setOrigin(0.5);
-    this.uiElements.push(generalTitle);
+    this.uiElements.push(controlsText);
 
-    const generalControls = [
-      'Movement: WASD or Arrow Keys',
-      'Fire: Spacebar',
-      'Spectate (when eliminated): Tab to cycle',
-    ];
-    generalControls.forEach((text, i) => {
-      const t = this.add.text(cx, 118 + i * 22, text, {
-        fontSize: '14px',
-        color: Colors.text.secondary,
-        fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      this.uiElements.push(t);
-    });
-
-    // --- Role-specific sections (3 columns) -- spaced for 1280 width ---
-    const rolesY = 200;
-    const roleSpacing = 320;
+    // --- Role panels (3 columns) -- spaced for 1280 width ---
+    const rolesY = 170;
+    const roleSpacing = 340;
     const roleStartX = cx - roleSpacing;
 
     const roles = [
       {
         role: 'paran',
         name: 'Paran',
-        subtitle: 'The Force',
-        stats: 'HP: 150 | Dmg: 40 | Fire: 1/sec',
-        details: [
-          'Cardinal movement only',
-          '(last key wins)',
-          'Builds speed over time',
-          'Loses ALL speed on',
-          'wall/obstacle collision',
-          'Kills guardians on',
-          'body contact',
-          'Destroys obstacles',
+        tagline: 'Unstoppable force',
+        lines: [
+          'Charges through the arena at blazing speed',
+          'Crushes guardians on contact',
+          'One wrong wall and you lose it all',
         ],
       },
       {
         role: 'faran',
         name: 'Faran',
-        subtitle: 'Guardian',
-        stats: 'HP: 50 | Dmg: 10 | Fire: 5/sec',
-        details: [
-          '8-directional movement',
-          '(diagonal allowed)',
-          'Work with Baran to',
-          'trap and eliminate',
-          'Paran',
+        tagline: 'The sharpshooter',
+        lines: [
+          'Nimble guardian with a rapid-fire blaster',
+          'Team up with Baran to corner Paran',
         ],
       },
       {
         role: 'baran',
         name: 'Baran',
-        subtitle: 'Guardian',
-        stats: 'HP: 50 | Dmg: 10 | Fire: 5/sec',
-        details: [
-          '8-directional movement',
-          '(diagonal allowed)',
-          'Work with Faran to',
-          'trap and eliminate',
-          'Paran',
+        tagline: 'The heavy hitter',
+        lines: [
+          'Armored guardian packing serious firepower',
+          'Team up with Faran to corner Paran',
         ],
       },
     ];
@@ -113,20 +85,20 @@ export class HelpScene extends Phaser.Scene {
     roles.forEach((r, index) => {
       const x = roleStartX + index * roleSpacing;
 
-      // Panel background
-      const panel = this.add.rectangle(x, rolesY + 120, 270, 270, Colors.bg.deepNum);
+      // Panel background (280 x 220)
+      const panel = this.add.rectangle(x, rolesY + 110, 280, 220, Colors.bg.deepNum);
       panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
       this.uiElements.push(panel);
 
       // Character sprite (idle animation)
       try {
-        const sprite = this.add.sprite(x, rolesY + 15, r.role);
+        const sprite = this.add.sprite(x, rolesY + 10, r.role);
         sprite.play(`${r.role}-idle`);
         sprite.setScale(2);
         this.uiElements.push(sprite);
       } catch (_e) {
         // Fallback: colored circle if sprite not available
-        const circle = this.add.circle(x, rolesY + 15, 16, Phaser.Display.Color.HexStringToColor(charColor(r.role)).color);
+        const circle = this.add.circle(x, rolesY + 10, 16, Phaser.Display.Color.HexStringToColor(charColor(r.role)).color);
         this.uiElements.push(circle);
       }
 
@@ -141,35 +113,28 @@ export class HelpScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.uiElements.push(nameText);
 
-      // Subtitle
-      const subtitleText = this.add.text(x, rolesY + 70, r.subtitle, {
-        fontSize: '12px',
+      // Role tagline
+      const taglineText = this.add.text(x, rolesY + 72, r.tagline, {
+        fontSize: '13px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
+        fontStyle: 'italic',
       }).setOrigin(0.5);
-      this.uiElements.push(subtitleText);
+      this.uiElements.push(taglineText);
 
-      // Stats line
-      const statsText = this.add.text(x, rolesY + 92, r.stats, {
-        fontSize: '11px',
-        color: Colors.gold.primary,
-        fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      this.uiElements.push(statsText);
-
-      // Detail lines
-      r.details.forEach((line, lineIdx) => {
-        const detailText = this.add.text(x, rolesY + 115 + lineIdx * 18, line, {
-          fontSize: '12px',
+      // Playful description lines
+      r.lines.forEach((line, lineIdx) => {
+        const descText = this.add.text(x, rolesY + 98 + lineIdx * 22, line, {
+          fontSize: '13px',
           color: Colors.text.secondary,
           fontFamily: 'monospace',
         }).setOrigin(0.5);
-        this.uiElements.push(detailText);
+        this.uiElements.push(descText);
       });
     });
 
     // --- Win Conditions Section ---
-    const winY = 520;
+    const winY = 480;
     const winTitle = this.add.text(cx, winY, 'Win Conditions', {
       ...TextStyle.heroHeading,
       fontSize: '20px',
@@ -178,8 +143,8 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(winTitle);
 
     const winConditions = [
-      { text: 'Paran wins: Eliminate both guardians', color: Colors.char.paran },
-      { text: 'Guardians win: Eliminate Paran OR survive 5 minutes', color: Colors.char.faran },
+      { text: 'Paran wins by eliminating both guardians', color: Colors.char.paran },
+      { text: 'Guardians win by taking down Paran or surviving the clock', color: Colors.char.faran },
     ];
     winConditions.forEach((wc, i) => {
       const t = this.add.text(cx, winY + 28 + i * 24, wc.text, {
@@ -192,8 +157,16 @@ export class HelpScene extends Phaser.Scene {
       this.uiElements.push(t);
     });
 
+    // Arena tip
+    const tipText = this.add.text(cx, winY + 65, 'The arena is alive -- smash through obstacles or use them as cover!', {
+      fontSize: '12px',
+      color: Colors.accent.vine,
+      fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    this.uiElements.push(tipText);
+
     // --- Back Button ---
-    const backButton = this.add.text(cx, 640, 'Back to Lobby', {
+    const backButton = this.add.text(cx, 600, 'Back to Lobby', {
       fontSize: '20px',
       color: Buttons.primary.text,
       fontFamily: 'monospace',
