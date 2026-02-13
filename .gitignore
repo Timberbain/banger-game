@@ -20,13 +20,19 @@ Thumbs.db
 *.swo
 
 # Claude Code
-.claude/settings.local.json
+**/.claude/settings.local.json
 
 # Playwright MCP
 .playwright-mcp/
 
 # npm
 .npmrc
+
+# Planning artifacts
+.planning/
+
+# Personal notes
+notes.txt
 
 # Logs
 *.log
