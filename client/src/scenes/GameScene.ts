@@ -1325,15 +1325,18 @@ export class GameScene extends Phaser.Scene {
     if (this.mapMetadata) {
       const cam = this.cameras.main;
       cam.setBounds(0, 0, this.mapMetadata.width, this.mapMetadata.height);
-      cam.setZoom(2);
 
-      // Fallback: if no overview animation is pending and camera isn't following anyone,
-      // start following local player directly (safety net for any missed code path)
-      if (!this.pendingOverview && !(cam as any)._follow && this.room) {
-        const localSprite = this.playerSprites.get(this.room.sessionId);
-        if (localSprite) {
-          cam.startFollow(localSprite, true, 0.12, 0.12);
-          cam.setDeadzone(20, 15);
+      if (!this.overviewActive) {
+        cam.setZoom(2);
+
+        // Fallback: if no overview animation is pending and camera isn't following anyone,
+        // start following local player directly (safety net for any missed code path)
+        if (!this.pendingOverview && !(cam as any)._follow && this.room) {
+          const localSprite = this.playerSprites.get(this.room.sessionId);
+          if (localSprite) {
+            cam.startFollow(localSprite, true, 0.12, 0.12);
+            cam.setDeadzone(20, 15);
+          }
         }
       }
     }
