@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 7 of 12 (HD Viewport & Camera)
-Plan: 3 of 6 in current phase
+Plan: 4 of 6 in current phase
 Status: Executing
-Last activity: 2026-02-13 -- Completed 07-03 (BootScene HD Asset Loading)
+Last activity: 2026-02-13 -- Completed 07-04 (Camera System)
 
-Progress: [##########..........] 53% (41/~56 plans est. across v1.0+v2.0)
+Progress: [###########.........] 55% (42/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -47,6 +47,9 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - ARENA constant preserved as fallback default, PredictionSystem uses optional constructor injection for dynamic bounds
 - Removed unused arcade physics block from Phaser config (custom shared physics used)
 - Walk frameRate 8->10 for 6-frame walks (0.6s cycle comparable to old 0.5s), idle 3fps breathing
+- Spectator camera uses startFollow with lerp instead of centerOn for smooth tracking
+- Look-ahead uses followOffset (SUBTRACTED) with negated direction vectors, 0.04 lerp
+- Camera shake: wall impact 80ms/0.003, damage 100ms/0.005 (local player only)
 
 ### Pending Todos
 
@@ -66,8 +69,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-03-PLAN.md (BootScene HD Asset Loading)
-Next step: Execute 07-04-PLAN.md
+Stopped at: Completed 07-04-PLAN.md (Camera System)
+Next step: Execute 07-05-PLAN.md
 
 ---
-*Updated: 2026-02-13 after 07-03 execution*
+*Updated: 2026-02-13 after 07-04 execution*
