@@ -13,12 +13,16 @@ export class HelpScene extends Phaser.Scene {
   }
 
   create() {
+    const cx = this.cameras.main.centerX;
+    const w = this.cameras.main.width;
+    const h = this.cameras.main.height;
+
     // Dark green solarpunk background
-    const bg = this.add.rectangle(400, 300, 800, 600, Colors.bg.surfaceNum);
+    const bg = this.add.rectangle(cx, this.cameras.main.centerY, w, h, Colors.bg.surfaceNum);
     this.uiElements.push(bg);
 
     // Title
-    const title = this.add.text(400, 35, 'CONTROLS', {
+    const title = this.add.text(cx, 40, 'CONTROLS', {
       fontSize: '32px',
       color: Colors.accent.vine,
       fontFamily: 'monospace',
@@ -31,11 +35,11 @@ export class HelpScene extends Phaser.Scene {
     // Decorative line under title
     const gfx = this.add.graphics();
     gfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color);
-    gfx.lineBetween(200, 55, 600, 55);
+    gfx.lineBetween(cx - 250, 65, cx + 250, 65);
     this.uiElements.push(gfx);
 
     // --- General Controls Section ---
-    const generalTitle = this.add.text(400, 80, 'General', {
+    const generalTitle = this.add.text(cx, 92, 'General', {
       ...TextStyle.heroHeading,
       fontSize: '20px',
       fontFamily: 'monospace',
@@ -48,7 +52,7 @@ export class HelpScene extends Phaser.Scene {
       'Spectate (when eliminated): Tab to cycle',
     ];
     generalControls.forEach((text, i) => {
-      const t = this.add.text(400, 105 + i * 22, text, {
+      const t = this.add.text(cx, 118 + i * 22, text, {
         fontSize: '14px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
@@ -56,10 +60,10 @@ export class HelpScene extends Phaser.Scene {
       this.uiElements.push(t);
     });
 
-    // --- Role-specific sections (3 columns) ---
-    const rolesY = 185;
-    const roleSpacing = 240;
-    const roleStartX = 400 - roleSpacing;
+    // --- Role-specific sections (3 columns) -- spaced for 1280 width ---
+    const rolesY = 200;
+    const roleSpacing = 320;
+    const roleStartX = cx - roleSpacing;
 
     const roles = [
       {
@@ -110,7 +114,7 @@ export class HelpScene extends Phaser.Scene {
       const x = roleStartX + index * roleSpacing;
 
       // Panel background
-      const panel = this.add.rectangle(x, rolesY + 110, 210, 255, Colors.bg.deepNum);
+      const panel = this.add.rectangle(x, rolesY + 120, 270, 270, Colors.bg.deepNum);
       panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
       this.uiElements.push(panel);
 
@@ -127,7 +131,7 @@ export class HelpScene extends Phaser.Scene {
       }
 
       // Role name
-      const nameText = this.add.text(x, rolesY + 45, r.name, {
+      const nameText = this.add.text(x, rolesY + 50, r.name, {
         fontSize: '18px',
         color: charColor(r.role),
         fontFamily: 'monospace',
@@ -138,7 +142,7 @@ export class HelpScene extends Phaser.Scene {
       this.uiElements.push(nameText);
 
       // Subtitle
-      const subtitleText = this.add.text(x, rolesY + 63, r.subtitle, {
+      const subtitleText = this.add.text(x, rolesY + 70, r.subtitle, {
         fontSize: '12px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
@@ -146,7 +150,7 @@ export class HelpScene extends Phaser.Scene {
       this.uiElements.push(subtitleText);
 
       // Stats line
-      const statsText = this.add.text(x, rolesY + 82, r.stats, {
+      const statsText = this.add.text(x, rolesY + 92, r.stats, {
         fontSize: '11px',
         color: Colors.gold.primary,
         fontFamily: 'monospace',
@@ -155,7 +159,7 @@ export class HelpScene extends Phaser.Scene {
 
       // Detail lines
       r.details.forEach((line, lineIdx) => {
-        const detailText = this.add.text(x, rolesY + 102 + lineIdx * 18, line, {
+        const detailText = this.add.text(x, rolesY + 115 + lineIdx * 18, line, {
           fontSize: '12px',
           color: Colors.text.secondary,
           fontFamily: 'monospace',
@@ -165,8 +169,8 @@ export class HelpScene extends Phaser.Scene {
     });
 
     // --- Win Conditions Section ---
-    const winY = 445;
-    const winTitle = this.add.text(400, winY, 'Win Conditions', {
+    const winY = 520;
+    const winTitle = this.add.text(cx, winY, 'Win Conditions', {
       ...TextStyle.heroHeading,
       fontSize: '20px',
       fontFamily: 'monospace',
@@ -178,7 +182,7 @@ export class HelpScene extends Phaser.Scene {
       { text: 'Guardians win: Eliminate Paran OR survive 5 minutes', color: Colors.char.faran },
     ];
     winConditions.forEach((wc, i) => {
-      const t = this.add.text(400, winY + 25 + i * 22, wc.text, {
+      const t = this.add.text(cx, winY + 28 + i * 24, wc.text, {
         fontSize: '14px',
         color: wc.color,
         fontFamily: 'monospace',
@@ -189,7 +193,7 @@ export class HelpScene extends Phaser.Scene {
     });
 
     // --- Back Button ---
-    const backButton = this.add.text(400, 540, 'Back to Lobby', {
+    const backButton = this.add.text(cx, 640, 'Back to Lobby', {
       fontSize: '20px',
       color: Buttons.primary.text,
       fontFamily: 'monospace',

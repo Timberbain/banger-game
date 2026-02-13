@@ -40,7 +40,11 @@ export class LobbyScene extends Phaser.Scene {
 
   /** Helper: add a solarpunk background (deep green) to any sub-view */
   private addSceneBg(): Phaser.GameObjects.Rectangle {
-    const bg = this.add.rectangle(400, 300, 800, 600, Colors.bg.deepNum);
+    const cx = this.cameras.main.centerX;
+    const cy = this.cameras.main.centerY;
+    const w = this.cameras.main.width;
+    const h = this.cameras.main.height;
+    const bg = this.add.rectangle(cx, cy, w, h, Colors.bg.deepNum);
     this.uiElements.push(bg);
     return bg;
   }
@@ -59,6 +63,9 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   private async checkReconnection() {
+    const cx = this.cameras.main.centerX;
+    const cy = this.cameras.main.centerY;
+
     // Check for lobby reconnection token FIRST (lobby refresh)
     const lobbyStored = sessionStorage.getItem('bangerLobbyRoom');
     if (lobbyStored) {
@@ -69,7 +76,7 @@ export class LobbyScene extends Phaser.Scene {
 
         if (elapsed < graceMs) {
           this.addSceneBg();
-          const text = this.addStatusText(400, 300, 'Reconnecting to lobby...', Colors.status.warning);
+          const text = this.addStatusText(cx, cy, 'Reconnecting to lobby...', Colors.status.warning);
 
           // Attempt lobby reconnection with retries (server needs ~9s to process F5 disconnect)
           const LOBBY_MAX_RETRIES = 12;
@@ -146,7 +153,7 @@ export class LobbyScene extends Phaser.Scene {
 
       // Show reconnecting message
       this.addSceneBg();
-      const text = this.addStatusText(400, 300, 'Reconnecting to match...', Colors.status.warning);
+      const text = this.addStatusText(cx, cy, 'Reconnecting to match...', Colors.status.warning);
 
       // Attempt reconnection with retries (server may not have processed disconnect yet)
       const MAX_RETRIES = 12;
@@ -193,7 +200,7 @@ export class LobbyScene extends Phaser.Scene {
       // Show session expired message briefly
       this.clearUI();
       this.addSceneBg();
-      this.addStatusText(400, 300, 'Session expired', Colors.status.danger);
+      this.addStatusText(cx, cy, 'Session expired', Colors.status.danger);
 
       // Show menu after 2 seconds
       this.time.delayedCall(2000, () => this.showMainMenu());
@@ -206,39 +213,44 @@ export class LobbyScene extends Phaser.Scene {
     sessionStorage.removeItem('bangerLobbyRoom');
     this.currentView = 'menu';
 
+    const cx = this.cameras.main.centerX;
+    const cy = this.cameras.main.centerY;
+    const w = this.cameras.main.width;
+    const h = this.cameras.main.height;
+
     // City background image (solarpunk cityscape)
-    const cityBg = this.add.image(400, 300, 'city-bg');
-    cityBg.setDisplaySize(800, 600);
+    const cityBg = this.add.image(cx, cy, 'city-bg');
+    cityBg.setDisplaySize(w, h);
     this.uiElements.push(cityBg);
 
     // Dark overlay for readability
-    const overlay = this.add.rectangle(400, 300, 800, 600, Colors.bg.deepNum, 0.7);
+    const overlay = this.add.rectangle(cx, cy, w, h, Colors.bg.deepNum, 0.7);
     this.uiElements.push(overlay);
 
-    // Subtle vine decorations
+    // Subtle vine decorations (scaled to new resolution)
     const vineGfx = this.add.graphics();
     vineGfx.lineStyle(Decorative.vine.thickness, Decorative.vine.color, Decorative.vine.alpha);
     vineGfx.beginPath();
-    vineGfx.moveTo(30, 80); vineGfx.lineTo(40, 180); vineGfx.lineTo(25, 280);
-    vineGfx.lineTo(45, 380); vineGfx.lineTo(30, 480);
+    vineGfx.moveTo(40, 100); vineGfx.lineTo(55, 220); vineGfx.lineTo(35, 340);
+    vineGfx.lineTo(60, 460); vineGfx.lineTo(40, 580);
     vineGfx.strokePath();
     vineGfx.beginPath();
-    vineGfx.moveTo(770, 80); vineGfx.lineTo(760, 180); vineGfx.lineTo(775, 280);
-    vineGfx.lineTo(755, 380); vineGfx.lineTo(770, 480);
+    vineGfx.moveTo(w - 40, 100); vineGfx.lineTo(w - 55, 220); vineGfx.lineTo(w - 35, 340);
+    vineGfx.lineTo(w - 60, 460); vineGfx.lineTo(w - 40, 580);
     vineGfx.strokePath();
     // Small golden solar dots
     vineGfx.fillStyle(Decorative.solarDots.color, Decorative.solarDots.alphaMin);
     for (let i = 0; i < 15; i++) {
       vineGfx.fillCircle(
-        Phaser.Math.Between(60, 740),
-        Phaser.Math.Between(60, 540),
+        Phaser.Math.Between(80, w - 80),
+        Phaser.Math.Between(80, h - 80),
         Phaser.Math.FloatBetween(Decorative.solarDots.radiusMin, Decorative.solarDots.radiusMax)
       );
     }
     this.uiElements.push(vineGfx);
 
     // Title -- golden with green stroke
-    const title = this.add.text(400, 120, 'BANGER', {
+    const title = this.add.text(cx, 140, 'BANGER', {
       ...TextStyle.hero,
       fontSize: '52px',
       fontFamily: 'monospace',
@@ -249,19 +261,19 @@ export class LobbyScene extends Phaser.Scene {
     // Decorative gold line under title
     const lineGfx = this.add.graphics();
     lineGfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color, Decorative.divider.alpha);
-    lineGfx.lineBetween(250, 150, 550, 150);
+    lineGfx.lineBetween(cx - 200, 175, cx + 200, 175);
     this.uiElements.push(lineGfx);
 
     // Menu buttons -- using design token button presets
     const menuItems = [
-      { text: 'Create Private Room', preset: Buttons.primary, y: 220, handler: () => this.createPrivateRoom() },
-      { text: 'Join Private Room', preset: Buttons.primary, y: 290, handler: () => this.showJoinInput() },
-      { text: 'Find Match', preset: Buttons.accent, y: 360, handler: () => this.showRoleSelectForMatchmaking() },
-      { text: 'How to Play', preset: Buttons.secondary, y: 430, handler: () => this.scene.start('HelpScene') },
+      { text: 'Create Private Room', preset: Buttons.primary, y: 260, handler: () => this.createPrivateRoom() },
+      { text: 'Join Private Room', preset: Buttons.primary, y: 340, handler: () => this.showJoinInput() },
+      { text: 'Find Match', preset: Buttons.accent, y: 420, handler: () => this.showRoleSelectForMatchmaking() },
+      { text: 'How to Play', preset: Buttons.secondary, y: 500, handler: () => this.scene.start('HelpScene') },
     ];
 
     menuItems.forEach(btn => {
-      const button = this.add.text(400, btn.y, btn.text, {
+      const button = this.add.text(cx, btn.y, btn.text, {
         fontSize: btn.preset.fontSize,
         color: btn.preset.text,
         fontFamily: 'monospace',
@@ -287,15 +299,18 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // Volume controls at bottom of menu
-    this.createVolumeControls(520);
+    this.createVolumeControls(600);
   }
 
   private async createPrivateRoom() {
     this.clearUI();
     this.addSceneBg();
 
+    const cx = this.cameras.main.centerX;
+    const cy = this.cameras.main.centerY;
+
     // Show loading text
-    const loadingText = this.addStatusText(400, 300, 'Creating private room...');
+    const loadingText = this.addStatusText(cx, cy, 'Creating private room...');
 
     try {
       this.room = await this.client.create('lobby_room', {
@@ -316,11 +331,13 @@ export class LobbyScene extends Phaser.Scene {
   private showJoinInput() {
     this.clearUI();
 
+    const cx = this.cameras.main.centerX;
+
     // Background
     this.addSceneBg();
 
     // Label
-    const label = this.add.text(400, 200, 'Enter Room Code:', {
+    const label = this.add.text(cx, 240, 'Enter Room Code:', {
       ...TextStyle.heroHeading,
       fontFamily: 'monospace',
     }).setOrigin(0.5);
@@ -367,7 +384,7 @@ export class LobbyScene extends Phaser.Scene {
     this.htmlInput.focus();
 
     // Join button -- primary preset
-    const joinButton = this.add.text(400, 380, 'Join', {
+    const joinButton = this.add.text(cx, 440, 'Join', {
       fontSize: Buttons.primary.fontSize,
       color: Buttons.primary.text,
       fontFamily: 'monospace',
@@ -393,7 +410,7 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(joinButton);
 
     // Back button -- secondary preset
-    const backButton = this.add.text(400, 450, 'Back', {
+    const backButton = this.add.text(cx, 520, 'Back', {
       fontSize: Buttons.secondary.fontSize,
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -426,7 +443,10 @@ export class LobbyScene extends Phaser.Scene {
     this.clearUI();
     this.addSceneBg();
 
-    const statusText = this.addStatusText(400, 300, `Joining room ${code}...`);
+    const cx = this.cameras.main.centerX;
+    const cy = this.cameras.main.centerY;
+
+    const statusText = this.addStatusText(cx, cy, `Joining room ${code}...`);
 
     try {
       // Query server for room with this code
@@ -461,11 +481,13 @@ export class LobbyScene extends Phaser.Scene {
   private showRoleSelectForMatchmaking() {
     this.clearUI();
 
+    const cx = this.cameras.main.centerX;
+
     // Background
     this.addSceneBg();
 
     // Title
-    const title = this.add.text(400, 150, 'Select Preferred Role', {
+    const title = this.add.text(cx, 180, 'Select Preferred Role', {
       ...TextStyle.heroHeading,
       fontFamily: 'monospace',
     }).setOrigin(0.5);
@@ -473,14 +495,14 @@ export class LobbyScene extends Phaser.Scene {
 
     // Role buttons -- use character colors from tokens
     const roles = [
-      { role: 'paran', label: 'Paran (1v2)', y: 230 },
-      { role: 'faran', label: 'Faran (Guardian)', y: 310 },
-      { role: 'baran', label: 'Baran (Guardian)', y: 390 },
+      { role: 'paran', label: 'Paran (1v2)', y: 270 },
+      { role: 'faran', label: 'Faran (Guardian)', y: 360 },
+      { role: 'baran', label: 'Baran (Guardian)', y: 450 },
     ];
 
     roles.forEach(r => {
       const roleColor = charColor(r.role);
-      const button = this.add.text(400, r.y, r.label, {
+      const button = this.add.text(cx, r.y, r.label, {
         fontSize: '22px',
         color: Colors.text.primary,
         fontFamily: 'monospace',
@@ -494,7 +516,7 @@ export class LobbyScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
 
       // Gold left accent bar for each role
-      const accentBar = this.add.rectangle(400 - 120, r.y, 4, 40, charColorNum(r.role));
+      const accentBar = this.add.rectangle(cx - 120, r.y, 4, 40, charColorNum(r.role));
       this.uiElements.push(accentBar);
 
       button.on('pointerover', () => button.setBackgroundColor(Buttons.secondary.hover));
@@ -507,7 +529,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // Back button
-    const backButton = this.add.text(400, 500, 'Back', {
+    const backButton = this.add.text(cx, 580, 'Back', {
       fontSize: Buttons.secondary.fontSize,
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -529,10 +551,12 @@ export class LobbyScene extends Phaser.Scene {
   private async joinMatchmaking(preferredRole: string) {
     this.clearUI();
 
+    const cx = this.cameras.main.centerX;
+
     // Background
     this.addSceneBg();
 
-    const statusText = this.addStatusText(400, 280, 'Searching for match...', Colors.status.warning);
+    const statusText = this.addStatusText(cx, 330, 'Searching for match...', Colors.status.warning);
 
     // Add spinner animation
     let dots = 0;
@@ -546,7 +570,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // Queue size display
-    const queueText = this.add.text(400, 330, '', {
+    const queueText = this.add.text(cx, 380, '', {
       fontSize: '16px',
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -556,7 +580,7 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(queueText);
 
     // Cancel button -- danger preset
-    const cancelButton = this.add.text(400, 420, 'Cancel', {
+    const cancelButton = this.add.text(cx, 480, 'Cancel', {
       fontSize: Buttons.danger.fontSize,
       color: Buttons.danger.text,
       fontFamily: 'monospace',
@@ -607,7 +631,7 @@ export class LobbyScene extends Phaser.Scene {
         // Show transition message
         this.clearUI();
         this.addSceneBg();
-        this.addStatusText(400, 300, 'Match found! Joining lobby...', Colors.status.success);
+        this.addStatusText(cx, this.cameras.main.centerY, 'Match found! Joining lobby...', Colors.status.success);
 
         try {
           // Join the lobby that matchmaking created
@@ -631,7 +655,7 @@ export class LobbyScene extends Phaser.Scene {
           console.error('Failed to join matchmaking lobby:', e);
           this.clearUI();
           this.addSceneBg();
-          this.addStatusText(400, 300, 'Failed to join lobby', Colors.status.danger);
+          this.addStatusText(cx, this.cameras.main.centerY, 'Failed to join lobby', Colors.status.danger);
           this.time.delayedCall(3000, () => this.showMainMenu());
         }
       });
@@ -660,6 +684,8 @@ export class LobbyScene extends Phaser.Scene {
     this.selectedRole = null;
     this.currentView = 'lobby';
 
+    const cx = this.cameras.main.centerX;
+
     // Solarpunk dark green background
     this.addSceneBg();
 
@@ -669,7 +695,7 @@ export class LobbyScene extends Phaser.Scene {
     const updateRoomCode = (value: string) => {
       if (value && this.room?.state.isPrivate) {
         if (!codeLabel) {
-          codeLabel = this.add.text(400, 40, `Room Code: ${value}`, {
+          codeLabel = this.add.text(cx, 45, `Room Code: ${value}`, {
             fontSize: '28px',
             color: Colors.gold.primary,
             fontStyle: 'bold',
@@ -713,7 +739,7 @@ export class LobbyScene extends Phaser.Scene {
     this.createReadyButton();
 
     // Countdown display (initially hidden)
-    const countdownText = this.add.text(400, 130, '', {
+    const countdownText = this.add.text(cx, 150, '', {
       fontSize: '64px',
       color: Colors.gold.primary,
       fontFamily: 'monospace',
@@ -737,7 +763,7 @@ export class LobbyScene extends Phaser.Scene {
 
     // Listen for role errors
     this.room.onMessage('roleError', (message: string) => {
-      const errorText = this.add.text(400, 550, message, {
+      const errorText = this.add.text(cx, 640, message, {
         fontSize: '16px',
         color: Colors.status.danger,
         fontFamily: 'monospace',
@@ -787,20 +813,22 @@ export class LobbyScene extends Phaser.Scene {
   private createCharacterSelection() {
     if (!this.room) return;
 
+    const cx = this.cameras.main.centerX;
+
     // Clear updater array for fresh character panel registration
     this.characterPanelUpdaters = [];
 
-    const titleY = this.room.state.isPrivate ? 100 : 60;
-    const title = this.add.text(400, titleY, 'Select Character', {
+    const titleY = this.room.state.isPrivate ? 110 : 75;
+    const title = this.add.text(cx, titleY, 'Select Character', {
       ...TextStyle.heroHeading,
       fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.uiElements.push(title);
 
-    // Character panels
+    // Character panels -- space evenly across wider screen
     const panelY = titleY + 70;
-    const spacing = 180;
-    const startX = 400 - spacing;
+    const spacing = 240;
+    const startX = cx - spacing;
 
     const characters = [
       { role: 'paran', name: 'Paran', desc: 'Force - 150HP' },
@@ -812,7 +840,7 @@ export class LobbyScene extends Phaser.Scene {
       const x = startX + index * spacing;
 
       // Character panel background -- using Panels.card preset
-      const panel = this.add.rectangle(x, panelY, 140, 120, Panels.card.bg);
+      const panel = this.add.rectangle(x, panelY, 160, 130, Panels.card.bg);
       panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
       panel.setInteractive({ useHandCursor: true });
       this.uiElements.push(panel);
@@ -899,8 +927,10 @@ export class LobbyScene extends Phaser.Scene {
   private createPlayerList() {
     if (!this.room) return;
 
-    const titleY = this.room.state.isPrivate ? 280 : 240;
-    const title = this.add.text(400, titleY, 'Players', {
+    const cx = this.cameras.main.centerX;
+
+    const titleY = this.room.state.isPrivate ? 320 : 280;
+    const title = this.add.text(cx, titleY, 'Players', {
       ...TextStyle.heroHeading,
       fontSize: '20px',
       fontFamily: 'monospace',
@@ -925,7 +955,7 @@ export class LobbyScene extends Phaser.Scene {
         const connectedStatus = player.connected ? '' : ' [DC]';
 
         const text = this.add.text(
-          400,
+          cx,
           y,
           `${player.name} - ${roleName} ${readyIcon}${connectedStatus}`,
           {
@@ -956,8 +986,10 @@ export class LobbyScene extends Phaser.Scene {
   private createReadyButton() {
     if (!this.room) return;
 
-    const buttonY = 500;
-    const readyButton = this.add.text(400, buttonY, 'Ready', {
+    const cx = this.cameras.main.centerX;
+
+    const buttonY = 580;
+    const readyButton = this.add.text(cx, buttonY, 'Ready', {
       fontSize: Buttons.primary.fontSize,
       color: Buttons.primary.text,
       fontFamily: 'monospace',
@@ -1037,6 +1069,8 @@ export class LobbyScene extends Phaser.Scene {
   private createVolumeControls(startY: number) {
     if (!this.audioManager) return;
 
+    const cx = this.cameras.main.centerX;
+
     const controls = [
       { label: 'Music', get: () => this.audioManager!.getMusicVolume(), set: (v: number) => this.audioManager!.setMusicVolume(v) },
       { label: 'SFX', get: () => this.audioManager!.getSFXVolume(), set: (v: number) => this.audioManager!.setSFXVolume(v) },
@@ -1044,7 +1078,7 @@ export class LobbyScene extends Phaser.Scene {
 
     controls.forEach((ctrl, index) => {
       const y = startY + index * 35;
-      const labelText = this.add.text(280, y, ctrl.label + ':', {
+      const labelText = this.add.text(cx - 120, y, ctrl.label + ':', {
         fontSize: '16px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
@@ -1053,7 +1087,7 @@ export class LobbyScene extends Phaser.Scene {
       }).setOrigin(0, 0.5);
       this.uiElements.push(labelText);
 
-      const volText = this.add.text(400, y, `${Math.round(ctrl.get() * 100)}%`, {
+      const volText = this.add.text(cx, y, `${Math.round(ctrl.get() * 100)}%`, {
         fontSize: '16px',
         color: Colors.text.primary,
         fontFamily: 'monospace',
@@ -1063,7 +1097,7 @@ export class LobbyScene extends Phaser.Scene {
       this.uiElements.push(volText);
 
       // Minus button
-      const minusBtn = this.add.text(350, y, ' - ', {
+      const minusBtn = this.add.text(cx - 50, y, ' - ', {
         fontSize: '18px',
         color: Colors.text.primary,
         fontFamily: 'monospace',
@@ -1080,7 +1114,7 @@ export class LobbyScene extends Phaser.Scene {
       this.uiElements.push(minusBtn);
 
       // Plus button
-      const plusBtn = this.add.text(450, y, ' + ', {
+      const plusBtn = this.add.text(cx + 50, y, ' + ', {
         fontSize: '18px',
         color: Colors.text.primary,
         fontFamily: 'monospace',

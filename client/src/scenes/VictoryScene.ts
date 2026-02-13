@@ -11,6 +11,11 @@ export class VictoryScene extends Phaser.Scene {
   create(data: { winner: string; stats: Record<string, any>; duration: number; localSessionId: string; room: any }) {
     const { winner, stats, duration, localSessionId, room } = data;
 
+    const cx = this.cameras.main.centerX;
+    const cy = this.cameras.main.centerY;
+    const w = this.cameras.main.width;
+    const h = this.cameras.main.height;
+
     // Determine if local player won
     const localStats = stats[localSessionId];
     const localRole = localStats?.role || "unknown";
@@ -19,21 +24,21 @@ export class VictoryScene extends Phaser.Scene {
 
     // Victory splash image background (different for each outcome)
     const splashKey = winner === "paran" ? 'victory-paran' : 'victory-guardian';
-    const splashBg = this.add.image(400, 300, splashKey);
-    splashBg.setDisplaySize(800, 600);
+    const splashBg = this.add.image(cx, cy, splashKey);
+    splashBg.setDisplaySize(w, h);
     splashBg.setDepth(0);
 
     // Dark overlay for readability
-    this.add.rectangle(400, 300, 800, 600, 0x000000, Colors.bg.overlayAlpha).setDepth(0.5);
+    this.add.rectangle(cx, cy, w, h, 0x000000, Colors.bg.overlayAlpha).setDepth(0.5);
 
     // Color wash overlay (between image and content)
     const washColor = didWin ? Colors.status.successNum : Colors.status.dangerNum;
-    this.add.rectangle(400, 300, 800, 600, washColor, 0.10).setDepth(0.6);
+    this.add.rectangle(cx, cy, w, h, washColor, 0.10).setDepth(0.6);
 
     // Victory/Defeat title
     const titleText = didWin ? "VICTORY!" : "DEFEAT";
     const titleColor = didWin ? Colors.gold.primary : Colors.status.danger;
-    this.add.text(400, 60, titleText, {
+    this.add.text(cx, 70, titleText, {
       ...TextStyle.hero,
       color: titleColor,
       fontFamily: 'monospace',
@@ -41,7 +46,7 @@ export class VictoryScene extends Phaser.Scene {
 
     // Winner subtitle
     const winnerLabel = winner === "paran" ? "Paran Wins!" : "Guardians Win!";
-    this.add.text(400, 130, winnerLabel, {
+    this.add.text(cx, 150, winnerLabel, {
       fontSize: '24px',
       color: Colors.text.primary,
       fontFamily: 'monospace',
@@ -53,7 +58,7 @@ export class VictoryScene extends Phaser.Scene {
     const durationSec = Math.round(duration / 1000);
     const minutes = Math.floor(durationSec / 60);
     const seconds = durationSec % 60;
-    this.add.text(400, 165, `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`, {
+    this.add.text(cx, 190, `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`, {
       fontSize: '16px',
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -64,18 +69,18 @@ export class VictoryScene extends Phaser.Scene {
     // Gold divider above stats
     const dividerGfx = this.add.graphics();
     dividerGfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
-    dividerGfx.lineBetween(150, 195, 650, 195);
+    dividerGfx.lineBetween(cx - 350, 225, cx + 350, 225);
     dividerGfx.setDepth(1);
 
     // Stats header -- golden
-    this.add.text(400, 210, "MATCH STATISTICS", {
+    this.add.text(cx, 245, "MATCH STATISTICS", {
       ...TextStyle.heroHeading,
       fontFamily: 'monospace',
     }).setOrigin(0.5).setDepth(1);
 
-    // Table header row
-    const headerY = 250;
-    const cols = { name: 100, role: 250, kills: 340, deaths: 400, damage: 470, accuracy: 570 };
+    // Table header row -- positions scaled for 1280 width
+    const headerY = 285;
+    const cols = { name: 140, role: 340, kills: 470, deaths: 550, damage: 650, accuracy: 780 };
     const headerStyle = { fontSize: '14px', color: Colors.text.secondary, fontFamily: 'monospace', stroke: '#000000' as string, strokeThickness: 1 };
     this.add.text(cols.name, headerY, "Player", headerStyle).setDepth(1);
     this.add.text(cols.role, headerY, "Role", headerStyle).setDepth(1);
@@ -87,7 +92,7 @@ export class VictoryScene extends Phaser.Scene {
     // Header underline -- gold
     const line = this.add.graphics();
     line.lineStyle(1, Colors.gold.darkNum, 0.5);
-    line.lineBetween(80, headerY + 22, 720, headerY + 22);
+    line.lineBetween(110, headerY + 22, w - 110, headerY + 22);
     line.setDepth(1);
 
     // Player stats rows
@@ -106,7 +111,7 @@ export class VictoryScene extends Phaser.Scene {
 
       // Highlight row for local player
       if (isLocal) {
-        this.add.rectangle(400, yOffset + 8, 640, 28, Colors.bg.elevatedNum, 0.5).setDepth(1);
+        this.add.rectangle(cx, yOffset + 8, w - 200, 28, Colors.bg.elevatedNum, 0.5).setDepth(1);
       }
 
       // Player name (truncate)
@@ -132,11 +137,11 @@ export class VictoryScene extends Phaser.Scene {
     // Gold divider below stats
     const dividerGfx2 = this.add.graphics();
     dividerGfx2.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
-    dividerGfx2.lineBetween(150, yOffset + 5, 650, yOffset + 5);
+    dividerGfx2.lineBetween(cx - 350, yOffset + 5, cx + 350, yOffset + 5);
     dividerGfx2.setDepth(1);
 
     // Return to Lobby button -- primary preset
-    const button = this.add.text(400, 500, "Return to Lobby", {
+    const button = this.add.text(cx, 580, "Return to Lobby", {
       fontSize: Buttons.primary.fontSize,
       color: Buttons.primary.text,
       fontFamily: 'monospace',
@@ -161,19 +166,19 @@ export class VictoryScene extends Phaser.Scene {
     const particleFactory = new ParticleFactory(this);
     const particleColor = didWin ? Colors.status.successNum : Colors.status.dangerNum;
 
-    // Multiple victory/defeat bursts at different positions
-    particleFactory.victoryBurst(200, 100, particleColor);
-    particleFactory.victoryBurst(600, 100, particleColor);
-    particleFactory.victoryBurst(400, 200, particleColor);
+    // Multiple victory/defeat bursts at different positions (scaled for 1280x720)
+    particleFactory.victoryBurst(w * 0.2, 120, particleColor);
+    particleFactory.victoryBurst(w * 0.8, 120, particleColor);
+    particleFactory.victoryBurst(cx, 240, particleColor);
 
     // Delayed secondary bursts for staggered celebration
     this.time.delayedCall(400, () => {
-      particleFactory.victoryBurst(150, 200, particleColor);
-      particleFactory.victoryBurst(650, 200, particleColor);
+      particleFactory.victoryBurst(w * 0.15, 240, particleColor);
+      particleFactory.victoryBurst(w * 0.85, 240, particleColor);
     });
     this.time.delayedCall(800, () => {
-      particleFactory.victoryBurst(300, 120, particleColor);
-      particleFactory.victoryBurst(500, 120, particleColor);
+      particleFactory.victoryBurst(w * 0.35, 140, particleColor);
+      particleFactory.victoryBurst(w * 0.65, 140, particleColor);
     });
   }
 
