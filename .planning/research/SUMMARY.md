@@ -1,417 +1,307 @@
 # Project Research Summary
 
-**Project:** Banger
-**Domain:** Browser-based multiplayer arena game (1v2 asymmetric shooter)
-**Researched:** 2026-02-09
-**Confidence:** MEDIUM
+**Project:** Banger v2.0 Arena Evolution
+**Domain:** Multiplayer Game Enhancement (Phaser 3 + Colyseus)
+**Researched:** 2026-02-13
+**Confidence:** HIGH
 
 ## Executive Summary
 
-Banger is a browser-based multiplayer arena shooter with asymmetric 1v2 gameplay, featuring acceleration-based movement and collision mechanics. Expert developers in this domain build such games using **Phaser 3** for client-side rendering, **Colyseus** for authoritative multiplayer server architecture, and a separation of concerns where the server owns all game logic while clients only render and send input. This pattern prevents cheating and ensures consistent gameplay across all players.
+The v2.0 milestone adds HD resolution (1280x720), scrollable camera-followed arenas (50x38 tiles vs 25x19), best-of-3 multi-stage matches, powerup system, minimap, new tileset rendering, music system, and icon-based HUD overhaul. The remarkable finding is that **zero new npm dependencies are required** — every feature is implementable using Phaser 3.90's built-in APIs and the existing Colyseus 0.15 architecture.
 
-The recommended approach is a **server-authoritative architecture** with client-side prediction for local responsiveness and interpolation for remote entities. Start with a monorepo structure (client/server/shared packages) using TypeScript throughout, PostgreSQL for persistence, and Redis for sessions. Deploy in Docker containers with nginx as reverse proxy. The core technical challenge is achieving responsive combat feel (sub-100ms perceived latency) while maintaining server authority over physics and collision detection—critical for Banger's collision penalty mechanics and competitive integrity.
+The recommended approach treats HD viewport and camera follow as the **foundational change** that cascades into all other features. Without camera scrolling working correctly, larger arenas are unplayable. The camera foundation must be built first, followed by new tilesets/maps, then the multi-stage match system, and finally enhancement layers (powerups, minimap, music, HUD polish). This dependency-driven ordering prevents rework: attempting multi-stage matches before larger arenas are functional would require rewriting the state machine once maps change.
 
-**Key risks:** (1) Physics desynchronization between client and server leading to unfair collision penalties, (2) bandwidth explosion from naïve state synchronization in projectile-heavy combat, (3) client trust vulnerabilities enabling cheating in competitive 1v2 matches, and (4) poor perceived responsiveness if latency testing is deferred. All of these can be mitigated by establishing the server-authoritative pattern from day one, implementing client prediction with server reconciliation, using Colyseus Schema delta compression, validating all client input, and testing with realistic latency (100-150ms) starting in Phase 1.
+The key risks are architectural, not technological: (1) the hardcoded `ARENA = {800, 608}` constant must become per-map metadata or edge clamping breaks physics, (2) 30+ hardcoded HUD pixel positions must become viewport-relative, (3) multi-stage match lifecycle requires comprehensive state reset without room recreation to avoid Colyseus session ID issues, and (4) Phaser scene reuse means every new feature adds member variables that MUST be reset in `create()`. All risks are mitigatable through patterns documented in the research.
 
 ## Key Findings
 
 ### Recommended Stack
 
-**Phaser 3.80+ and Colyseus 0.15+** form the industry-standard foundation for browser multiplayer games. Phaser provides the complete client-side game framework (rendering, input, asset management, physics for display purposes) with WebGL performance and Canvas fallback. Colyseus offers purpose-built real-time multiplayer infrastructure with room-based architecture, automatic state synchronization via binary serialization, and client prediction support—all essential for the authoritative server pattern.
+No new dependencies required. The existing stack (Phaser 3.90, Colyseus 0.15.57 server / 0.15.28 client, Vite 5, TypeScript 5, Express 4, jsfxr 1.4) already provides every needed capability. HD viewport is a game config change. Camera follow is Phaser's built-in `camera.startFollow()`. Larger arenas use the same tilemap pipeline with bigger JSON files. Multi-stage rounds are pure server-side state machine logic using existing Schema patterns. Powerups follow the same Schema + MapSchema pattern as projectiles and obstacles. Minimap uses Phaser's native multi-camera API. Music uses either HTMLAudioElement with custom crossfade or Phaser's built-in Sound Manager. HUD icons use standard `this.load.image()`.
 
-**Core technologies:**
-- **Phaser 3.80+**: Client-side game engine — industry standard for 2D browser games, handles rendering and input, active ecosystem
-- **Colyseus 0.15+**: Authoritative multiplayer server — purpose-built for real-time games, room-based architecture, state synchronization
-- **Node.js 20 LTS**: Server runtime — required for Colyseus, native TypeScript support, LTS stability
-- **TypeScript 5.3+**: Language — type safety critical for client/server state sync, prevents desync bugs
-- **PostgreSQL 16+**: Database — user accounts and match history with JSONB flexibility, ACID guarantees for competitive stats
-- **Redis 7+**: Session/cache — fast session storage, matchmaking queues, Colyseus presence for multi-server coordination
-- **Vite 5.0+**: Build tool — fast dev server with HMR, native TS support, modern replacement for Webpack
-- **Docker 24+**: Containerization — self-hosting requirement, consistent dev/prod environments
+**Core technologies (unchanged):**
+- **Phaser 3.90** — Built-in camera follow (`startFollow`, `setBounds`), multi-camera (`cameras.add`), tilemap scaling, Sound Manager — all features needed are native
+- **Colyseus 0.15** — State machine extensions use existing Schema patterns; PowerupState follows same pattern as ProjectileState/ObstacleState
+- **Vite 5** — Asset serving unchanged; tileset PNGs and music MP3s go in `client/public/` and load via Phaser loader
+- **TypeScript shared/ modules** — Powerup definitions, arena bounds, and map metadata are additive shared types
 
-**Supporting infrastructure:** nginx for WebSocket proxy and static assets, PM2 for process management, Pino for structured logging, Prometheus + Grafana for monitoring (active rooms, tick rate, player counts). Monorepo structure recommended using pnpm workspaces with separate client, server, and shared packages for TypeScript types.
-
-**Confidence:** HIGH for framework choices (Phaser + Colyseus is proven pairing), MEDIUM for specific versions (based on Jan 2025 training data, need verification with current releases).
+**Confidence:** HIGH — all recommendations verified against Phaser 3 documentation and existing codebase patterns.
 
 ### Expected Features
 
-Browser multiplayer arena games have clear feature expectations derived from the .io game genre and competitive shooters like krunker.io.
-
 **Must have (table stakes):**
-- Instant play (no download) — core browser game value proposition
-- Responsive controls — players judge quality immediately, acceleration movement must feel tight
-- Low-latency netcode — competitive games unplayable with lag, critical for projectile combat
-- Match/lobby system — room codes already planned for private matches
-- Basic HUD (health, ammo, score) — essential for combat decision-making
-- Match end screen with stats — closure and feedback expectation
-- Reconnection handling — browser tabs get refreshed, need graceful disconnect
-- Mobile-responsive UI — significant traffic from mobile, touch controls required
-- Username/identity — light accounts for recognition
-- Tutorial/controls screen — acceleration movement has learning curve
-- Audio/visual feedback — shooting, hits, deaths require feedback
-- Visual hit confirmation — hit markers or damage numbers for combat clarity
-- Spectator mode — dead players need something to do in asymmetric matches
+- **Camera follow with smooth lerp** — Players must see their character in larger arenas; instant snap feels jarring
+- **World bounds matching arena size** — Camera must not scroll past map edges into void
+- **HD viewport resolution** — Current 800x600 is small on modern screens; 1280x720 provides appropriate scale for 32px pixel art
+- **Minimap showing player positions** — In scrollable arenas, global awareness is essential for tactical play
+- **Round indicator / score display** — Best-of-3 needs visible round number and cumulative score
+- **Music during matches** — Silent arenas feel unfinished in a polished game
 
 **Should have (competitive differentiators):**
-- Asymmetric 1v2 gameplay — core differentiator, requires careful balance testing
-- Acceleration-based movement — higher skill ceiling than click-to-move
-- Multiple hand-crafted maps (3-5 minimum) — variety prevents staleness, competitive balance
-- Character-specific abilities (Faran/Baran/Paran) — role differentiation beyond numbers
-- Collision-based gameplay — tactical dimension (body blocking), core to concept
-- Stat tracking & progression — long-term engagement, enabled by light accounts
-- Leaderboards — competitive motivation (daily/weekly/all-time)
-- Matchmaking system — most .io games lack skill-based matching (opportunity)
-- Ranked/competitive mode — aspirational goal, requires matchmaking foundation
+- **Powerup spawning system** — Adds strategic depth via risk/reward positioning and map control
+- **Camera deadzone** — Small dead area prevents camera jitter, polished feel
+- **Per-arena music tracks** — Different music per map creates distinct atmosphere
+- **Music crossfade on transitions** — Smooth 0.5s fades prevent jarring audio cuts
+- **Icon-based HUD elements** — Hearts for health, timer icon, skull for kills replace text-only UI
+- **Active powerup indicator** — Shows which powerup is active on a player with duration bar
+- **Round-specific arena selection** — Each round in best-of-3 uses a different map
 
 **Defer (v2+):**
-- Cosmetic customization — defer until core loop proven and retention validated
-- Friend system & parties — room codes sufficient initially for social play
-- Seasonal content — requires active playerbase first
-- Tournament system — needs established competitive scene
-- Replay system — high complexity, low initial value
-- Custom game modes — core 1v2 mode must be solid before variants
-- Map editor — massive scope increase, user-generated content premature
+- Fog-of-war minimap (adds complexity, validate base minimap first)
+- Powerup balancing per character (see if base system needs it from playtesting)
+- More than 3 rounds (best-of-5 only if matches feel too short)
+- Adaptive music with stems/layers (track-per-scene is sufficient)
 
-**Anti-features (explicitly avoid):**
-- Pay-to-win mechanics — destroys competitive integrity (cosmetic-only monetization instead)
-- Loot boxes/gacha — regulatory risk (direct purchase or battle pass)
-- Voice chat — toxicity management burden (text chat or quick chat wheel)
-- Auto-matchmaking only — removes casual play (keep room codes alongside matchmaking)
-- Complex account system — friction for browser game (keep light/optional)
-- Single-player campaign — wrong scope for arena game (tutorial/practice only)
+**Estimated scope:** 20-25 plans across 7 feature phases.
 
 ### Architecture Approach
 
-The proven pattern is **authoritative server with dumb client**: server owns all game logic (physics, collision, combat), clients only render state and send input. This prevents cheating and ensures consistency—critical for competitive integrity in Banger's 1v2 asymmetric balance.
+The architecture treats v2.0 as **7 integration domains** touching different layers: (1) shared physics (ARENA becomes per-map), (2) shared maps (extended MapMetadata), (3) client main.ts (resolution config), (4) GameScene (camera, tilemap, powerups, minimap, music), (5) HUDScene (repositioning + icons), (6) GameRoom (multi-stage state machine + powerup logic), (7) GameState schema (stage tracking + powerups MapSchema). The core architectural insight is that HD viewport + scrollable camera is a foundational change cascading into nearly every other feature.
 
 **Major components:**
 
-1. **Client (Phaser)** — Pure presentation layer. Renders game state received from server. Captures input (keyboard/mouse) and sends to server. Client-side prediction for local player movement only (for responsiveness), interpolation for remote entities (for smoothness). Never modifies authoritative state.
+1. **HD Viewport Foundation** — `main.ts` resolution change + all hardcoded 800x600 coordinates updated to use `this.cameras.main.width/height` or Layout constants. Establishes viewport-relative positioning pattern for all UI.
 
-2. **Server (Colyseus Room)** — Authoritative game logic. Fixed timestep game loop (60Hz typical) processes input queue, runs physics simulation, detects collisions, applies damage, updates game state. Uses `@colyseus/schema` for automatic binary state synchronization with delta compression. One room instance per active match (isolated state).
+2. **Dynamic Arena Bounds** — Replace global `ARENA = {800, 608}` constant with per-map `MapMetadata.arenaWidth/arenaHeight`. Pass arena bounds to PredictionSystem constructor and GameRoom edge clamping instead of importing ARENA singleton. Enables variable map sizes.
 
-3. **Shared Types** — TypeScript interfaces for game state shared between client and server in monorepo `/shared` package. Ensures client and server agree on state structure, prevents desync bugs.
+3. **Multi-Stage State Machine** — Extend GameRoom state flow: `WAITING -> STAGE_INTRO -> PLAYING -> STAGE_END -> (next stage or) MATCH_END`. Add Schema fields: `stageNumber`, `totalStages`, `stageWinners[]`. Between stages: reset health/positions/velocities, clear projectiles/powerups, rebuild CollisionGrid, hot-swap tilemap on client via `mapName` listener.
 
-4. **Persistence Layer** — Separate async service (PostgreSQL for accounts/stats, Redis for sessions). Never blocks game loop. Match results written after game ends, not during update tick.
+4. **Powerup System** — New `shared/powerups.ts` type defs, new `server/schema/PowerupState.ts`, MapSchema in GameState, server spawn timer + collision detection, client sprite rendering (onAdd/onRemove pattern), HUD active effect indicator. Same pattern as projectiles/obstacles.
 
-5. **Matchmaking & Lobby** — Dual system supporting both room codes (private matches with friends) and matchmaking (skill-based public matches). Colyseus room discovery and filtering. Redis-backed presence for multi-server scaling when needed.
+5. **Camera Follow Integration** — GameScene: `camera.startFollow(localSprite, true, 0.1, 0.1)` + `camera.setBounds(0, 0, mapPixelWidth, mapPixelHeight)`. HUDScene stays fixed with separate camera. Spectator mode switches follow targets. Minimap via secondary camera with `cameras.add()`.
 
-**Critical data flow:** Client captures input → sends to server → server queues input → fixed timestep processes queue → updates physics → modifies state → Colyseus auto-syncs delta to clients → clients interpolate → render in Phaser.
+6. **Tileset Pipeline Extension** — Existing dynamic tilemap loading handles larger maps and new tilesets with no code changes. Author new 50x38 maps in Tiled using provided hedge/brick/wood tilesets. Deploy tileset PNGs to `client/public/tilesets/`. Hot-swap tilesets between stages via mapName change.
 
-**Key patterns to follow:**
-- Schema-driven state sync (automatic change detection, binary protocol)
-- Input queue with timestamp validation (handles jitter, prevents speedhacks)
-- Fixed timestep server loop (deterministic physics, consistent 60Hz)
-- Entity interpolation on client (smooth 60 FPS rendering from 20-60Hz network updates)
-- Component-based state organization (players/projectiles/map separated)
+7. **Audio System Upgrade** — Extend AudioManager with crossfade support for music transitions. Deploy MP3s to `client/public/audio/`. MapMetadata gains `musicTrack` field. Play per-stage music with fade-out/fade-in on transitions. Keep jsfxr for SFX unchanged.
 
-**Anti-patterns to avoid:**
-- Client-side game logic (enables cheating, causes desync)
-- Synchronizing derived state (wastes bandwidth—only sync essential state)
-- Processing input in `onMessage` handler (bypasses fixed timestep, race conditions)
-- Blocking operations in game loop (database writes freeze match)
-- Trusting client timestamps without validation (speedhack vulnerability)
-
-**Build order:** Schema → Room + Server → Client connection → Input system → Game loop → Physics → Rendering → Combat → Collision → Interpolation → Match lifecycle → Persistence → Maps → Matchmaking. This sequence ensures each phase builds on working foundation.
+**Confidence:** HIGH — based on direct codebase analysis and verified Phaser 3 / Colyseus 0.15 capabilities.
 
 ### Critical Pitfalls
 
-Research identified 15 domain pitfalls ranging from critical (cause rewrites) to minor (annoyance). Top 5 critical pitfalls that would derail Banger if ignored:
+1. **ARENA constant hardcoded everywhere** — Changing to larger arenas without updating the global `ARENA = {width: 800, height: 608}` constant causes players to hit invisible walls at (800, 608) in 1600x1216 arenas. Both `PredictionSystem` and `GameRoom` use ARENA for edge clamping. **Prevention:** Remove global constant, add `arenaWidth`/`arenaHeight` to MapMetadata, pass dimensions to PredictionSystem constructor and GameRoom collision resolution.
 
-1. **Client-server physics authority mismatch** — Running physics on both sides with different configs causes desync. Client shows wall collision, server says no hit—combat becomes unpredictable. **Prevention:** Establish server-authoritative model in Phase 1. Server runs lightweight physics (not full Phaser), clients predict locally and reconcile with server state. Use fixed timestep on server (60Hz), interpolate on client.
+2. **HUD uses hardcoded pixel positions** — HUDScene positions every element at magic numbers: timer at (400, 20), health bars at y=575, etc. At 1280x720, all elements cluster incorrectly. **Prevention:** Refactor all HUD positions to use `this.cameras.main.width/height`, express coordinates as percentages or anchor offsets (e.g., `width - 20` for right-aligned).
 
-2. **Naïve state synchronization** — Sending full state every tick creates bandwidth bottleneck. Works locally, breaks at 100ms+ latency or on mobile. Projectile-heavy combat scales poorly. **Prevention:** Use Colyseus Schema delta compression (only changed properties sync). Design schema to maximize delta efficiency. Use event-driven for discrete actions (projectile_fired event, not projectile state every tick). Quantize positions to reduce bandwidth.
+3. **Multi-stage rounds require full state reset without room recreation** — Best-of-3 needs to reset GameState (health, positions, obstacles, projectiles, collision grid) between rounds while keeping the same Colyseus room open. Creating new rooms per stage causes session ID changes (known issue from Phase 5). **Prevention:** Add `stageNumber` and `stageWinners[]` to Schema, implement stage transition logic that resets Schema fields and rebuilds CollisionGrid, client listens for `mapName` change to hot-swap tilemap.
 
-3. **Client trust vulnerabilities** — Accepting client input without validation enables cheating (speed hacks, teleportation, invincibility). Competitive 1v2 unplayable when one player cheats. **Prevention:** Validate ALL input server-side from day one. Check movement speed limits, action cooldowns, collision states. Server-authoritative hit detection. Rate limit input messages. Add sanity checks (impossible speeds, wall clipping).
+4. **Camera follow breaks existing coordinate assumptions** — Adding `camera.startFollow()` means the camera scrolls, breaking screen-fixed elements like status text at (10, 10). **Prevention:** Move screen-fixed elements to HUDScene or use `setScrollFactor(0)`, set camera bounds after tilemap loads, use `camera.stopFollow()` then `startFollow(newTarget)` for spectator mode.
 
-4. **Interpolation vs extrapolation confusion** — Using extrapolation (predicting future) when should interpolate (smoothing between known states) makes remote players look jittery. Especially bad for acceleration-based movement. **Prevention:** Interpolate remote players (render 100-150ms in past, smooth between server updates). Only extrapolate local player (prediction for responsiveness). Buffer 2-3 server updates to handle jitter.
-
-5. **No realistic latency testing** — Game feels great on localhost (0ms), launches with 50-150ms real latency, and combat feels broken. Post-launch panic. **Prevention:** Setup latency simulation tools (Chrome DevTools throttling, tc, Clumsy) in Phase 1. Test daily at 50ms, 100ms, 150ms. Define latency budget (playable at 150ms). Use client prediction to hide network delay.
-
-**Moderate pitfalls** requiring attention but not rewrites: tight coupling between Phaser and game logic (prevents server reuse), room state size explosion (projectiles accumulate), matchmaking without reconnection (mobile network blips ruin matches), asset loading hitches during gameplay, no graceful degradation for lag spikes.
-
-**Banger-specific concerns:** Momentum-based movement requires tight synchronization. Collision penalties must be server-authoritative for fairness (core mechanic). 1v2 asymmetry means balance is critical—cheating ruins it. Projectile-heavy combat is bandwidth sensitive (delta compression essential).
+5. **Phaser scene reuse (30+ member variables to reset)** — GameScene.create() already resets 30+ member variables for scene reuse. Each new feature (powerups, minimap, stage tracking) adds more state that MUST be reset or causes ghost sprites, orphaned particles, stale listeners. **Prevention:** Establish pattern that every new Map, Set, or game object reference gets corresponding reset in create() AND a round-reset handler. Consider extracting state into a `GameSceneState` class with single `reset()` method.
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure balances dependency ordering (can't build combat before movement), risk mitigation (address critical pitfalls early), and incremental deliverables (playable milestones).
+Based on research, the v2.0 milestone naturally decomposes into **7 phases** driven by technical dependencies:
 
-### Phase 1: Foundation & Authority Model
-**Rationale:** Establish architecture fundamentals before building features. Getting authority model wrong causes rewrites (Pitfall #1). Setting up latency testing early prevents post-launch panic (Pitfall #5).
+### Phase 1: HD Viewport + Camera Foundation
+**Rationale:** Every subsequent feature depends on correct viewport dimensions (1280x720) and camera scrolling. Larger maps are unplayable without camera follow. HUD positioning breaks without viewport-relative coordinates. This is the foundational change — attempting any other feature first requires rework when viewport changes.
 
-**Delivers:** Monorepo structure, basic Colyseus server with room creation, Phaser client connects and joins room, schema defined for game state, input capture works, latency simulation tools configured.
+**Delivers:**
+- Game config updated to 1280x720 resolution
+- Camera follows local player with smooth lerp
+- Camera bounds prevent scrolling outside arena
+- ARENA constant replaced with per-map bounds system
+- All HUD/scene UI repositioned for new viewport
+- PredictionSystem accepts dynamic arena dimensions
 
-**Addresses (from FEATURES.md):** Infrastructure for instant play (browser-based), foundation for responsive controls (input system).
+**Addresses:** Camera follow with lerp (table stakes), world bounds (table stakes), HD viewport (table stakes)
 
-**Avoids (from PITFALLS.md):** Physics authority mismatch (decision made in Phase 1), client trust (validation framework established), no latency testing (tools setup).
+**Avoids:** Pitfall 1 (ARENA constant), Pitfall 2 (hardcoded HUD positions), Pitfall 4 (prediction edge clamp), Pitfall 6 (camera coordinate assumptions)
 
-**Stack elements:** Phaser 3 + Colyseus setup, TypeScript monorepo with pnpm workspaces, Node.js 20 server, Vite for client build.
+**Integration Risk:** MEDIUM — ARENA constant used in multiple files (PredictionSystem, GameRoom, shared physics); requires coordinated change across server/client/shared layers.
 
-**Needs research-phase?** NO — standard Phaser + Colyseus setup, well-documented in official examples.
+### Phase 2: Tileset Integration + Map Format
+**Rationale:** Must establish map data contract before designing larger arenas. New tilesets require different tile IDs and potentially multiple tilesets per map. This phase defines the format that all subsequent maps will follow.
 
----
+**Delivers:**
+- Tile ID mapping via Tiled custom properties (not hardcoded IDs)
+- Support for multiple tilesets per map
+- Tile extrusion to prevent bleeding artifacts
+- Updated map loading to parse tileset data
+- Map format contract documented for level design
+- Backward compatibility with existing v1.0 maps
 
-### Phase 2: Core Loop (Movement & State Sync)
-**Rationale:** Movement is foundation for all gameplay. Acceleration-based movement is core differentiator requiring tight synchronization. Must prove multiplayer works before adding combat complexity.
+**Uses:** Phaser tilemap API (addTilesetImage with multiple tilesets, tile properties)
 
-**Delivers:** Server-authoritative movement physics (acceleration-based), client-side prediction for local player, interpolation for remote players, state synchronization working with delta compression, fixed timestep game loop (60Hz), players can move around in shared room.
+**Implements:** Tileset pipeline extension (Architecture component 6)
 
-**Addresses:** Responsive controls (table stakes), acceleration-based movement (differentiator), low-latency netcode foundation.
+**Avoids:** Pitfall 7 (tile bleeding), Pitfall 14 (Tiled format assumptions), Pitfall 19 (path resolution)
 
-**Avoids:** Naïve state sync (delta compression implemented), physics desync (server authoritative established), client logic (separation maintained).
+**Integration Risk:** LOW — extends existing tilemap pipeline additively.
 
-**Implements (from ARCHITECTURE.md):** Fixed timestep server loop, input queue with validation, schema-driven state sync, entity interpolation.
+### Phase 3: Arena Enlargement (50x38 tiles)
+**Rationale:** With camera follow working and map format stable, can now create larger arenas. Tests that camera system scales correctly. Provides the larger playspace that justifies v2.0.
 
-**Stack elements:** Colyseus Schema for state, server physics logic (lightweight, not full Phaser), Phaser rendering client-side.
+**Delivers:**
+- 2-4 new maps at 1600x1216 pixel scale (50x38 tiles)
+- Updated spawn points spread across larger arenas
+- Tileset rendering verified at larger scale
+- CollisionGrid handles larger tile arrays
+- Client prediction bounds use map-specific dimensions
 
-**Needs research-phase?** MAYBE — If momentum physics tuning proves complex, may need brief research on acceleration curves and feel. Otherwise standard pattern.
+**Addresses:** Larger arenas unlock the "arena evolution" promise
 
----
+**Avoids:** Pitfall 4 (prediction bounds), Pitfall 11 (CollisionGrid rebuild)
 
-### Phase 3: Combat & Collision
-**Rationale:** Combat is second half of core gameplay loop. Collision detection is unique mechanic (body blocking, collision penalties) requiring server authority. Projectiles test bandwidth optimization.
+**Integration Risk:** LOW — existing systems already handle arbitrary map sizes.
 
-**Delivers:** Server-authoritative projectile spawning, collision detection (player-player, player-projectile, player-wall), health/damage system, death and respawn, hit detection with visual feedback, collision penalties applied fairly.
+### Phase 4: Multi-Stage Best-of-3
+**Rationale:** Powerups in a multi-stage context require stage lifecycle (cleared between stages, spawn timers reset). Building powerups first would require rework when stages are added. Multi-stage is the most architecturally complex feature, so build it before layering enhancements on top.
 
-**Addresses:** Visual hit confirmation (table stakes), collision-based gameplay (differentiator), projectile combat.
+**Delivers:**
+- Extended state machine: STAGE_INTRO -> PLAYING -> STAGE_END -> (repeat or MATCH_END)
+- Schema additions: stageNumber, totalStages, stageWinners[]
+- Full state reset between stages (health, positions, obstacles, projectiles, collision grid)
+- Stage pool per match (3 maps, no repeats)
+- Client tilemap hot-swap via mapName change listener
+- Transition screen showing stage results and next arena
+- HUDScene stage score indicator
+- VictoryScene best-of-3 summary
 
-**Avoids:** Client trust for hit detection (server validates), bandwidth explosion from projectiles (event-driven approach).
+**Addresses:** Round indicator (table stakes), transition screen (table stakes), round-specific arena selection (differentiator)
 
-**Implements:** Collision detection (AABB for MVP), combat state in schema, projectile lifecycle management (cleanup to prevent state explosion).
+**Avoids:** Pitfall 5 (state reset without room recreation), Pitfall 10 (scene member variable reset), Pitfall 11 (CollisionGrid rebuild), Pitfall 18 (HUD state reset)
 
-**Needs research-phase?** MAYBE — Collision detection algorithm choice (AABB vs SAT vs Circle) may need brief performance research if >20 entities per room. Standard for initial implementation.
+**Integration Risk:** HIGH — core server logic extension; must not break existing match flow; comprehensive testing required for all edge cases (disconnect mid-stage, all players dead simultaneously, timeout per stage).
 
----
+### Phase 5: Powerup System
+**Rationale:** With stage lifecycle in place, powerups can integrate cleanly (spawn at stage start, clear at stage end). Adds tactical depth to the enlarged arenas.
 
-### Phase 4: Match Lifecycle & Maps
-**Rationale:** Multiple maps are table stakes (single map gets stale). Match win/loss conditions needed for closure. Spectator mode essential for dead players in asymmetric matches.
+**Delivers:**
+- shared/powerups.ts type definitions (4 types: speed, health, damage, shield)
+- server/schema/PowerupState.ts Schema
+- GameRoom spawn timer + collision detection + effect application
+- Duration-based effect tracking server-side
+- Client powerup sprite rendering (onAdd/onRemove)
+- Bobbing animation and pickup particles
+- HUDScene active powerup indicator (icon + duration bar)
 
-**Delivers:** Win/loss conditions for 1v2 matches, match timer, match end screen with stats (kills, deaths, accuracy), spectator mode (camera follows alive players), 3-5 hand-crafted maps, map selection UI.
+**Uses:** Colyseus MapSchema pattern (same as projectiles/obstacles)
 
-**Addresses:** Match end screen (table stakes), spectator mode (table stakes), multiple maps (table stakes to prevent staleness).
+**Implements:** Powerup system (Architecture component 4)
 
-**Avoids:** Hardcoded constants (centralized config for map parameters, balance tuning).
+**Addresses:** Powerup spawning system (differentiator), active powerup indicator (differentiator)
 
-**Stack elements:** Tiled for map creation (JSON export to Phaser), asset preloading to avoid hitches.
+**Avoids:** Pitfall 8 (sync timing with optimistic client pickup), Pitfall 15 (bandwidth via static positions)
 
-**Needs research-phase?** NO — Standard match lifecycle patterns. Map creation is design work (Tiled + Phaser integration well-documented).
+**Integration Risk:** MEDIUM — new server-authoritative system; balance tuning required; interaction with existing combat needs testing.
 
----
+### Phase 6: Minimap + Music System
+**Rationale:** Polish layer that enhances the larger arena experience. Both are independent subsystems that can be developed together. Minimap depends on larger arenas existing. Music is fully independent.
 
-### Phase 5: Accounts & Progression
-**Rationale:** Light accounts enable stat tracking (differentiator) and leaderboards (competitive motivation). Persistence layer separate from game loop prevents blocking.
+**Delivers:**
+- Minimap: secondary camera at 180x120 viewport, zoomed to show full arena, colored dots per player
+- Minimap border/background rendered in HUDScene
+- Music system: per-scene track selection, crossfade transitions, volume persistence
+- Lobby music, 2 match music tracks, per-map music assignment
+- MapMetadata.musicTrack field
+- AudioManager crossfade support
 
-**Delivers:** Light account system (username/password), session management (Redis-backed), stat tracking (wins, losses, K/D ratio), match history, leaderboards (daily/weekly/all-time), profile page.
+**Uses:** Phaser multi-camera (`cameras.add`), Sound Manager or HTMLAudioElement with custom crossfade
 
-**Addresses:** Username/identity (table stakes), stat tracking (differentiator), leaderboards (differentiator).
+**Implements:** Camera follow integration (component 5, minimap part), Audio system upgrade (component 7)
 
-**Implements (from ARCHITECTURE.md):** Persistence layer (PostgreSQL for accounts, Redis for sessions), separate from game server (async writes after match).
+**Addresses:** Minimap (table stakes), music during matches (table stakes), per-arena music tracks (differentiator), music crossfade (differentiator)
 
-**Stack elements:** Passport.js for auth, bcrypt for passwords, PostgreSQL with JSONB for flexible stats, express-session with Redis backend.
+**Avoids:** Pitfall 9 (minimap performance via static update rate), Pitfall 12 (music system limitations)
 
-**Needs research-phase?** NO — Standard Node.js authentication patterns. Well-documented Passport + Colyseus integration.
+**Integration Risk:** LOW — both are additive subsystems with minimal coupling to core gameplay.
 
----
+### Phase 7: HUD Overhaul with Icons
+**Rationale:** Final polish pass that integrates elements from powerups (active effect icons), stage scores (round indicator), and new icon assets. Best done when all systems exist so HUD layout can accommodate everything.
 
-### Phase 6: Polish & Mobile
-**Rationale:** Mobile traffic significant for browser games. Reconnection essential for browser context (tabs get closed). Tutorial needed for acceleration movement learning curve.
+**Delivers:**
+- Load icon sprites from assets/icons/ (hearts, timer, skull, potions, volume levels)
+- Icon-based health display (heart-full, heart-empty)
+- Icon-based timer display
+- Cooldown bar with icon
+- Powerup active display with potion icons
+- Round score indicator with stage markers
+- Volume controls with speaker icons
+- Visual polish pass across all HUD elements
 
-**Delivers:** Mobile-responsive UI and touch controls, reconnection handling (30-60s grace period), tutorial/controls screen, audio system (shooting, hits, deaths), improved visual effects, performance optimization for low-end devices.
+**Addresses:** Icon-based HUD elements (differentiator), volume controls with icons (differentiator)
 
-**Addresses:** Mobile-responsive (table stakes), reconnection (table stakes), tutorial (table stakes), audio feedback (table stakes).
+**Avoids:** Pitfall 2 (hardcoded positions, addressed in Phase 1 but final verification here)
 
-**Avoids:** Asset loading hitches (preloading implemented), no reconnection (grace period added), browser tab visibility issues (handled).
-
-**Stack elements:** Phaser touch input, phaser3-rex-plugins for mobile UI (virtual joystick), reconnection tokens in Colyseus.
-
-**Needs research-phase?** NO — Standard mobile responsiveness and Colyseus reconnection patterns.
-
----
-
-### Phase 7: Character Abilities (Asymmetric Depth)
-**Rationale:** Abilities differentiate Faran/Baran/Paran roles beyond numbers. Adds strategic depth to 1v2 asymmetry. Complex balance work—defer until core loop proven.
-
-**Delivers:** Character-specific abilities (design TBD), ability system with cooldowns (server-validated), UI for ability status, balance testing and iteration.
-
-**Addresses:** Character-specific abilities (differentiator), asymmetric depth.
-
-**Avoids:** Clock sync issues (use Colyseus Clock for ability cooldowns), client trust for cooldowns (server enforces).
-
-**Stack elements:** Zod for input validation (ability commands), Colyseus Schema for ability state.
-
-**Needs research-phase?** MAYBE — Ability design is greenfield. If looking at MOBA-style or hero shooter patterns for inspiration, brief research may help. Implementation standard once designed.
-
----
-
-### Phase 8: Matchmaking & Ranked
-**Rationale:** Matchmaking differentiates from typical .io games (most lack skill-based matching). Ranked mode aspirational for competitive players. Requires working game and enough players to test.
-
-**Delivers:** Skill-based matchmaking (Elo or Glicko rating), ranked mode with visible rating, matchmaking queue system, party support (queue with friends), separate casual and ranked pools.
-
-**Addresses:** Matchmaking system (differentiator), ranked mode (differentiator), friend parties (deferred from Phase 5).
-
-**Implements:** Dual lobby system (room codes + matchmaking) from architecture, Colyseus room filtering by mode.
-
-**Avoids:** Matchmaking without reconnection (reconnection already implemented in Phase 6), room cleanup issues (disposal logic in place).
-
-**Stack elements:** Redis for matchmaking queues, skill rating stored in PostgreSQL.
-
-**Needs research-phase?** MAYBE — If implementing Glicko-2 or TrueSkill instead of basic Elo, may need algorithm research. Otherwise standard queue patterns.
-
----
+**Integration Risk:** LOW — purely visual enhancement; no gameplay logic changes.
 
 ### Phase Ordering Rationale
 
-**Dependency-driven:**
-- Can't build combat (Phase 3) without movement working (Phase 2)
-- Can't track stats (Phase 5) without match end conditions (Phase 4)
-- Can't do ranked matchmaking (Phase 8) without skill tracking (Phase 5)
-- Reconnection (Phase 6) easier after persistence layer exists (Phase 5)
+- **Phase 1 must be first:** Every feature needs 1280x720 positioning and camera scroll awareness. Without this, you can't test large maps, minimap, or correct HUD placement. Attempting later phases first creates technical debt that must be repaid with a full refactor.
 
-**Risk mitigation:**
-- Authority model decided in Phase 1 (prevents Pitfall #1 rewrite)
-- State sync optimized in Phase 2 (prevents Pitfall #2 bandwidth issues)
-- Input validation from Phase 1 onward (prevents Pitfall #3 cheating)
-- Latency testing in all phases (prevents Pitfall #5 launch surprise)
+- **Phase 2 before Phase 3:** Creating larger maps requires the tileset format to be stable. Defining the map contract before map design prevents rework.
 
-**Incremental value:**
-- Phase 2 delivers playable movement (first multiplayer milestone)
-- Phase 3 completes core gameplay loop (fully playable game)
-- Phase 4 adds variety and closure (shippable MVP)
-- Phase 5-8 add competitive depth and retention features
+- **Phase 3 before Phase 4:** Multi-stage needs a pool of maps. Creating larger arenas validates the camera/tileset system before adding state machine complexity.
 
-**Parallelizable work:**
-- Once Phase 3 complete (core loop works), map creation (Phase 4) can happen in parallel with account backend (Phase 5)
-- UI polish (Phase 6) can happen alongside ability design (Phase 7)
+- **Phase 4 before Phase 5:** Powerups in a multi-stage context require the stage lifecycle (cleared between stages, spawn timers reset). Building powerups first would require rework when stage transitions are added.
+
+- **Phase 5 after Phase 4:** Powerup spawn/despawn logic integrates with stage state machine. Clean separation: stage system owns lifecycle, powerup system owns entity behavior.
+
+- **Phase 6 parallel-safe with Phases 4-5:** Minimap and music are independent subsystems with minimal coupling. Minimap only needs larger arenas (Phase 3) to make sense. Music is entirely independent and can be done alongside any phase.
+
+- **Phase 7 last:** HUD polish integrates powerup indicators (Phase 5), stage scores (Phase 4), and icons. Best done when all systems exist.
 
 ### Research Flags
 
-**Phases likely needing deeper research during planning:**
-- **Phase 7 (Character Abilities):** Greenfield design. May benefit from research on MOBA ability patterns, hero shooter balance, or asymmetric game design if team unfamiliar with domain.
-- **Phase 8 (Matchmaking Algorithm):** If going beyond basic Elo (e.g., Glicko-2, TrueSkill, or handling 1v2 rating asymmetry), brief algorithm research recommended.
+**Phases needing deeper research during planning:**
+- **Phase 4 (Multi-Stage):** Complex state machine with many edge cases. May need gap closure rounds for: reconnection mid-stage, simultaneous player death, stage timeout handling, collision grid rebuild race conditions, tilemap hot-swap memory management.
+- **Phase 5 (Powerups):** Balance tuning requires playtesting feedback. Effect values (duration, multipliers) are estimates. May need iteration rounds.
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 1 (Foundation):** Phaser + Colyseus setup extensively documented in official guides and examples.
-- **Phase 2 (Movement):** Client prediction + server reconciliation is standard multiplayer pattern with many references.
-- **Phase 3 (Combat):** Collision detection and projectile systems well-covered in Phaser/Colyseus examples.
-- **Phase 4 (Maps & Lifecycle):** Tiled integration with Phaser is standard workflow. Match lifecycle straightforward.
-- **Phase 5 (Accounts):** Passport.js + Express + Colyseus is documented integration pattern.
-- **Phase 6 (Mobile & Polish):** Touch controls and reconnection in Colyseus have established patterns.
-
-### Suggested Minimum Viable Product (MVP)
-
-**MVP = Phases 1-4** delivers:
-- Working multiplayer with room codes (instant play)
-- Responsive acceleration-based movement (core differentiator)
-- Projectile combat with collision mechanics (core gameplay)
-- 3-5 maps with match end conditions (variety and closure)
-- Spectator mode for dead players
-- Basic HUD and visual feedback
-
-**This is shippable** but lacks retention features (no accounts, stats, or ranked play). Good for alpha testing and validating core loop.
-
-**Full Launch = Phases 1-6** adds:
-- Light accounts with stat tracking
-- Leaderboards for competitive motivation
-- Mobile support (expands audience)
-- Reconnection (quality of life)
-- Tutorial (onboarding)
-- Audio and polish
-
-**This is competitive launch quality.** Phases 7-8 add depth for long-term retention but not required for initial launch.
+**Phases with standard patterns (minimal research needed):**
+- **Phase 1 (HD Viewport + Camera):** Well-documented Phaser APIs; existing codebase already uses camera methods for spectator mode.
+- **Phase 2 (Tileset Integration):** Standard Tiled workflow; tile-extruder is a known tool.
+- **Phase 3 (Arena Enlargement):** Extension of existing tilemap pipeline.
+- **Phase 6 (Minimap + Music):** Phaser multi-camera and audio management are well-documented; multiple official examples exist.
+- **Phase 7 (HUD Icons):** Standard image loading and UI composition.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Phaser + Colyseus is proven pairing for browser multiplayer games. Version numbers are MEDIUM confidence (based on Jan 2025 training data—verify current stable releases). |
-| Features | LOW-MEDIUM | Table stakes based on .io game genre expectations (HIGH confidence those are standard). Differentiators are Banger-specific judgment calls (MEDIUM). Cannot verify 2026 market state without web access. |
-| Architecture | MEDIUM-HIGH | Server-authoritative pattern is fundamental to multiplayer (HIGH confidence). Specific implementation details (tick rates, collision algorithms) are standard patterns (MEDIUM—may have newer approaches in 2026). |
-| Pitfalls | MEDIUM | Critical pitfalls reflect fundamental networking principles unlikely to change (physics desync, bandwidth, client trust—HIGH confidence these matter). Framework-specific gotchas need verification with 2026 versions (LOW confidence those haven't changed). |
+| Stack | HIGH | All features implementable with existing stack. Zero new dependencies. Verified against package.json, Phaser 3.90 docs, Colyseus 0.15 docs. |
+| Features | HIGH | Table stakes identified via game design patterns for scrollable arenas. Sizing estimates derived from existing codebase plan counts (Phase 5 took 11 plans + 3 gap closure rounds; v2.0 features are similar complexity). |
+| Architecture | HIGH | Based on direct codebase analysis. All 7 integration domains map to existing files/components. Patterns follow established codebase conventions (Schema for entity sync, onAdd/onRemove for sprites, scene reuse with create() reset). |
+| Pitfalls | HIGH | All critical pitfalls derived from actual code paths with line number verification. ARENA constant issue verified at physics.ts:14-15, Prediction.ts:106-107, GameRoom.ts:342-343. HUD positions verified throughout HUDScene.ts. Multi-stage state reset issue informed by Phase 5 session ID learnings documented in MEMORY.md. |
 
-**Overall confidence: MEDIUM**
-
-Research is based on established patterns for browser multiplayer games and the standard Phaser + Colyseus architecture. However, **all findings are based on training data with knowledge cutoff January 2025**—web search and external documentation tools were unavailable during research. Version numbers, specific API details, and 2026 ecosystem changes require verification.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-**Before Phase 1 kickoff:**
-1. **Verify current Phaser and Colyseus versions** — Check official docs for any breaking changes or new best practices since Jan 2025. Confirm latest stable releases and update package.json recommendations.
-2. **Validate tick rate recommendations** — Research whether 60Hz server tick is still standard or if newer hardware allows higher rates without penalty.
-3. **Check for new lag compensation techniques** — WebRTC vs WebSocket may have shifted, or new browser APIs may improve prediction/reconciliation.
+- **Multi-stage collision grid rebuild specifics:** CollisionGrid needs a `rebuild()` method but the exact implementation (full re-initialization vs field reset) needs verification during Phase 4 planning. Client-side rebuild must synchronize with server-side rebuild to prevent prediction desync window.
 
-**During Phase 2 (Movement):**
-- Collision detection algorithm choice (AABB sufficient for 3-player matches, but profile if adding more entities). Research spatial partitioning if performance issues arise.
+- **Powerup effect values:** Speed boost multiplier (1.5x), damage boost multiplier (1.5x), durations (5-8s) are educated guesses based on game design conventions. Actual values need playtesting iteration in Phase 5.
 
-**During Phase 3 (Combat):**
-- Lag compensation for hit detection fairness. Standard approaches exist, but may need tuning for acceleration-based movement feel.
+- **Minimap performance measurement:** RenderTexture vs secondary camera performance comparison is theoretical. Actual FPS impact needs measurement during Phase 6 implementation to choose optimal approach.
 
-**During Phase 5 (Persistence):**
-- Database schema design for stats (what granularity, JSONB structure). Standard patterns exist but Banger-specific metrics need definition.
+- **Tilemap hot-swap memory management:** Calling `map.destroy()` and recreating tilemap mid-scene should work but needs testing to verify no cache/memory issues during Phase 4 stage transitions.
 
-**During Phase 7 (Abilities):**
-- Ability design patterns from MOBA/hero shooter genres if team lacks asymmetric game experience. Implementation is standard once design settled.
+- **Music asset file sizes:** Provided MP3 files need size verification. If total music payload exceeds 5MB, may need OGG encoding or streaming approach during Phase 6.
 
-**Ongoing validation:**
-- Check Phaser and Colyseus Discord/GitHub discussions for 2026-specific gotchas or emerging patterns
-- Review recent browser multiplayer game post-mortems (especially .io games and browser shooters)
-- Validate that Colyseus Schema is still the recommended state sync approach (vs manual MessagePack or newer alternatives)
-
-### Verification Checklist
-
-Before starting implementation, validate these research assumptions:
-
-- [ ] Phaser 3.80+ is current stable (or identify newer version)
-- [ ] Colyseus 0.15+ is current stable (or identify newer version)
-- [ ] Node.js 20 LTS is current recommendation (or 22 LTS if released)
-- [ ] Colyseus still uses Schema for state sync (confirm current API)
-- [ ] Phaser Arcade Physics non-determinism still applies (check if Matter.js or custom needed)
-- [ ] WebSocket still preferred over WebRTC for Colyseus (or has this shifted?)
-- [ ] Docker + nginx deployment pattern still standard for self-hosted Node.js (or are there newer approaches?)
-- [ ] Vite still the modern default for Phaser + TS projects (vs Parcel, Rollup, or newer tools)
-
-**All confidence levels assume these validations pass.** If any assumption is wrong, confidence drops and specific recommendations may change.
+**Handling strategy:** All gaps are implementation details that can be resolved during per-phase planning with `/gsd:research-phase` if needed. None block the overall phase structure or dependency ordering.
 
 ## Sources
 
-**PRIMARY LIMITATION:** This research was conducted using training data only (knowledge cutoff January 2025). Web search, Context7 library access, and documentation verification tools were unavailable. All findings should be considered **MEDIUM confidence at best** pending verification.
+### Primary (HIGH confidence)
+- Banger codebase direct analysis — All files in `/Users/jonasbrandvik/Projects/banger-game/` (server/, client/, shared/)
+- [Phaser 3.90 Camera API](https://docs.phaser.io/api-documentation/class/cameras-scene2d-camera) — startFollow, setBounds, setViewport, setZoom verified
+- [Phaser 3 Camera Concepts](https://docs.phaser.io/phaser/concepts/cameras) — multi-camera, viewport, deadzone, lerp parameters
+- [Phaser 3 Minimap Camera Example](https://phaser.io/examples/v3/view/camera/minimap-camera) — official example using secondary camera
+- [Phaser 3 Tilemap API](https://docs.phaser.io/api-documentation/function/tilemaps) — multiple tilesets, tile properties, layer creation
+- [Phaser 3 Audio Concepts](https://docs.phaser.io/phaser/concepts/audio) — Sound Manager global persistence, Web Audio support
+- [Colyseus 0.15 Room API](https://0-15-x.docs.colyseus.io/server/room/) — Room lifecycle, allowReconnection, state machine patterns
+- [Colyseus State Best Practices](https://docs.colyseus.io/state/best-practices) — Schema design patterns, MapSchema usage
 
-### What Research is Based On
+### Secondary (MEDIUM confidence)
+- [tile-extruder tool](https://github.com/sporadic-labs/tile-extruder) — Prevents tile bleeding in Phaser tilesets
+- [Phaser 3 roundPixels camera discussion](https://phaser.discourse.group/t/roundpixels-is-causing-jittering-with-cameras-main-startfollow/11880) — Known camera follow + roundPixels behavior
+- [Phaser 3 Audio Fade patterns](https://rexrainbow.github.io/phaser3-rex-notes/docs/site/fadevolume/) — Volume fading for music crossfade
+- [Level Design in Top-Down Shooters](https://medium.com/my-games-company/level-design-in-top-down-shooters-creating-diversified-experience-using-maps-ff9e21c8e600) — Powerup placement patterns
+- [HUD Scene with Multiple Cameras](https://phaser.discourse.group/t/hud-scene-multiple-scenes/6348) — setScrollFactor(0) vs separate scene approach
+- [Phaser 3 ScrollFactor](https://newdocs.phaser.io/docs/3.54.0/Phaser.GameObjects.Components.ScrollFactor) — Fixed UI in scrolling scenes
 
-**HIGH confidence (fundamental principles):**
-- Client-server architecture patterns for multiplayer games (authoritative server, client prediction, state synchronization)
-- Network programming fundamentals (latency, bandwidth, delta compression)
-- Security fundamentals (input validation, server authority)
-- Physics simulation determinism challenges
-
-**MEDIUM confidence (established domain patterns):**
-- Phaser + Colyseus as standard stack for browser multiplayer (widely used as of 2025)
-- .io game genre expectations (instant play, leaderboards, etc.)
-- Common multiplayer pitfalls (well-documented in game dev community)
-
-**LOW confidence (needs verification):**
-- Specific version numbers (Phaser 3.80, Colyseus 0.15—need to check 2026 releases)
-- Framework-specific API details (Schema syntax, Colyseus room lifecycle—may have changed)
-- 2026 market state (new competitors, feature expectations, browser API changes)
-- Mobile browser WebSocket limits (may have improved)
-
-### Recommended Verification Sources
-
-**Before implementation, consult:**
-1. **Colyseus Official Docs** (https://docs.colyseus.io/) — Verify state sync patterns, room lifecycle, current version
-2. **Phaser 3 Docs** (https://photonstorm.github.io/phaser3-docs/) — Confirm physics behavior, current version, TypeScript support
-3. **Phaser + Colyseus Examples** (GitHub, official examples) — Check for 2025-2026 updates to integration patterns
-4. **Recent Post-Mortems** — Search for "browser multiplayer game post-mortem 2025 2026" to find recent learnings
-5. **Colyseus Discord/GitHub Issues** — Check for gotchas, performance tips, common questions from active community
-
-**For specific phases:**
-- **Phase 1-3:** Colyseus examples repo, Phaser multiplayer tutorials
-- **Phase 5:** Passport.js + Express + Colyseus integration guides
-- **Phase 7:** MOBA or hero shooter design resources if needed (GDC talks, design blogs)
-- **Phase 8:** Matchmaking algorithm papers (Elo, Glicko-2, TrueSkill) if going beyond basic
+### Tertiary (LOW confidence)
+- [Phaser 3 Pixel Art Scaling](https://www.davideaversa.it/blog/quick-dev-tips-pixel-perfect-scaling-phaser-game/) — Integer scaling recommendations (not critical for v2.0)
 
 ---
-
-**Research completed:** 2026-02-09
-**Ready for roadmap:** Yes
-**Next step:** Requirements definition (defining user stories and acceptance criteria per phase)
+*Research completed: 2026-02-13*
+*Ready for roadmap: yes*

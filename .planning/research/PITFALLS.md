@@ -1,672 +1,558 @@
 # Domain Pitfalls
 
-**Domain:** Real-time multiplayer browser arena game (Phaser + Colyseus)
+**Domain:** v2.0 Arena Evolution -- Adding HD resolution, scrollable arenas, multi-stage rounds, powerups, minimap, tileset integration, music system, and HUD overhaul to an existing Phaser 3 + Colyseus multiplayer game.
 **Project:** Banger (1v2 asymmetric shooter)
-**Researched:** 2026-02-09
-**Confidence:** MEDIUM (based on training data, unable to verify with current sources)
-
-## Research Limitations
-
-**IMPORTANT:** This research was conducted using training data only (knowledge cutoff January 2025). Web search and documentation verification tools were unavailable. All findings should be validated against:
-- Current Colyseus documentation (2026)
-- Current Phaser 3 documentation (2026)
-- Recent post-mortems from shipped multiplayer games
-
-Confidence levels reflect this limitation.
+**Researched:** 2026-02-13
+**Confidence:** HIGH (derived from codebase analysis + official docs + web research)
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, fundamental architecture changes, or render the game unplayable.
-
-### Pitfall 1: Client-Side Physics Simulation with Server Authority Mismatch
-
-**Confidence:** HIGH (fundamental to all client-server architectures)
-
-**What goes wrong:**
-Running full physics simulation on both client and server with different physics engines or configurations leads to desynchronization. Client shows player hitting a wall, server says they didn't - combat outcomes become unpredictable and frustrating.
-
-**Why it happens:**
-- Phaser's Arcade/Matter physics runs client-side by default
-- Developers assume running "the same" physics on both sides is enough
-- Floating-point arithmetic differences between environments cause drift
-- Frame rate differences (server may run at different tick rate than client)
-
-**Consequences:**
-- Players see hits that don't register
-- Collision penalties apply inconsistently
-- Rubber-banding and teleportation
-- Momentum-based mechanics (critical for Banger's Paran character) become unreliable
-- Trust issues: "I didn't hit that wall!"
-
-**Prevention:**
-1. **Choose Authority Model Early (Phase 1: Core Architecture)**
-   - **Server-authoritative:** Server runs physics, clients predict and reconcile
-   - **Client-authoritative:** Risky for competitive games (cheat vulnerability)
-   - For Banger: Server-authoritative required for fair collision penalties
-
-2. **Implement Client-Side Prediction + Server Reconciliation**
-   - Client simulates movement locally for responsive feel
-   - Server sends authoritative state updates
-   - Client reconciles differences and corrects predictions
-   - Document: "Client prediction is an APPROXIMATION, server state is TRUTH"
-
-3. **Physics-Less Server Option**
-   - Don't run full Phaser physics server-side
-   - Implement simplified physics logic in Colyseus room
-   - Use lightweight collision detection (SAT.js, custom AABB)
-   - Reduces server load, ensures determinism
-
-4. **Fixed Timestep on Server**
-   - Server physics must run at fixed tick rate (e.g., 60 ticks/sec)
-   - Independent of client frame rate
-   - Use accumulator pattern for consistent updates
-
-**Detection:**
-- Players report "hits not registering"
-- Movement feels "snappy" then "corrects" abruptly
-- Different outcomes on slow vs fast connections
-- Desync increases over time (positions drift)
-
-**Phase to Address:**
-- **Phase 1 (Foundation):** Establish authority model, implement basic prediction
-- **Phase 2 (Core Loop):** Tune reconciliation, test with latency simulation
-- **Phase 4 (Polish):** Advanced prediction techniques (lag compensation)
+Mistakes that cause rewrites, desyncs, or major architectural regressions.
 
 ---
 
-### Pitfall 2: Naïve State Synchronization (Sending Everything Every Tick)
+### Pitfall 1: ARENA Constant Hardcoded Everywhere -- Resolution Change Breaks Physics
 
-**Confidence:** HIGH (core Colyseus concern)
+**What goes wrong:** The shared `physics.ts` exports `ARENA = { width: 800, height: 608 }` and this constant is used for edge clamping in both `PredictionSystem.sendInput()` (line 106-107), `PredictionSystem.reconcile()` (line 169-170), and `GameRoom.resolvePlayerCollision()` (line 342-343). Changing to larger arenas (e.g., 50x38 tiles = 1600x1216 pixels) without updating ARENA causes players to be clamped to the old 800x608 box in the center of the new map.
 
-**What goes wrong:**
-Sending full game state every server tick (e.g., all 3 player positions, all projectiles, all collision states) creates bandwidth bottleneck. Game works fine locally, breaks with 100+ ms latency or on mobile networks.
+**Why it happens:** ARENA was designed as a single global constant when all maps shared the same dimensions. With variable-size maps, it needs to become per-map metadata.
 
-**Why it happens:**
-- Colyseus schema makes state sync easy - too easy
-- "Just sync everything" seems simplest during prototyping
-- Bandwidth issues don't appear in local testing
-- Projectile spawning scales poorly (10 bullets = 10x state updates)
-
-**Consequences:**
-- Laggy gameplay on typical connections
-- High server bandwidth costs
-- Mobile players can't play (cellular bandwidth)
-- Projectile-heavy combat (Banger's core) becomes unplayable
-- Server costs scale linearly with player count
+**Consequences:** Players hit an invisible wall at x=800, y=608 in a 1600x1216 arena. Client prediction and server disagree if only one is updated. Projectiles despawn at old bounds.
 
 **Prevention:**
-1. **Delta Compression (Built into Colyseus)**
-   - Colyseus sends only changed state by default
-   - BUT: Must design schema to maximize delta efficiency
-   - Group frequently-changing data (positions) separately from static data (player names)
+1. Remove the global `ARENA` constant from `physics.ts`.
+2. Add `arenaWidth` and `arenaHeight` fields to `MapMetadata` in `shared/maps.ts` (they already have `width` and `height` but these must become authoritative for physics, not just informational).
+3. Pass arena dimensions into `PredictionSystem` constructor and `GameRoom.resolvePlayerCollision()` instead of importing ARENA.
+4. Server sends arena dimensions in GameState schema so client prediction uses identical bounds.
+5. Update `GameRoom.fixedTick()` projectile bounds check (line 524) to use map dimensions.
 
-2. **Spatial Filtering**
-   - Don't send updates for entities outside player viewport
-   - For Banger: Small arena, less relevant, but applies to multi-room lobbies
+**Detection:** Players stuck at invisible walls despite open map; projectiles disappearing mid-arena.
 
-3. **Update Frequency Tiers**
-   - Critical data (player positions): 20-60 Hz
-   - Less critical (player health): 10 Hz
-   - Static data (map obstacles): Once on join
-   - Implement in Colyseus room logic with separate update loops
+**Phase:** Must be addressed first in HD Resolution / Arena Enlargement phase. Everything else depends on this.
 
-4. **Event-Driven for Discrete Actions**
-   - Don't sync projectile state every tick
-   - Send "projectile_fired" event with initial vector
-   - Clients simulate trajectory
-   - Server sends corrections only if misprediction
-
-5. **Quantization**
-   - Don't send `position: { x: 1234.5678, y: 9876.5432 }`
-   - Round to nearest integer or fixed precision
-   - `position: { x: 1235, y: 9877 }` (50% bandwidth reduction for positions)
-
-**Detection:**
-- Bandwidth monitoring shows >100 KB/s per player
-- Lag correlates with number of projectiles on screen
-- Chrome DevTools Network tab shows constant WebSocket traffic
-- Colyseus room state size grows unbounded
-
-**Phase to Address:**
-- **Phase 1:** Establish delta-friendly schema structure
-- **Phase 2:** Implement update frequency tiers
-- **Phase 3:** Add event-driven projectiles, quantization
-- **Phase 5:** Spatial filtering (if scope expands)
+**Confidence:** HIGH -- verified by reading exact code paths in `physics.ts:14-15`, `Prediction.ts:106-107`, `GameRoom.ts:342-343,524`.
 
 ---
 
-### Pitfall 3: Client Trust (Validating Nothing Server-Side)
+### Pitfall 2: HUD Uses Hardcoded Pixel Positions -- Breaks on Resolution Change
 
-**Confidence:** HIGH (security fundamental)
+**What goes wrong:** `HUDScene` positions every element at magic numbers: timer at `(400, 20)`, ping at `(780, 20)`, kill feed at `(790, 60)`, health bars at y=575, cooldown at `(400, 538)`. The `designTokens.ts` Layout object also hardcodes `canvas: { width: 800, height: 600 }` and `center: { x: 400, y: 300 }`. When resolution changes to 1280x720, all HUD elements cluster in the top-left or mid-left area instead of being properly anchored to screen edges.
 
-**What goes wrong:**
-Accepting client input without validation allows cheating: speed hacks, teleportation, invincibility, instant reloads. Competitive 1v2 game becomes unplayable when one player cheats.
+**Why it happens:** With 800x600 viewport = arena, there was no distinction between "screen space" and "world space." Every pixel position doubled as both. With HD viewports, HUD must use screen-relative coordinates.
 
-**Why it happens:**
-- "We're not big enough to attract cheaters" (wrong from day one)
-- Validation adds complexity and latency
-- Trusting clients is easier during development
-- Colyseus examples often skip validation for simplicity
-
-**Consequences:**
-- Cheaters ruin matches
-- Legitimate players leave
-- Reputation damage
-- Impossible to add anti-cheat retroactively (requires architecture change)
+**Consequences:** Health bars render offscreen or overlap with game content. Timer and ping overlap with kill feed. All HUD elements are mispositioned.
 
 **Prevention:**
-1. **Validate All Input (Phase 1: Non-Negotiable)**
-   - Movement: Max speed, acceleration limits
-   - Actions: Cooldowns, resource costs, range limits
-   - Collision: Server confirms collision state, applies penalties
-   - Example: Client says "I moved 500 units/frame" → Server rejects (physically impossible)
+1. Refactor all HUD positions to use `this.cameras.main.width` and `this.cameras.main.height` instead of magic numbers.
+2. Update `Layout` in designTokens.ts to compute positions from viewport dimensions.
+3. HUDScene already has `this.cameras.main.setScroll(0, 0)` (line 112) which is correct -- its camera must NOT follow the game camera. Verify this continues to work.
+4. All HUD coordinates should be expressed as percentages or anchor offsets (e.g., `width - 20` for right-aligned, `height - 25` for bottom).
 
-2. **Server Authority for Combat**
-   - Server determines hit detection
-   - Client renders optimistically, server confirms
-   - Rollback on misprediction acceptable for competitive integrity
+**Detection:** HUD elements visually mispositioned after resolution change.
 
-3. **Rate Limiting**
-   - Limit input messages per second per client
-   - Reject clients spamming inputs
-   - Colyseus built-in: `maxClients`, custom rate limiters
+**Phase:** HD Resolution phase, same plan as viewport change.
 
-4. **Sanity Checks**
-   - "Did player teleport?" (distance > max_speed * delta_time)
-   - "Is player inside wall?" (collision check)
-   - "Did player shoot before reload finished?" (timestamp check)
-
-5. **Cheat Detection Telemetry**
-   - Log suspicious events (impossible speeds, excessive hits)
-   - Flag accounts for review
-   - Don't ban immediately (false positives), but track
-
-**Detection:**
-- Players report impossible gameplay
-- Replay data shows physics violations
-- One player dominates with statistically impossible accuracy/speed
-
-**Phase to Address:**
-- **Phase 1:** Input validation framework
-- **Phase 2:** Combat validation
-- **Phase 3:** Rate limiting, sanity checks
-- **Phase 6:** Telemetry and detection (post-launch)
+**Confidence:** HIGH -- verified hardcoded positions in `HUDScene.ts` lines 317, 386, 464, 504, 552, 592, 600, and `designTokens.ts` lines 309-323.
 
 ---
 
-### Pitfall 4: Interpolation vs. Extrapolation Confusion
+### Pitfall 3: VictoryScene Hardcoded to 800x600 -- Breaks on HD Resolution
 
-**Confidence:** MEDIUM (implementation detail, but commonly misunderstood)
+**What goes wrong:** `VictoryScene` positions the splash image at `(400, 300)` with `setDisplaySize(800, 600)`, overlays at `(400, 300, 800, 600)`, title at `(400, 60)`, stats table with column positions `{ name: 100, role: 250, kills: 340, deaths: 400, damage: 470, accuracy: 570 }`, and button at `(400, 500)`. At 1280x720, stats will be left-aligned and cramped; overlay won't cover the full screen.
 
-**What goes wrong:**
-Using extrapolation (predicting future positions) when you should interpolate (smoothing between known states) creates erratic movement. Players see opponents "jump" or move in wrong direction.
+**Why it happens:** Same reason as HUD -- no distinction between viewport and world when they were identical.
 
-**Why it happens:**
-- Terms are confusing for beginners
-- "Prediction" sounds better than "delay"
-- Copying code without understanding
-- Network jitter causes missed updates
-
-**Consequences:**
-- Opponent movement looks jittery or wrong
-- Acceleration-based movement (Banger's core) looks especially bad
-- Players can't aim at moving targets
-- Momentum mechanic feels unpredictable
+**Consequences:** Victory screen looks broken: background doesn't cover full screen, stats misaligned, button not centered.
 
 **Prevention:**
-1. **Understand the Difference**
-   - **Interpolation:** Render positions slightly in the past, smoothly between known server states
-   - **Extrapolation:** Predict future position based on last known velocity
-   - **Local player:** Extrapolation (prediction) for responsiveness
-   - **Remote players:** Interpolation for accuracy
+1. Use `this.cameras.main.width` and `this.cameras.main.height` for all positioning.
+2. Center positions use `width / 2` not `400`.
+3. Stats table column positions should be percentage-based: `cols.name = width * 0.125`, etc.
+4. Splash and overlay sizes must match new viewport dimensions.
 
-2. **Use Interpolation for Remote Players**
-   - Buffer 2-3 server updates
-   - Render position 100-150ms in the past
-   - Smooth transitions using lerp/slerp
-   - Acceptable tradeoff: slight delay for smooth, accurate movement
+**Detection:** Visual regression immediately visible on VictoryScene.
 
-3. **Extrapolation Only for Local Player**
-   - Immediate response to input
-   - Predict local movement
-   - Server corrects if wrong (reconciliation)
+**Phase:** HD Resolution phase.
 
-4. **Handle Jitter with Buffer**
-   - Network jitter causes irregular update timing
-   - Maintain small buffer of states
-   - Interpolate between buffered states at consistent rate
-   - If buffer empty (packet loss), extrapolate briefly as fallback
-
-**Detection:**
-- Remote players "stutter" or "teleport"
-- Movement looks wrong during direction changes
-- Acceleration/deceleration not smooth
-- Players complain they "can't hit" moving targets
-
-**Phase to Address:**
-- **Phase 2:** Implement interpolation for remote entities
-- **Phase 3:** Tune buffer size, handle jitter
-- **Phase 4:** Polish smoothness
+**Confidence:** HIGH -- verified in `VictoryScene.ts` throughout create().
 
 ---
 
-### Pitfall 5: Not Testing With Realistic Latency Early
+### Pitfall 4: Client Prediction Uses Edge Clamp, Not Collision Grid Bounds
 
-**Confidence:** HIGH (testing methodology)
+**What goes wrong:** `PredictionSystem` clamps to `ARENA.width` and `ARENA.height` as a "safety net" (lines 106-107, 169-170), but the actual arena boundary is the wall tiles in the collision grid. When arenas get larger, the safety-net clamp must match the new map pixel dimensions. If the clamp is wrong, prediction and server disagree, causing rubber-banding.
 
-**What goes wrong:**
-Game feels great on localhost (0ms latency), launches with real-world latency (50-150ms), and combat feels unresponsive or broken. Major rework required post-launch.
+But there is a subtler issue: collision grid already handles boundary walls (out-of-bounds treated as solid, `CollisionGrid.isSolid()` line 75-77). The ARENA clamp is redundant IF the collision grid is properly initialized. However, if the collision grid loads late (race condition between tilemap load and first input), the ARENA clamp is the only protection. Removing it creates a window where players can escape the map.
 
-**Why it happens:**
-- Local testing is easy and fast
-- "We'll test networking later"
-- Don't realize how much latency affects feel
-- Tools for latency simulation unknown/unused
+**Why it happens:** Layered defense: collision grid for tile walls, ARENA clamp for edge case. When ARENA dimensions no longer match the map, the defense layers conflict.
 
-**Consequences:**
-- Combat timing feels wrong
-- Hit registration frustrates players
-- Movement feels sluggish
-- Post-launch panic and rushed fixes
-- Bad reviews focus on "laggy" gameplay
+**Consequences:** With wrong ARENA values: rubber-banding at incorrect boundary. Without ARENA clamp: players clip through walls during the tilemap loading race condition window.
 
 **Prevention:**
-1. **Latency Simulation from Phase 1**
-   - Use tools: Chrome DevTools Network throttling, `tc` (Linux), Clumsy (Windows)
-   - Test at 50ms, 100ms, 150ms, 200ms latency
-   - Test with packet loss (1-3%)
-   - Make this part of daily development workflow
+1. Make ARENA values dynamic, derived from map metadata.
+2. Keep the safety-net clamp but source it from map dimensions, not a global constant.
+3. On server: ARENA values come from loaded map JSON (`mapJson.width * mapJson.tilewidth`).
+4. On client: PredictionSystem receives arena dimensions when collision grid is set.
+5. Before collision grid loads, use the larger map dimensions for clamp (not 800x608).
 
-2. **CI/CD with Latency Tests**
-   - Automated tests run with simulated latency
-   - Catch regressions that only appear under lag
-   - Colyseus testing: Use `@colyseus/testing` or Playwright with network conditions
+**Detection:** Rubber-banding near map edges; players briefly appearing outside map bounds on scene load.
 
-3. **Target Latency Budget**
-   - Define acceptable latency range (e.g., "playable at 150ms")
-   - Measure perceived responsiveness (input → visual feedback)
-   - For Banger: Fast-paced combat needs <100ms perceived latency
-   - Use prediction to hide network latency
+**Phase:** Arena Enlargement phase.
 
-4. **Geographically Distributed Testing**
-   - Don't just test locally
-   - Test cross-region (US-East to US-West, US to EU)
-   - Identify when multiple server regions needed
+**Confidence:** HIGH -- verified code paths in both Prediction.ts and GameRoom.ts.
 
-**Detection:**
-- Launch day reports: "Game is laggy"
-- Combat timing complaints
-- Regional differences (EU players vs US players)
-- Metrics show high input-to-action latency
+---
 
-**Phase to Address:**
-- **Phase 1:** Setup latency simulation tools
-- **Phase 2:** Daily testing with simulated lag
-- **Phase 3:** Cross-region testing
-- **Phase 5:** Production monitoring
+### Pitfall 5: Multi-Stage Rounds (Best of 3) Require Full State Reset Without Room Recreation
+
+**What goes wrong:** The current match lifecycle is single-round: WAITING -> PLAYING -> ENDED -> disconnect after 15s (line 639). For best-of-3, the room must reset to PLAYING state after a round ends without disconnecting clients, but the entire GameState was designed for single-use: `matchStartTime`, `matchEndTime`, `winner`, `matchStats`, player health, positions, obstacles -- all assume one lifecycle.
+
+If you try to reuse the room by resetting schema fields, existing `onChange` listeners on the client may not fire (Colyseus delta sync only sends changes, not full state), and the `obstacles` MapSchema cannot be easily "rebuilt" without remove + re-add of every entry (which fires onRemove/onAdd for every obstacle, causing visual flicker).
+
+**Why it happens:** Colyseus schema sync is delta-based. Resetting a string from "ended" to "playing" fires a change. But resetting a MapSchema (obstacles) to its initial state requires deleting and re-creating entries, which is expensive and triggers cascade of client-side listeners.
+
+**Consequences:**
+- Obstacles don't reset: destroyed obstacles from round 1 remain destroyed in round 2.
+- Player health doesn't reset if the `onChange` doesn't fire (same value written).
+- Client collision grid retains cleared tiles from previous round.
+- Projectiles from end of round 1 carry into round 2 if not cleaned up.
+- matchStats accumulate across rounds (may be desired or not).
+
+**Prevention:**
+1. Add a `roundState` Schema field separate from `matchState`. Match = best of 3, Round = individual fight.
+2. Between rounds: clear all projectiles, reset all player health/position/velocity, rebuild obstacle MapSchema entries, reset collision grid.
+3. Client must listen for a `roundReset` message and rebuild its local collision grid and tilemap obstacle tiles.
+4. Add `roundNumber`, `roundWins` (MapSchema of sessionId -> wins) to GameState schema.
+5. For obstacle reset: rather than delete+recreate, reset `hp` and `destroyed` fields on existing entries. This fires onChange and avoids onRemove/onAdd churn.
+6. Client collision grid: add a `rebuildFromMap()` method that re-initializes from the original wall layer data.
+
+**Detection:** Destroyed obstacles persisting between rounds; health not resetting; projectiles carrying over.
+
+**Phase:** Multi-Stage Rounds phase. Must be planned carefully before implementation.
+
+**Confidence:** HIGH -- derived from Colyseus schema behavior analysis and direct codebase reading.
+
+---
+
+### Pitfall 6: Camera Follow on GameScene Breaks Existing Coordinate Assumptions
+
+**What goes wrong:** Currently, GameScene has no camera following -- the entire arena fits in the viewport. Adding `this.cameras.main.startFollow(localSprite)` means the camera scrolls, which breaks:
+1. **Victory particle burst** at `(400, 300)` (VictoryScene line 165-167) -- these are world coordinates, but VictoryScene is an overlay on the paused GameScene. The particles appear at map center, not screen center.
+2. **Status text** at `(10, 10)` (GameScene line 158) -- scrolls off screen with the camera.
+3. **Eliminated/DC text** positioned at player world coords (correct, since these should follow players).
+4. **Spectator camera** `this.cameras.main.centerOn()` (line 393) -- this already works with scrolling cameras, but spectator mode must switch from following local player to following spectator target smoothly.
+
+**Why it happens:** Fixed-viewport games never need to distinguish between screen and world coordinates. Camera follow introduces this distinction for every game object.
+
+**Consequences:** Status text, eliminated labels, and other "screen-fixed" elements scroll away with the camera. Particles render at wrong positions.
+
+**Prevention:**
+1. Move all screen-fixed GameScene elements (status text, debug info) to HUDScene.
+2. GameScene status text should either be in HUDScene or use `setScrollFactor(0)` to ignore camera scroll.
+3. For spectator mode: use `this.cameras.main.stopFollow()` then `startFollow(newTarget)` with lerp for smooth transition.
+4. Camera bounds: `this.cameras.main.setBounds(0, 0, mapWidth, mapHeight)` to prevent seeing outside the arena.
+5. Particles in GameScene should use world coordinates (they already do for gameplay effects). VictoryScene particles should use screen coordinates since VictoryScene is a separate scene with its own camera.
+
+**Detection:** UI text scrolling offscreen; particles appearing at wrong location during spectator mode.
+
+**Phase:** HD Resolution + Camera Follow phase.
+
+**Confidence:** HIGH -- verified all coordinate usages in GameScene.ts and VictoryScene.ts.
 
 ---
 
 ## Moderate Pitfalls
 
-Issues that cause significant rework but not complete rewrites.
-
-### Pitfall 6: Tight Coupling Between Phaser and Game Logic
-
-**Confidence:** MEDIUM
-
-**What goes wrong:**
-Game logic (movement, combat, collision) embedded in Phaser scene code makes it impossible to run logic server-side or write unit tests. Server must duplicate logic differently, causing desync.
-
-**Prevention:**
-- Separate pure game logic from rendering
-- Extract to shared TypeScript modules (usable client and server)
-- Phaser scenes only handle rendering and input capture
-- Server and client import same logic modules
-- **Phase to address:** Phase 1 (architecture foundation)
-
-**Detection:**
-- Can't unit test game logic
-- Server logic diverges from client
-- Desync bugs appear post-launch
+Mistakes that cause bugs, regressions, or significant debugging time but are recoverable without rewrites.
 
 ---
 
-### Pitfall 7: Room State Size Explosion
+### Pitfall 7: Tile Bleeding Artifacts When Using Real Tilesets
 
-**Confidence:** MEDIUM (Colyseus-specific)
+**What goes wrong:** Current maps use simple PIL-generated tilesets (4 columns, 8 tiles, 32x32). Switching to artist-provided tileset spritesheets will cause "tile bleeding" -- thin lines of adjacent tile pixels appearing at tile edges, especially when the camera is at fractional scroll positions (which happens constantly with smooth camera follow).
 
-**What goes wrong:**
-Colyseus room state grows unbounded as projectiles, effects, and events accumulate. State serialization slows down, eventually crashes server.
+**Why it happens:** WebGL texture sampling bleeds into adjacent pixels when tiles are packed tightly in a spritesheet. Phaser's `pixelArt: true` helps (disables anti-aliasing), but does not fully prevent bleeding at non-integer camera positions.
 
 **Prevention:**
-- Remove entities from state when no longer needed
-- Projectiles: Remove after impact or timeout
-- Events: Don't store history in state
-- Use MapSchema with proper cleanup
-- Monitor state size in development
-- **Phase to address:** Phase 2 (implement cleanup), Phase 4 (monitoring)
+1. **Extrude tilesets** using `tile-extruder` (npm package) before importing. This duplicates edge pixels outward by 1-2px.
+2. When calling `map.addTilesetImage()`, specify margin and spacing parameters matching the extrusion: `addTilesetImage(name, key, tileWidth, tileHeight, margin, spacing)`.
+3. Set `this.cameras.main.roundPixels = true` on the game camera to snap rendering to integer pixels.
+4. Update Tiled map JSON to reference the extruded tileset with correct margin/spacing values.
+5. Ensure all tilesets use power-of-2 dimensions when possible (reduces WebGL artifacts).
 
-**Detection:**
-- Server memory usage grows over time
-- Serialization time increases
-- Room crashes after long matches
+**Detection:** Thin colored lines between tiles, especially visible during camera movement.
+
+**Phase:** Tileset Integration phase.
+
+**Confidence:** HIGH -- well-documented Phaser 3 issue, verified via multiple sources and GitHub issues.
 
 ---
 
-### Pitfall 8: Matchmaking Without Reconnection
+### Pitfall 8: Powerup Schema Sync Timing -- Client Sees Pickup Before/After Server
 
-**Confidence:** MEDIUM
+**What goes wrong:** Adding powerups as a new MapSchema (similar to obstacles) creates a sync timing issue. Server spawns powerup -> delta sync to client -> client renders it. Player walks over powerup -> server detects collision -> removes from schema -> delta sync to client -> client removes sprite. But with client prediction, the local player's predicted position may overlap the powerup 100ms+ before the server processes it. The powerup visually persists on screen even though the player "picked it up" locally.
 
-**What goes wrong:**
-Player disconnects briefly (mobile network blip), gets kicked, can't rejoin match. 1v2 becomes 1v1, ruins match for all players.
+Worse: if two players race for a powerup, both clients may show the pickup animation, but only one actually gets it server-side.
+
+**Why it happens:** Server-authoritative powerups require the server to be the single source of truth, but client prediction puts the local player ahead of the server state. There is no client prediction for powerup collisions.
+
+**Consequences:** Visual desync: powerup appears picked up but reappears briefly. Or powerup lingers after the player clearly touched it. Player confusion in competitive scenarios.
 
 **Prevention:**
-- Implement reconnection grace period (30-60 seconds)
-- Store player session tokens
-- Allow rejoin to same room
-- Handle state resynchronization after reconnect
-- **Phase to address:** Phase 3 (matchmaking includes reconnection)
+1. **Optimistic client-side pickup**: When local predicted position overlaps powerup, immediately hide it visually and play pickup sound/effect. If server confirms (removes from schema), done. If server doesn't remove (another player got it), re-show the powerup.
+2. **Pickup cooldown**: Server adds a brief "claimed" state (100ms) to prevent double-claims.
+3. **Schema design**: `PowerupState` with fields: `type`, `x`, `y`, `active` (boolean), `claimedBy` (string). Client watches `active` and `claimedBy` changes.
+4. **Prediction integration**: Add powerup overlap check in PredictionSystem or GameScene update, flagging "locally claimed" powerups to hide immediately.
+5. **Do NOT add powerup collision to the shared physics** -- keep it server-only with optimistic client display.
 
-**Detection:**
-- Players complain about disconnections
-- Matches end prematurely
-- High abandonment rate
+**Detection:** Powerups lingering after being walked over; two players seeing conflicting pickup animations.
+
+**Phase:** Powerup System phase.
+
+**Confidence:** MEDIUM -- standard multiplayer pattern, but untested in this specific codebase.
 
 ---
 
-### Pitfall 9: Asset Loading Causes Gameplay Hitches
+### Pitfall 9: Minimap Camera Performance and Rendering
 
-**Confidence:** MEDIUM
+**What goes wrong:** The naive approach to a minimap in Phaser 3 is to add a second camera with a small viewport and high zoom-out. However:
+1. A second camera renders ALL visible game objects twice (doubling draw calls).
+2. With 50x38 tile maps, particles, projectile trails, and player sprites, this can halve framerate.
+3. The minimap camera's ignore list must be maintained manually -- every new game object must be added to the ignore list of either the main camera or the minimap camera.
 
-**What goes wrong:**
-Loading projectile sprites, sound effects, or map assets during gameplay causes frame drops during combat. Player fires first shot, game freezes 100ms.
+**Why it happens:** Phaser cameras are not "views" -- they are full render passes. Each camera renders every game object in its viewport that isn't ignored.
+
+**Consequences:** FPS drops from 60 to 30-40. Minimap shows HUD elements, particle effects, text labels unless explicitly ignored. Maintaining ignore lists becomes a maintenance burden.
 
 **Prevention:**
-- Preload all assets before match starts
-- Use Phaser's preloader scene
-- Lazy loading only for non-gameplay assets (UI, menus)
-- Test on slower devices (mobile, old laptops)
-- **Phase to address:** Phase 2 (asset preloading), Phase 4 (performance testing)
+1. **Use RenderTexture instead of a second camera.** Draw a simplified minimap to a RenderTexture periodically (every 200-500ms, not every frame).
+2. Minimap RenderTexture only draws: tilemap background (baked once), colored dots for player positions, colored dots for powerups. No particles, no projectile trails, no text.
+3. Position the RenderTexture game object in HUDScene (not GameScene) so it doesn't scroll with the camera. Use `setScrollFactor(0)` or place in HUDScene which has a fixed camera.
+4. Player positions come from schema state (not sprite positions) for accuracy.
+5. Update frequency: 4-5 times per second is sufficient for a minimap. This is 200-250ms intervals.
 
-**Detection:**
-- Frame drops during first projectile spawn
-- Stuttering when new effects appear
-- Performance metrics show spikes
+**Detection:** Framerate drops when minimap is visible; minimap showing particles or HUD text.
+
+**Phase:** Minimap phase.
+
+**Confidence:** HIGH -- well-documented Phaser 3 performance pattern.
 
 ---
 
-### Pitfall 10: No Graceful Degradation for Lag Spikes
+### Pitfall 10: Scene Reset for Multi-Round -- 30+ Member Variables to Re-Initialize
 
-**Confidence:** MEDIUM
+**What goes wrong:** GameScene.create() already resets 30+ member variables (lines 104-136) for scene reuse. Multi-stage rounds add MORE state: round number, round scores, powerup sprites, minimap reference, music state, camera follow target. Every new feature adds variables that MUST be reset between rounds. Missing even one causes subtle bugs (e.g., projectile trails from round 1 orphaned in round 2).
 
-**What goes wrong:**
-Temporary connection issues (packet loss, latency spike) make game completely unplayable instead of degrading gracefully. 5-second lag spike = player dies because couldn't move.
+**Why it happens:** Phaser scene.start() skips the constructor. This is a known project constraint already documented in memory. Adding features multiplies the risk.
+
+**Consequences:** Ghost sprites, orphaned particles, stale event listeners, memory leaks, incorrect HUD state between rounds.
 
 **Prevention:**
-- Implement dead reckoning (continue predicted movement during connection loss)
-- Freeze game state for very brief disconnects (<500ms)
-- Visual indicators for lag (connection quality icon)
-- Input buffering during reconnection
-- **Phase to address:** Phase 4 (polish and edge cases)
+1. **Mandatory pattern**: Every new Map, Set, or game object reference added to GameScene must have a corresponding reset in create() AND a new round-reset handler.
+2. Consider extracting state into a `GameSceneState` class with a single `reset()` method that zeros everything. This consolidates the reset in one place instead of 30+ individual assignments.
+3. For round transitions (without full scene restart): create a `resetForNewRound()` method that clears gameplay state but preserves connection state (room, client, sessionId).
+4. Add a debug assertion that checks for non-null game object references that shouldn't exist after reset.
 
-**Detection:**
-- Players report sudden freezing
-- Deaths during lag spikes
-- No visual feedback for connection issues
+**Detection:** Visual artifacts, sound effects from previous round, stale health values, particles without sprites.
+
+**Phase:** Applies to ALL phases. Establish the pattern in the first phase.
+
+**Confidence:** HIGH -- this is a documented v1.0 lesson with 30+ verified member variables in GameScene.ts.
+
+---
+
+### Pitfall 11: CollisionGrid Must Be Rebuilt for New Maps Per Round
+
+**What goes wrong:** `CollisionGrid` is constructed once from the Tiled JSON wall layer data in both `GameRoom.onCreate()` and `GameScene.createTilemap()`. It uses `clearTile()` to mark destroyed obstacles. Between rounds in best-of-3, the collision grid retains cleared tiles. On the client, `PredictionSystem.collisionGrid` also retains cleared tiles.
+
+If a new map is selected for round 2 (map rotation), the collision grid must be fully rebuilt. If the same map is reused, destroyed tiles must be restored.
+
+**Why it happens:** CollisionGrid has `clearTile()` but no `restoreTile()` or `rebuildFromData()` method. The constructor is the only way to set tile data.
+
+**Consequences:** Players walk through destroyed obstacles in round 2. Client and server collision grids disagree if only one is rebuilt.
+
+**Prevention:**
+1. Add `rebuild(wallLayerData, ...)` method to CollisionGrid that reinitializes the grid from raw data.
+2. Server: call `this.collisionGrid.rebuild(...)` at round start.
+3. Client: listen for round-reset message and rebuild collision grid from cached tilemap data.
+4. Client tilemap: restore destroyed tile visuals by re-applying the original wall layer data to the Walls layer.
+5. Ensure PredictionSystem gets the rebuilt collision grid via `setCollisionGrid()`.
+
+**Detection:** Walking through where obstacles used to be in round 2.
+
+**Phase:** Multi-Stage Rounds phase.
+
+**Confidence:** HIGH -- verified CollisionGrid has no rebuild capability (collisionGrid.ts lines 37-108).
+
+---
+
+### Pitfall 12: Music System -- HTMLAudioElement Does Not Crossfade or Manage Multiple Tracks
+
+**What goes wrong:** The current `AudioManager.playMusic()` (line 84-97) creates a raw `HTMLAudioElement` with no crossfade, no track management, and no integration with Phaser's audio system. Adding match music, lobby music, round-transition stingers, and victory music requires:
+1. Crossfading between tracks (current code does hard stop + start).
+2. Ducking music volume during SFX-heavy moments.
+3. Pausing music when browser tab is inactive (HTMLAudioElement continues playing).
+4. Managing multiple audio elements (stinger over music).
+
+Using raw HTMLAudioElement bypasses Phaser's audio context management, which handles autoplay policies, tab visibility, and context suspension.
+
+**Why it happens:** v1.0 had a single match music track with simple start/stop. Multiple tracks with transitions need a proper music manager.
+
+**Consequences:** Music overlaps; tracks play over each other on scene transitions. Music continues playing in background tabs. No smooth transitions between lobby/match/victory music.
+
+**Prevention:**
+1. **Replace HTMLAudioElement with Phaser's SoundManager** for music. Load MP3s via `this.load.audio()` in BootScene preload. Play via `this.sound.add()` and `sound.play()`.
+2. Phaser's WebAudioSoundManager handles autoplay policies, tab visibility, and context management automatically.
+3. Keep jsfxr for SFX (it works well), but use Phaser audio for music.
+4. Add crossfade method: fade out current track over 500ms while fading in new track.
+5. Store music references in AudioManager, not as raw HTMLAudioElement.
+6. Handle the `game.events.on('blur')` / `game.events.on('focus')` for tab switching (Phaser handles this for its audio system, but not for raw HTMLAudioElement).
+
+**Detection:** Music playing in background tabs; hard cuts between tracks; multiple tracks playing simultaneously.
+
+**Phase:** Music System phase.
+
+**Confidence:** HIGH -- verified current AudioManager.ts uses raw HTMLAudioElement (line 88), bypassing Phaser audio.
+
+---
+
+### Pitfall 13: Camera Bounds Smaller Than Viewport Stops Scrolling
+
+**What goes wrong:** If `camera.setBounds(0, 0, mapWidth, mapHeight)` is called but the map pixel dimensions are smaller than the viewport (possible during development or with small test maps), the camera stops scrolling entirely. This can also happen if bounds are set before the tilemap loads (race condition: bounds set to 0,0,0,0).
+
+**Why it happens:** Phaser's camera bounds logic prevents scrolling when bounds are smaller than viewport. This is by design to prevent showing empty space, but it blocks development testing.
+
+**Consequences:** Camera appears frozen; follows the player but doesn't actually move. Hard to debug because no error is thrown.
+
+**Prevention:**
+1. Set camera bounds AFTER tilemap loads and dimensions are known.
+2. Guard: `if (mapPixelWidth > this.cameras.main.width) camera.setBounds(...)`.
+3. For development: add a fallback that allows scrolling even with small maps.
+4. Log map dimensions vs viewport dimensions on load for debugging.
+
+**Detection:** Camera not following player despite `startFollow()` being called.
+
+**Phase:** HD Resolution + Camera Follow phase.
+
+**Confidence:** HIGH -- documented in official Phaser camera docs.
+
+---
+
+### Pitfall 14: Tiled JSON Format Change -- Multiple Tilesets and More Layers
+
+**What goes wrong:** Current maps use a minimal Tiled JSON format: 2 layers (Ground, Walls), 1 tileset, tile IDs 0-8. Richer tilesets will have multiple tilesets (ground tiles, wall tiles, decoration tiles), more layers (Ground, Walls, Decorations, Spawn), and tile IDs in higher ranges. The current tileset loading code in GameScene (line 1112-1116) expects exactly one tileset and exactly two layers named "Ground" and "Walls".
+
+More critically, the server's collision grid builder (GameRoom.ts lines 86-87) does `mapJson.layers.find(l => l.name === 'Walls')` -- if the layer name changes or additional collision layers are added, the server won't find them.
+
+Also, obstacle tile IDs are hardcoded in `shared/obstacles.ts`: `WALL: 3, HEAVY: 4, MEDIUM: 5, LIGHT: 6`. Real tilesets will use completely different tile IDs.
+
+**Why it happens:** v1.0 maps were generated programmatically with known simple structure. Artist-designed maps in Tiled will use different conventions.
+
+**Consequences:** Map doesn't render (missing tileset image or wrong tileset name). Server can't build collision grid (wrong layer name). Obstacles don't register as destructible (wrong tile IDs).
+
+**Prevention:**
+1. **Define a map format contract**: Required layers: "Ground", "Walls". Optional: "Decorations", "Spawns". Document this for map design.
+2. **Tile ID mapping**: Instead of hardcoded IDs, use Tiled custom properties on tiles (e.g., `type: "wall"`, `type: "destructible"`, `hp: 3`). Parse tile properties from the tileset data in the JSON.
+3. **Multiple tileset support**: GameScene.createTilemap() must iterate `map.tilesets` and add all tilesets, not just one.
+4. **Server map loading**: Parse tileset data from JSON to build the collision grid based on tile properties, not hardcoded IDs.
+5. **Backward compatibility**: Support both old format (hardcoded IDs) and new format (tile properties) during migration.
+
+**Detection:** Black/missing tiles; obstacles not blocking; server crash on map load.
+
+**Phase:** Tileset Integration phase. Must be addressed before new maps are designed.
+
+**Confidence:** HIGH -- verified hardcoded assumptions in `obstacles.ts`, `GameRoom.ts:86-87`, `GameScene.ts:1112-1116`.
+
+---
+
+### Pitfall 15: Powerup Entities Increase Schema Bandwidth
+
+**What goes wrong:** Adding powerups as a MapSchema<PowerupState> to GameState adds schema data that is synced every patch (60Hz). If powerups have position (for bobbing animation), type, active state, and timer, each powerup adds ~20-30 bytes per patch. With 5-10 powerups per map, that is 150-300 bytes/patch extra bandwidth.
+
+More importantly: powerup spawning/despawning triggers onAdd/onRemove callbacks on the client, which must create/destroy sprites. If powerups spawn frequently (every 10-15 seconds), this creates garbage collection pressure from sprite creation/destruction.
+
+**Why it happens:** MapSchema is designed for entities that change state. Powerups that spawn and despawn are a good fit, but the frequency matters.
+
+**Consequences:** Increased bandwidth; GC pauses from frequent sprite creation/destruction; potential desync if powerup schema update arrives during a critical combat moment.
+
+**Prevention:**
+1. **Static positions, dynamic state**: Define powerup spawn points in map metadata (not schema). Only sync active/inactive state and type via schema. This reduces bandwidth since positions don't change.
+2. **Pre-create sprites**: Create all powerup sprites at map load (one per spawn point), toggle visibility based on schema state. No runtime sprite creation/destruction.
+3. **Low sync frequency**: Powerup state changes are infrequent (spawn every 15-30s, pickup is instant). Schema handles this well since delta sync only sends on change.
+4. **Alternative**: Use messages instead of schema for powerup events (`powerupSpawned`, `powerupCollected`). Simpler but loses automatic reconnection state sync.
+5. Recommended: Use schema for persistence (reconnection gets current powerup state) but with static positions defined in map data.
+
+**Detection:** Bandwidth increase visible in network monitoring; frame drops on powerup spawn.
+
+**Phase:** Powerup System phase.
+
+**Confidence:** MEDIUM -- standard multiplayer pattern, specific bandwidth impact untested.
 
 ---
 
 ## Minor Pitfalls
 
-Issues that cause annoyance but are relatively easy to fix.
-
-### Pitfall 11: Hardcoded Game Constants
-
-**Confidence:** LOW (basic code quality)
-
-**What goes wrong:**
-Player speed, projectile damage, collision penalties scattered throughout code. Balancing requires hunting down magic numbers.
-
-**Prevention:**
-- Centralize constants in config files
-- Use TypeScript const enums or config objects
-- Load from JSON for easy tweaking
-- **Phase to address:** Phase 1 (code organization)
+Mistakes that cause inconvenience, minor bugs, or small time losses.
 
 ---
 
-### Pitfall 12: No Local Development Proxy
+### Pitfall 16: BootScene Preload Doesn't Account for New Music Assets
 
-**Confidence:** LOW
+**What goes wrong:** `BootScene.preload()` loads spritesheets, particles, and images but NOT audio files (jsfxr generates SFX in create()). Adding MP3 music files requires loading them in preload, but the loading bar/progress indicator doesn't exist yet. Large MP3 files (2-5MB each for lobby music, match music, victory music) can cause a noticeable loading delay with no feedback.
 
-**What goes wrong:**
-Testing client changes requires restarting server, slows iteration. Frontend devs can't work without backend running.
+**Why it happens:** v1.0 had no preloaded audio files -- everything was jsfxr-generated at runtime.
+
+**Consequences:** Multi-second blank screen while music loads; no loading progress for the user.
 
 **Prevention:**
-- Use Colyseus dev mode with hot reload
-- Proxy client to remote dev server
-- Mock server responses for pure UI work
-- **Phase to address:** Phase 1 (dev environment setup)
+1. Add music files to BootScene.preload(): `this.load.audio('match_music', 'audio/match_music.mp3')`.
+2. Add a simple loading bar (Phaser progress event) to show asset loading progress.
+3. Consider OGG format alongside MP3 for smaller file sizes and broader codec support.
+4. Keep total music payload under 5MB for reasonable load times.
+
+**Detection:** Slow initial load with no visual feedback.
+
+**Phase:** Music System phase.
+
+**Confidence:** HIGH -- verified BootScene.preload() loads no audio files.
 
 ---
 
-### Pitfall 13: Forgetting Clock Synchronization
+### Pitfall 17: Spectator Camera Follow Needs Smooth Transition Between Targets
 
-**Confidence:** MEDIUM (timing-specific)
+**What goes wrong:** Current spectator mode does `this.cameras.main.centerOn(targetSprite.x, targetSprite.y)` every frame (GameScene line 393). This works without camera scrolling because centerOn is a no-op when the viewport covers the whole arena. With camera follow in larger arenas, switching spectator targets causes an instant camera jump to the new player, which is disorienting.
 
-**What goes wrong:**
-Client and server clocks out of sync causes ability cooldowns, match timers, and timed events to mismatch. Server says "reload not ready", client shows ready.
+**Why it happens:** `centerOn` is an instant snap, not a smooth transition.
+
+**Consequences:** Jarring camera jump when pressing Tab to cycle spectator targets.
 
 **Prevention:**
-- Use Colyseus Clock API (`room.clock`)
-- Sync client clock with server on connection
-- Use server time for all game timing logic
-- Client clock only for rendering/interpolation
-- **Phase to address:** Phase 2 (timing systems)
+1. Use `this.cameras.main.startFollow(targetSprite, true, 0.1, 0.1)` with lerp values for smooth camera tracking.
+2. On target switch: `stopFollow()`, start a tween or pan to new target over 300-500ms, then `startFollow(newTarget)`.
+3. Alternative: `camera.pan(x, y, duration)` for the transition, then startFollow.
 
-**Detection:**
-- Cooldowns appear incorrect
-- Match timers desync
-- Timed events trigger at wrong time
+**Detection:** Sudden camera teleport on spectator target switch.
+
+**Phase:** Camera Follow phase.
+
+**Confidence:** HIGH -- verified current spectator code at GameScene.ts line 393.
 
 ---
 
-### Pitfall 14: Not Handling Browser Tab Visibility
+### Pitfall 18: Round Transition Needs HUD State Reset
 
-**Confidence:** LOW
+**What goes wrong:** HUDScene receives room, localSessionId, and localRole in create() data (line 78). Between rounds in best-of-3, HUDScene must: reset health bars, clear kill feed, reset cooldown display, reset spectator state, show round number, update round score display. But HUDScene only receives data on create() -- there is no mechanism for round resets without stopping and relaunching the scene.
 
-**What goes wrong:**
-Player switches browser tabs, game continues running. Returns to find character dead or match over. Or: game pauses, causing server timeout.
+Stopping and relaunching HUDScene causes a visual flash (scene destroyed and recreated). It also requires re-registering all event listeners with GameScene.
+
+**Why it happens:** HUDScene was designed for single-round lifecycle.
+
+**Consequences:** Stale kill feed entries from previous round; health bars showing dead players as dead; cooldown not reset; spectator mode stuck on.
 
 **Prevention:**
-- Detect visibility change (Page Visibility API)
-- Reduce update frequency when tab hidden (save battery)
-- Show reconnection UI when returning
-- Server should be lenient with timeouts (don't kick immediately)
-- **Phase to address:** Phase 3 (UX polish)
+1. Add a `resetForNewRound()` public method to HUDScene that clears all gameplay state while preserving the room reference and UI structure.
+2. GameScene calls `this.scene.get('HUDScene').resetForNewRound()` on round transition.
+3. HUDScene.resetForNewRound(): clear kill feed entries, reset health bars, reset cooldown, hide spectator HUD, show "Round X" banner.
+4. Add round score display to HUDScene that persists between rounds.
+
+**Detection:** Kill feed showing kills from previous round; dead player indicators persisting.
+
+**Phase:** Multi-Stage Rounds phase.
+
+**Confidence:** HIGH -- verified HUDScene lifecycle at lines 78-152.
 
 ---
 
-### Pitfall 15: Inadequate Room Cleanup
+### Pitfall 19: Map JSON Path Resolution Differs Between Server and Client
 
-**Confidence:** MEDIUM (Colyseus-specific)
+**What goes wrong:** Server loads map JSON via filesystem: `path.join(__dirname, '../../../client/public', this.mapMetadata.file)` (GameRoom.ts line 84). Client loads via Phaser loader: `this.load.tilemapTiledJSON(mapKey, mapFile)` where mapFile is relative to public dir. With larger/more maps and potentially different directory structures, these paths can diverge. If map files move (e.g., into a `maps/v2/` subdirectory), the server path breaks while the client path works, or vice versa.
 
-**What goes wrong:**
-Empty rooms stay alive, consuming server resources. Memory leaks accumulate. Server eventually runs out of memory.
+**Why it happens:** Server uses Node.js filesystem paths; client uses HTTP-relative paths. These are fundamentally different resolution mechanisms.
+
+**Consequences:** Server crashes on map load ("ENOENT: no such file or directory"); client shows empty map.
 
 **Prevention:**
-- Implement `onDispose()` in Colyseus rooms
-- Auto-dispose empty rooms after timeout
-- Clean up timers, intervals, event listeners
-- Monitor room count vs active players
-- **Phase to address:** Phase 2 (room lifecycle management)
+1. Keep map file path in shared `MapMetadata.file` as the single source of truth.
+2. Server map path resolution: compute once in a config module, not inline in GameRoom.
+3. During development: add existence check with helpful error message before `JSON.parse(fs.readFileSync(...))`.
+4. Consider embedding map data in shared code for small maps, or serving from a known base path.
+
+**Detection:** Server crash on GameRoom.onCreate(); client showing empty world.
+
+**Phase:** Tileset Integration / Map Format phase.
+
+**Confidence:** HIGH -- verified path construction at GameRoom.ts line 84.
+
+---
+
+### Pitfall 20: Phaser Game Config Resolution Must Be Set Before Game Creation
+
+**What goes wrong:** `main.ts` creates the Phaser.Game with `width: 800, height: 600` (line 10-11). Changing to 1280x720 requires changing this config. However, Phaser's width/height cannot be changed after game creation. The scale mode `Phaser.Scale.FIT` will scale the canvas to fit the container, but the internal resolution is fixed at creation time.
+
+**Why it happens:** Phaser treats game resolution as immutable after `new Phaser.Game(config)`.
+
+**Consequences:** If you forget to update main.ts, everything renders at 800x600 even though individual scenes try to use 1280x720 coordinates. The game will look correct but be lower resolution than intended.
+
+**Prevention:**
+1. Update `width: 1280, height: 720` in main.ts config.
+2. Update `Phaser.Scale.FIT` mode to scale to container.
+3. All scenes should reference `this.cameras.main.width` and `this.cameras.main.height` instead of hardcoded values.
+4. Test that the canvas DOM element actually renders at the expected resolution.
+
+**Detection:** Blurry rendering; coordinates don't match expected values; canvas element inspected in devtools shows wrong size.
+
+**Phase:** HD Resolution phase -- must be the very first change.
+
+**Confidence:** HIGH -- verified main.ts config at lines 9-11.
 
 ---
 
 ## Phase-Specific Warnings
 
-| Phase Topic | Likely Pitfall | Mitigation | Confidence |
-|-------------|---------------|------------|------------|
-| Phase 1: Architecture | Choosing wrong authority model | Research client prediction + server reconciliation patterns, prototype early | HIGH |
-| Phase 1: Networking | No latency testing from day one | Setup throttling tools before first multiplayer test | HIGH |
-| Phase 2: Core Loop | Trusting client input | Implement validation framework before adding features | HIGH |
-| Phase 2: Physics | Physics desync client/server | Decide: lightweight server physics OR full reconciliation | HIGH |
-| Phase 2: State Sync | Sending everything every frame | Use Colyseus delta compression, profile bandwidth early | HIGH |
-| Phase 3: Combat | Hit detection feels wrong | Implement lag compensation, test at 100ms+ latency | MEDIUM |
-| Phase 3: Matchmaking | No reconnection support | Build reconnection before public testing | MEDIUM |
-| Phase 4: Performance | Asset loading hitches | Profile on slow devices, preload everything | MEDIUM |
-| Phase 5: Scale | Room cleanup neglected | Memory profiling, automated cleanup tests | MEDIUM |
-| Phase 6: Launch | No production monitoring | Setup telemetry before launch | MEDIUM |
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| HD Resolution (1280x720) | ARENA constant breaks physics (P1); HUD mispositioned (P2); VictoryScene broken (P3); main.ts config (P20) | Update main.ts first, then ARENA -> dynamic, then all hardcoded coords |
+| Camera Follow / Scrolling | Camera breaks coordinate assumptions (P6); bounds < viewport blocks scroll (P13); spectator jump (P17) | Set bounds after tilemap load; move fixed UI to HUDScene; use lerp for follow |
+| Arena Enlargement (50x38) | Prediction clamp wrong (P4); CollisionGrid rebuild needed (P11) | Dynamic ARENA from map metadata; add rebuild() to CollisionGrid |
+| Multi-Stage Rounds | State reset without recreation (P5); scene reset (P10); HUD reset (P18); collision grid reset (P11) | Add roundState schema; resetForNewRound() methods; CollisionGrid.rebuild() |
+| Powerup System | Sync timing desync (P8); bandwidth increase (P15) | Optimistic client pickup; static positions + schema state only |
+| Minimap | Camera performance (P9) | RenderTexture at reduced update rate, not second camera |
+| Tileset Integration | Tile bleeding (P7); Tiled format assumptions (P14); path resolution (P19) | Extrude tilesets; define format contract; tile properties over hardcoded IDs |
+| Music System | HTMLAudioElement limitations (P12); BootScene preload (P16) | Switch to Phaser SoundManager for music; add loading bar |
+| HUD Overhaul | All hardcoded positions (P2) | Anchor-based positioning from viewport dimensions |
 
 ---
 
-## Phaser + Colyseus Specific Gotchas
+## Recommended Phase Ordering (Risk-Based)
 
-### Gotcha 1: Phaser's Arcade Physics is Not Deterministic
+The pitfalls suggest this implementation order to minimize rework:
 
-**Confidence:** MEDIUM (Phaser-specific)
+1. **HD Resolution + Camera Follow** (P1, P2, P3, P4, P6, P13, P20) -- Foundation change. Every other feature depends on correct resolution and camera behavior. Highest risk of cascading breakage if done later.
 
-Arcade Physics uses floating-point arithmetic that can produce different results on different machines. Running identical code client and server may still produce desyncs due to CPU architecture differences.
+2. **Tileset Integration + Map Format** (P7, P14, P19) -- Changes the map data contract. Must be done before designing new larger maps.
 
-**Solution:**
-- Don't rely on perfect physics determinism
-- Use server-authoritative model with client prediction
-- OR: Use Matter.js (more deterministic) but heavier
-- OR: Implement custom fixed-point physics
+3. **Arena Enlargement** (P4, P11) -- Depends on camera follow working and new map format.
 
----
+4. **Multi-Stage Rounds** (P5, P10, P11, P18) -- Complex state management. Depends on arena/resolution being stable.
 
-### Gotcha 2: Colyseus State Schema Doesn't Support Inheritance Well
+5. **Powerup System** (P8, P15) -- New entity type. Depends on map format and round lifecycle.
 
-**Confidence:** LOW (Colyseus-specific, may have changed)
+6. **Minimap** (P9) -- Depends on camera follow and larger arenas existing.
 
-Using TypeScript class inheritance with Colyseus Schema can cause serialization issues.
+7. **Music System** (P12, P16) -- Independent. Can be done anytime but benefits from final scene flow being stable.
 
-**Solution:**
-- Prefer composition over inheritance for state classes
-- Keep state schema flat where possible
-- Test serialization thoroughly if using inheritance
+8. **HUD Overhaul** (P2) -- Partially addressed in HD Resolution phase; final polish after all features are in.
 
 ---
 
-### Gotcha 3: WebSocket Connections Limited on Mobile
+## Sources
 
-**Confidence:** LOW
-
-Mobile browsers may have stricter WebSocket connection limits or aggressive power-saving that closes connections.
-
-**Solution:**
-- Implement robust reconnection
-- Test thoroughly on mobile devices (not just emulators)
-- Consider using Colyseus's built-in reconnection tokens
-
----
-
-## Testing Strategy for Pitfall Prevention
-
-### Phase 1: Foundation (Week 1-2)
-- [ ] Setup latency simulation (Chrome DevTools, tc, or Clumsy)
-- [ ] Test basic movement at 0ms, 50ms, 100ms, 150ms
-- [ ] Verify client prediction + server reconciliation works
-- [ ] Confirm input validation framework in place
-
-### Phase 2: Core Loop (Week 3-6)
-- [ ] Test projectiles under lag
-- [ ] Profile bandwidth usage (target: <50 KB/s per player)
-- [ ] Test collision detection under latency
-- [ ] Verify momentum mechanics don't desync
-
-### Phase 3: Multiplayer Features (Week 7-10)
-- [ ] Test reconnection (simulate disconnect/reconnect)
-- [ ] Test with 3 players at different latencies
-- [ ] Cross-region testing (US <-> EU)
-- [ ] Verify matchmaking doesn't leak rooms
-
-### Phase 4: Polish (Week 11-12)
-- [ ] Test on mobile devices (iOS Safari, Chrome Android)
-- [ ] Test tab visibility changes
-- [ ] Performance profiling on low-end devices
-- [ ] Lag spike simulation (200ms+ temporary latency)
-
-### Phase 5: Scale Testing (Week 13-14)
-- [ ] Load test: Multiple rooms simultaneously
-- [ ] Memory profiling: Long-running rooms
-- [ ] Connection storm: Many joins/leaves rapidly
-
----
-
-## Red Flags Checklist
-
-If you answer "yes" to any of these during development, STOP and address:
-
-- [ ] **Can client send movement input without validation?** (Client trust pitfall)
-- [ ] **Does server send full state every tick?** (Bandwidth pitfall)
-- [ ] **Are we testing only on localhost?** (Latency testing pitfall)
-- [ ] **Is game logic embedded in Phaser scenes?** (Coupling pitfall)
-- [ ] **Do projectiles stay in state forever?** (State explosion pitfall)
-- [ ] **Can't unit test combat logic?** (Coupling pitfall)
-- [ ] **No way to rejoin disconnected match?** (Reconnection pitfall)
-- [ ] **Clock/timing uses client time?** (Clock sync pitfall)
-- [ ] **Empty rooms never dispose?** (Resource leak pitfall)
-
----
-
-## Sources & Verification Needed
-
-**CRITICAL:** This research was conducted without access to verification tools. All findings are based on training data (pre-January 2025) and should be validated against:
-
-1. **Official Documentation (HIGH PRIORITY)**
-   - Colyseus documentation (https://docs.colyseus.io/) - Verify state sync, authority patterns, testing
-   - Phaser 3 documentation (https://photonstorm.github.io/phaser3-docs/) - Verify physics behavior
-   - Check for 2026 updates to both frameworks
-
-2. **Real-World Case Studies (MEDIUM PRIORITY)**
-   - Search for "Phaser Colyseus post-mortem 2025 2026"
-   - GitHub discussions on Colyseus repo
-   - Phaser Discord/forum discussions on multiplayer
-
-3. **Specific Verification Points (HIGH PRIORITY)**
-   - Does Colyseus still use Schema for state? (Confirm current API)
-   - Is Arcade Physics still non-deterministic? (Verify with latest Phaser)
-   - What are current Colyseus testing best practices?
-   - Are there new latency compensation techniques (2025-2026)?
-
-**Confidence Assessment:**
-- Critical Pitfalls 1-5: MEDIUM-HIGH (based on fundamental networking principles unlikely to change)
-- Moderate Pitfalls: MEDIUM (common patterns, need verification)
-- Minor Pitfalls: LOW-MEDIUM (implementation details, may have changed)
-- Framework-specific gotchas: LOW (need verification with current versions)
-
-**Recommended Next Steps:**
-1. Verify Colyseus current best practices documentation
-2. Check Phaser 3 physics determinism in 2026 documentation
-3. Search for recent multiplayer game post-mortems using this stack
-4. Validate pitfall rankings with community discussions
-
----
-
-## Summary
-
-**Highest Priority Pitfalls to Address in Phase 1:**
-1. Client-server physics authority model
-2. Input validation framework
-3. Latency testing setup
-4. State synchronization strategy
-5. Code architecture (logic separation)
-
-**Most Likely to Cause Rewrites if Ignored:**
-- Physics authority model chosen wrong
-- No client prediction/reconciliation
-- Client trust (no validation)
-- State sync sends everything
-
-**Banger-Specific Concerns:**
-- Momentum-based movement requires tight synchronization
-- Collision penalties must be server-authoritative for fairness
-- 1v2 asymmetry means balance is critical (cheating ruins it)
-- Projectile-heavy combat = bandwidth sensitive
-
-All findings require validation with current documentation and community resources.
+- Phaser 3 Camera documentation: [Camera API](https://docs.phaser.io/api-documentation/class/cameras-scene2d-camera), [Camera Concepts](https://docs.phaser.io/phaser/concepts/cameras)
+- Phaser 3 Render Texture: [Render Texture API](https://docs.phaser.io/api-documentation/class/gameobjects-rendertexture)
+- Tile bleeding: [sporadic-labs/tile-extruder](https://github.com/sporadic-labs/tile-extruder), [Phaser issue #3352](https://github.com/photonstorm/phaser/issues/3352)
+- Phaser 3 Audio: [Audio Concepts](https://docs.phaser.io/phaser/concepts/audio), [Audio loop issue #6702](https://github.com/phaserjs/phaser/issues/6702)
+- Phaser Scale Manager: [ScaleManager API](https://docs.phaser.io/api-documentation/class/scale-scalemanager)
+- Colyseus state best practices: [Colyseus State](https://docs.colyseus.io/state), [Best Practices](https://docs.colyseus.io/state/best-practices)
+- Codebase analysis: All file references are to the current Banger codebase at `/Users/jonasbrandvik/Projects/banger-game/`
