@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 client/dist/
+server/dist/
 
 # Environment
 .env
@@ -19,7 +20,7 @@ Thumbs.db
 *.swo
 
 # Claude Code
-.claude/
+.claude/settings.local.json
 
 # Playwright MCP
 .playwright-mcp/
