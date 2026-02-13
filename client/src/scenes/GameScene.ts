@@ -10,6 +10,7 @@ import { MAPS } from '../../../shared/maps';
 import { CollisionGrid } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS } from '../../../shared/obstacles';
 import { charColorNum } from '../ui/designTokens';
+import { MapMetadata } from '../../../shared/maps';
 
 /** Map of role name to projectile spritesheet frame index */
 const PROJECTILE_FRAME: Record<string, number> = {
@@ -91,6 +92,11 @@ export class GameScene extends Phaser.Scene {
   private hudLaunched: boolean = false;
   private lastLocalFireTime: number = 0;
 
+  // Camera system
+  private controlsLocked: boolean = false;
+  private overviewActive: boolean = false;
+  private mapMetadata: MapMetadata | null = null;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -134,6 +140,18 @@ export class GameScene extends Phaser.Scene {
     this.prevHealth = new Map();
     this.projectileTrails = new Map();
     this.speedLineFrameCounter = 0;
+    this.controlsLocked = false;
+    this.overviewActive = false;
+    this.mapMetadata = null;
+
+    // Reset camera state for scene reuse
+    const cam = this.cameras.main;
+    cam.setZoom(1);
+    cam.stopFollow();
+    cam.setBounds(0, 0, 99999, 99999); // temporary, will be set properly after map load
+    cam.setScroll(0, 0);
+    cam.followOffset.set(0, 0);
+    cam.setRoundPixels(true);
 
     // Get AudioManager from registry (initialized in BootScene)
     this.audioManager = this.registry.get('audioManager') as AudioManager || null;
@@ -196,6 +214,9 @@ export class GameScene extends Phaser.Scene {
           console.error(`Unknown map: ${mapName}, falling back to test_arena`);
         }
 
+        // Store map metadata for camera bounds and other systems
+        this.mapMetadata = mapData || MAPS[0];
+
         const mapFile = mapData?.file || "maps/test_arena.json";
         const mapKey = mapData?.name || "test_arena";
 
@@ -229,6 +250,8 @@ export class GameScene extends Phaser.Scene {
             this.audioManager.playSFX('match_start_fanfare');
             this.audioManager.playMusic('audio/match_music.mp3');
           }
+          // Match-start overview animation
+          this.startMatchOverview();
         } else if (value === 'waiting') {
           const count = this.room ? this.room.state.players.size : 0;
           this.statusText.setText(`Waiting for players... (${count}/3)`);
@@ -260,14 +283,16 @@ export class GameScene extends Phaser.Scene {
         this.scene.stop('HUDScene');
         this.hudLaunched = false;
 
-        // Victory/defeat particle burst
+        // Victory/defeat particle burst (use map center)
         if (this.particleFactory && this.room) {
           const localStats = data.stats[this.room.sessionId];
           const localRole = localStats?.role || '';
           const didWin = (data.winner === 'paran' && localRole === 'paran') ||
                          (data.winner === 'guardians' && localRole !== 'paran');
           const burstColor = didWin ? 0x00ff00 : 0xff0000;
-          this.particleFactory.victoryBurst(400, 300, burstColor);
+          const burstX = this.mapMetadata ? this.mapMetadata.width / 2 : 400;
+          const burstY = this.mapMetadata ? this.mapMetadata.height / 2 : 300;
+          this.particleFactory.victoryBurst(burstX, burstY, burstColor);
         }
 
         // Launch victory scene as overlay
@@ -398,8 +423,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Skip input processing if dead or spectating
-    if (!isDead && !this.isSpectating) {
+    // Skip input processing if dead, spectating, or controls locked (overview animation)
+    if (!isDead && !this.isSpectating && !this.controlsLocked) {
       // Read current keyboard state
     const rawInput = {
       left: this.cursors.left.isDown || this.wasd.A.isDown,
@@ -609,6 +634,7 @@ export class GameScene extends Phaser.Scene {
 
     // Create sprite using the role's spritesheet
     const sprite = this.add.sprite(player.x, player.y, role);
+    sprite.setDisplaySize(32, 32); // 64x64 texture displayed at 32x32 world size
     sprite.setDepth(10);
     sprite.play(`${role}-idle`);
     this.playerSprites.set(sessionId, sprite);
@@ -623,13 +649,17 @@ export class GameScene extends Phaser.Scene {
     if (isLocal) {
       // Local player: initialize prediction system with role
       this.localRole = role;
+      // Pass dynamic arena bounds from map metadata (falls back to ARENA constant if unavailable)
+      const arenaBounds = this.mapMetadata
+        ? { width: this.mapMetadata.width, height: this.mapMetadata.height }
+        : undefined;
       this.prediction = new PredictionSystem({
         x: player.x,
         y: player.y,
         vx: player.vx || 0,
         vy: player.vy || 0,
         angle: player.angle || 0,
-      }, role);
+      }, role, arenaBounds);
 
       // Pass collision grid if tilemap already loaded (race condition handling)
       if (this.collisionGrid) {
@@ -710,6 +740,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const sprite = this.add.sprite(projectile.x, projectile.y, 'projectiles', frameIndex);
+    sprite.setDisplaySize(8, 8); // 16x16 texture displayed at 8x8 world size
     sprite.setDepth(5);
     this.projectileSprites.set(index, sprite);
 
@@ -1008,14 +1039,16 @@ export class GameScene extends Phaser.Scene {
       this.scene.stop('HUDScene');
       this.hudLaunched = false;
 
-      // Victory/defeat particle burst (reconnect path)
+      // Victory/defeat particle burst (reconnect path, use map center)
       if (this.particleFactory && this.room) {
         const localStats = data.stats[this.room.sessionId];
         const localRole = localStats?.role || '';
         const didWin = (data.winner === 'paran' && localRole === 'paran') ||
                        (data.winner === 'guardians' && localRole !== 'paran');
         const burstColor = didWin ? 0x00ff00 : 0xff0000;
-        this.particleFactory.victoryBurst(400, 300, burstColor);
+        const burstX = this.mapMetadata ? this.mapMetadata.width / 2 : 400;
+        const burstY = this.mapMetadata ? this.mapMetadata.height / 2 : 300;
+        this.particleFactory.victoryBurst(burstX, burstY, burstColor);
       }
 
       this.scene.launch("VictoryScene", {
@@ -1095,6 +1128,45 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Match-start overview: show full arena at zoom=1.0 for 1.5s, then zoom to local player.
+   * Controls are locked during the animation.
+   */
+  private startMatchOverview(): void {
+    if (!this.mapMetadata) return;
+
+    const cam = this.cameras.main;
+
+    // Lock controls during overview
+    this.controlsLocked = true;
+    this.overviewActive = true;
+
+    // Show full arena at overview zoom
+    cam.stopFollow();
+    cam.setZoom(1.0);
+    cam.centerOn(this.mapMetadata.width / 2, this.mapMetadata.height / 2);
+
+    // After 1.5s, zoom to local player position
+    this.time.delayedCall(1500, () => {
+      // Start following local player
+      if (this.room) {
+        const localSprite = this.playerSprites.get(this.room.sessionId);
+        if (localSprite) {
+          cam.startFollow(localSprite, true, 0.08, 0.08);
+          cam.setDeadzone(40, 30);
+        }
+      }
+      // Smooth zoom to gameplay level
+      cam.zoomTo(2, 800, 'Sine.easeInOut');
+
+      // Unlock controls after zoom completes
+      this.time.delayedCall(800, () => {
+        this.controlsLocked = false;
+        this.overviewActive = false;
+      });
+    });
+  }
+
   private returnToLobby(message: string) {
     this.statusText.setText(message);
     sessionStorage.removeItem('bangerActiveRoom');
@@ -1156,6 +1228,13 @@ export class GameScene extends Phaser.Scene {
 
     // Initialize particle effects after tilemap is ready
     this.particleFactory = new ParticleFactory(this);
+
+    // Set up camera bounds and zoom after tilemap is ready
+    if (this.mapMetadata) {
+      const cam = this.cameras.main;
+      cam.setBounds(0, 0, this.mapMetadata.width, this.mapMetadata.height);
+      cam.setZoom(2);
+    }
 
     console.log(`Tilemap ${mapKey} created successfully`);
   }
