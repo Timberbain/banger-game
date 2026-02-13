@@ -22,12 +22,18 @@ interface HealthBarUI {
 /**
  * HUDScene - Overlay scene for in-game HUD elements.
  * Launched alongside GameScene (not started) so it renders on top.
+ * Uses viewport-relative positioning (camera width/height) for all elements.
+ * Camera stays at zoom=1, scroll (0,0) -- independent of GameScene camera.
  */
 export class HUDScene extends Phaser.Scene {
   // Room reference
   private room: Room | null = null;
   private localSessionId: string = '';
   private localRole: string = '';
+
+  // Viewport dimensions (set in create)
+  private W: number = 1280;
+  private H: number = 720;
 
   // Health bars
   private healthBars: HealthBarUI[] = [];
@@ -108,8 +114,12 @@ export class HUDScene extends Phaser.Scene {
 
     // Transparent background so GameScene shows through
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
-    // HUD should not scroll with game camera
+    // HUD should not scroll with game camera -- fixed overlay at zoom=1
     this.cameras.main.setScroll(0, 0);
+
+    // Viewport dimensions for all positioning
+    this.W = this.cameras.main.width;
+    this.H = this.cameras.main.height;
 
     // Store references
     this.room = data.room;
@@ -229,8 +239,7 @@ export class HUDScene extends Phaser.Scene {
     }
 
     const totalPlayers = players.length;
-    const screenWidth = 800;
-    const barY = 575;
+    const barY = this.H * 0.95;
 
     for (let i = 0; i < totalPlayers; i++) {
       const p = players[i];
@@ -239,7 +248,7 @@ export class HUDScene extends Phaser.Scene {
       const barH = isLocal ? 16 : 12;
 
       // Space evenly across bottom
-      const spacing = screenWidth / (totalPlayers + 1);
+      const spacing = this.W / (totalPlayers + 1);
       const barX = spacing * (i + 1);
 
       // Background (dark red)
@@ -314,7 +323,7 @@ export class HUDScene extends Phaser.Scene {
   // =====================
 
   private createMatchTimer(): void {
-    this.timerText = this.add.text(400, 20, '', {
+    this.timerText = this.add.text(this.W * 0.5, this.H * 0.03, '', {
       ...TextStyle.hud,
       fontSize: '20px',
     });
@@ -382,13 +391,14 @@ export class HUDScene extends Phaser.Scene {
   }
 
   private addKillFeedEntry(data: { killer: string; victim: string; killerRole: string; victimRole: string }): void {
-    const killFeedX = 790;
-    const baseY = 60;
+    const killFeedX = this.W * 0.98;
+    const baseY = this.H * 0.08;
+    const feedSpacing = this.H * 0.04;
 
     // Push existing entries down
     for (const entry of this.killFeedEntries) {
-      entry.text.y += 28;
-      entry.bg.y += 28;
+      entry.text.y += feedSpacing;
+      entry.bg.y += feedSpacing;
     }
 
     // Create background
@@ -460,8 +470,8 @@ export class HUDScene extends Phaser.Scene {
 
   private createCooldownDisplay(): void {
     // Small bar above the local player's health bar area (center bottom)
-    const barX = 400;
-    const barY = 538; // Above the health bar area (15px gap to name labels at ~557)
+    const barX = this.W * 0.5;
+    const barY = this.H * 0.92;
     const barW = 40;
     const barH = 6;
 
@@ -501,7 +511,7 @@ export class HUDScene extends Phaser.Scene {
   // =====================
 
   private createPingDisplay(): void {
-    this.pingText = this.add.text(780, 20, '0ms', {
+    this.pingText = this.add.text(this.W * 0.97, this.H * 0.03, '0ms', {
       fontSize: '12px',
       color: Colors.status.success,
       fontFamily: 'monospace',
@@ -549,7 +559,7 @@ export class HUDScene extends Phaser.Scene {
     const roleColor = charColor(this.localRole);
 
     // Large banner: "YOU ARE PARAN"
-    this.roleBanner = this.add.text(400, 200, `YOU ARE ${roleName}`, {
+    this.roleBanner = this.add.text(this.W * 0.5, this.H * 0.28, `YOU ARE ${roleName}`, {
       ...TextStyle.splash,
       color: roleColor,
     });
@@ -571,7 +581,7 @@ export class HUDScene extends Phaser.Scene {
     });
 
     // Subtle permanent role reminder in top-left
-    this.roleReminder = this.add.text(10, 10, roleName.charAt(0) + roleName.slice(1).toLowerCase(), {
+    this.roleReminder = this.add.text(this.W * 0.01, this.H * 0.02, roleName.charAt(0) + roleName.slice(1).toLowerCase(), {
       fontSize: '14px',
       color: roleColor,
       fontFamily: 'monospace',
@@ -588,7 +598,8 @@ export class HUDScene extends Phaser.Scene {
 
   private createSpectatorHUD(): void {
     // Hidden by default, shown when spectating
-    this.spectatorBar = this.add.text(400, 50, '', {
+    // Semi-transparent background rectangle for spectator banner
+    this.spectatorBar = this.add.text(this.W * 0.5, this.H * 0.07, '', {
       ...TextStyle.hud,
       backgroundColor: '#00000088',
       padding: { x: 12, y: 6 },
@@ -597,7 +608,7 @@ export class HUDScene extends Phaser.Scene {
     this.spectatorBar.setDepth(250);
     this.spectatorBar.setVisible(false);
 
-    this.spectatorInstruction = this.add.text(400, 75, 'Press TAB to cycle', {
+    this.spectatorInstruction = this.add.text(this.W * 0.5, this.H * 0.10, 'Press TAB to cycle', {
       fontSize: '12px',
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -648,7 +659,7 @@ export class HUDScene extends Phaser.Scene {
 
   private showMatchStart(): void {
     // Show "FIGHT!" text when match starts
-    this.countdownText = this.add.text(400, 300, 'FIGHT!', {
+    this.countdownText = this.add.text(this.W * 0.5, this.H * 0.42, 'FIGHT!', {
       ...TextStyle.splash,
       fontSize: '72px',
       strokeThickness: 8,
