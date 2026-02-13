@@ -31,7 +31,20 @@ The asymmetric momentum mechanic must feel right — Paran building terrifying s
 
 ### Active
 
-(None — awaiting next milestone definition via `/gsd:new-milestone`)
+**Current Milestone: v2.0 — Arena Evolution**
+
+**Goal:** Transform the arena experience with HD resolution, scrollable maps, multi-stage rounds, powerups, and proper tileset art.
+
+**Target features:**
+- 1280x720+ viewport with pixel art scaling
+- Tileset-based arenas using provided art assets (hedge, brick, wood, ground)
+- Larger scrollable arenas (~2x current) with camera follow
+- Human-readable map JSON format with player spawn locations
+- Multi-stage best-of-3 rounds (different arena per stage)
+- Powerup system with random spawns and temporary buffs
+- Minimap overlay showing player positions
+- HUD/UI overhaul using icon assets
+- Music system (lobby tracks + per-stage tracks from provided audio files)
 
 ### Out of Scope
 
@@ -52,10 +65,16 @@ Client prediction with reconciliation for responsive movement, entity interpolat
 4 hand-crafted arena maps (800x608 pixels, 25x19 tiles) with sequential rotation.
 Pixel art assets generated via Python PIL, procedural audio via jsfxr.
 
+**v2.0 assets provided:**
+- Tilesets: hedge, brick, wood, ground textures (32x32 tiles)
+- Icons: hearts, timer, skull, volume, arrows, potions (red/green/orange/blue), food items, gravestone
+- Soundtrack: 1 lobby track (`Pixel Jitter Jive.mp3`), 2 stage tracks (`Forest Deco Run.mp3`, `Art Deco Forest Arena.mp3`)
+
 **Known tech debt:**
 - Cross-browser audio testing not performed (Chrome-only development)
 - LobbyRoom.ts has a TODO for lobby optimization (non-blocking)
 - GAME-06 deviation: "instant turning" became Pac-Man cardinal movement (user-approved, plays better)
+- v1.0 maps are 800x608 (25x19 tiles) — v2.0 will expand to ~1600x1216 (50x38 tiles)
 
 ## Constraints
 
@@ -84,5 +103,11 @@ Pixel art assets generated via Python PIL, procedural audio via jsfxr.
 | Account system moved to Out of Scope | Game fully playable without accounts; deferred to future milestone | Good |
 | jsfxr procedural audio | No external audio files needed, consistent retro aesthetic | Good |
 
+| v2.0: HD resolution (1280x720) | Pixel art at larger viewport with scaling; current 800x608 too small | — Pending |
+| v2.0: Multi-stage best-of-3 | Deeper match structure; more variety per game session | — Pending |
+| v2.0: Provided tilesets for arenas | Hand-crafted art replaces PIL-generated tiles; better visual quality | — Pending |
+| v2.0: Powerup system | Adds tactical layer and mid-round decision making | — Pending |
+| v2.0: Music from audio files | Provided tracks replace silence; atmosphere enhancement | — Pending |
+
 ---
-*Last updated: 2026-02-13 after v1.0 milestone*
+*Last updated: 2026-02-13 after v2.0 milestone start*
