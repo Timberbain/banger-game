@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 7 of 12 (HD Viewport & Camera)
-Plan: 5 of 6 in current phase
+Plan: 7 of 8 in current phase
 Status: Executing
-Last activity: 2026-02-13 -- Completed 07-05 (UI Scene 1280x720 Conversion)
+Last activity: 2026-02-13 -- Completed 07-07 (Camera Race Condition & Look-ahead Tuning)
 
-Progress: [############........] 57% (43/~56 plans est. across v1.0+v2.0)
+Progress: [#############.......] 59% (45/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -48,7 +48,9 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Removed unused arcade physics block from Phaser config (custom shared physics used)
 - Walk frameRate 8->10 for 6-frame walks (0.6s cycle comparable to old 0.5s), idle 3fps breathing
 - Spectator camera uses startFollow with lerp instead of centerOn for smooth tracking
-- Look-ahead uses followOffset (SUBTRACTED) with negated direction vectors, 0.04 lerp
+- Look-ahead uses followOffset (SUBTRACTED) with negated direction vectors, 0.14 lerp (tuned from 0.04)
+- pendingOverview deferred pattern for Colyseus state.listen vs onStateChange.once race condition
+- Gameplay deadzone 20x15, spectator deadzone 60x45 (separate tuning)
 - Camera shake: wall impact 80ms/0.003, damage 100ms/0.005 (local player only)
 - HUD uses viewport-relative W/H percentages, menu scenes use cameras.main.centerX/centerY
 
@@ -70,8 +72,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-05-PLAN.md (UI Scene 1280x720 Conversion)
-Next step: Execute 07-06-PLAN.md
+Stopped at: Completed 07-07-PLAN.md (Camera Race Condition & Look-ahead Tuning)
+Next step: Execute 07-08-PLAN.md
 
 ---
-*Updated: 2026-02-13 after 07-05 execution*
+*Updated: 2026-02-13 after 07-07 execution*
