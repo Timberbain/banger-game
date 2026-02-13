@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Combat System** - Projectiles, collision detection, damage system
 - [x] **Phase 4: Match Lifecycle & Maps** - Win conditions, multiple arenas, spectator mode
 - [x] **Phase 5: Multiplayer Lobbies** - Room codes, matchmaking, character selection
-- [ ] **Phase 6: UX Polish** - HUD, audio, visual feedback, tutorial
+- [x] **Phase 6: UX Polish** - HUD, audio, visual feedback, tutorial
 
 ## Phase Details
 
@@ -165,7 +165,7 @@ Plans:
 - [x] 06-08-PLAN.md — Gap closure: Wall impact particles + cooldown bar position
 - [x] 06-09-PLAN.md — Gap closure: Character color themes (Paran yellow, Faran red, Baran green)
 - [x] 06-10-PLAN.md — Gap closure: Map redesign for Paran viability (3+ tile corridors)
-- [ ] 06-11-PLAN.md — Gap closure: UAT issues (shoot sound, HUD positions, guardian sounds, button click)
+- [x] 06-11-PLAN.md — Gap closure: UAT issues (shoot sound, HUD positions, guardian sounds, button click)
 
 ## Progress
 
@@ -180,8 +180,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 4. Match Lifecycle & Maps | 3/3 | ✓ Complete | 2026-02-10 |
 | 5. Multiplayer Lobbies | 13/13 | ✓ Complete | 2026-02-11 |
 | 5.1 Arena Collisions & Contact Kill | 4/4 | ✓ Complete | 2026-02-12 |
-| 6. UX Polish | 10/11 | In Progress | - |
+| 6. UX Polish | 11/11 | ✓ Complete | 2026-02-13 |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-12 (Phase 6 gap closure planning — UAT issues)*
+*Last updated: 2026-02-13 (Phase 6 complete — all 11 plans executed)*
