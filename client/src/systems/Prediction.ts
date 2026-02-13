@@ -29,14 +29,16 @@ export class PredictionSystem {
   private localState: PlayerState;
   private role: string;
   private collisionGrid: CollisionGrid | null = null;
+  private arenaBounds: { width: number; height: number };
   /** True only on the first frame of a new wall contact (rising edge). */
   private hadCollision: boolean = false;
   /** Tracks whether the player was already against a wall last frame. */
   private wasAgainstWall: boolean = false;
 
-  constructor(initialState: PlayerState, role: string) {
+  constructor(initialState: PlayerState, role: string, arenaBounds?: { width: number; height: number }) {
     this.localState = { ...initialState, role };
     this.role = role;
+    this.arenaBounds = arenaBounds || ARENA;
   }
 
   setCollisionGrid(grid: CollisionGrid): void {
@@ -103,8 +105,8 @@ export class PredictionSystem {
     }
 
     // Safety net edge clamp (same as server)
-    this.localState.x = Math.max(0, Math.min(ARENA.width, this.localState.x));
-    this.localState.y = Math.max(0, Math.min(ARENA.height, this.localState.y));
+    this.localState.x = Math.max(0, Math.min(this.arenaBounds.width, this.localState.x));
+    this.localState.y = Math.max(0, Math.min(this.arenaBounds.height, this.localState.y));
 
     // Store pending input for reconciliation
     this.pendingInputs.push({
@@ -166,8 +168,8 @@ export class PredictionSystem {
       }
 
       // Safety net edge clamp
-      this.localState.x = Math.max(0, Math.min(ARENA.width, this.localState.x));
-      this.localState.y = Math.max(0, Math.min(ARENA.height, this.localState.y));
+      this.localState.x = Math.max(0, Math.min(this.arenaBounds.width, this.localState.x));
+      this.localState.y = Math.max(0, Math.min(this.arenaBounds.height, this.localState.y));
     }
   }
 

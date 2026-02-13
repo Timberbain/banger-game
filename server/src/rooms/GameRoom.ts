@@ -3,7 +3,7 @@ import { GameState, Player, MatchState, PlayerStats } from "../schema/GameState"
 import { Projectile } from "../schema/Projectile";
 import { ObstacleState } from "../schema/Obstacle";
 import { SERVER_CONFIG, GAME_CONFIG } from "../config";
-import { applyMovementPhysics, updateFacingDirection, PHYSICS, ARENA } from "../../../shared/physics";
+import { applyMovementPhysics, updateFacingDirection, PHYSICS } from "../../../shared/physics";
 import { CHARACTERS, COMBAT } from "../../../shared/characters";
 import { MAPS, MapMetadata } from "../../../shared/maps";
 import { LOBBY_CONFIG } from "../../../shared/lobby";
@@ -339,8 +339,8 @@ export class GameRoom extends Room<GameState> {
     }
 
     // Safety net: clamp to arena bounds (tile border walls handle this normally)
-    player.x = Math.max(0, Math.min(ARENA.width, player.x));
-    player.y = Math.max(0, Math.min(ARENA.height, player.y));
+    player.x = Math.max(0, Math.min(this.mapMetadata.width, player.x));
+    player.y = Math.max(0, Math.min(this.mapMetadata.height, player.y));
   }
 
   fixedTick(deltaTime: number) {
@@ -521,7 +521,7 @@ export class GameRoom extends Room<GameState> {
       }
 
       // Safety bounds check (in case projectile escapes tile grid)
-      if (proj.x < 0 || proj.x > ARENA.width || proj.y < 0 || proj.y > ARENA.height) {
+      if (proj.x < 0 || proj.x > this.mapMetadata.width || proj.y < 0 || proj.y > this.mapMetadata.height) {
         this.state.projectiles.splice(i, 1);
         continue;
       }
