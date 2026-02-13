@@ -30,7 +30,7 @@
 - Integer phases (7, 8, 9...): Planned milestone work
 - Decimal phases (7.1, 8.1...): Urgent insertions (marked with INSERTED)
 
-- [x] **Phase 7: HD Viewport & Camera** - 1280x720 resolution with camera follow and viewport-relative UI -- completed 2026-02-13
+- [ ] **Phase 7: HD Viewport & Camera** - 1280x720 resolution with camera follow and viewport-relative UI -- gap closure in progress
 - [ ] **Phase 8: Arena Overhaul** - Tileset art and larger scrollable arenas (50x38 tiles)
 - [ ] **Phase 9: Multi-Stage Rounds** - Best-of-3 match structure with stage transitions
 - [ ] **Phase 10: Powerup System** - Server-authoritative powerup spawning, collection, and temporary buffs
@@ -49,7 +49,7 @@
   3. Camera stops at world edges -- no black void or out-of-bounds rendering is visible
   4. Boot, Lobby, Victory, Help, and HUD scenes all display correctly at 1280x720 with no elements cut off or mispositioned
   5. ARENA bounds are dynamic (read from map metadata, not a hardcoded global constant) so physics edge-clamping works for any map size
-**Plans:** 8 plans
+**Plans:** 9 plans
 
 Plans:
 - [x] 07-01-PLAN.md -- 2x asset generation (characters 64x64, projectiles 16x16, improved tilesets)
@@ -60,6 +60,7 @@ Plans:
 - [~] 07-06-PLAN.md -- Visual verification checkpoint (skipped: covered by gap closure + verification)
 - [x] 07-07-PLAN.md -- Gap closure: camera follow race condition + look-ahead tuning
 - [x] 07-08-PLAN.md -- Gap closure: HUD/Lobby overlap fixes + help screen redesign
+- [ ] 07-09-PLAN.md -- Gap closure: overview camera guard + help screen text containment
 
 ### Phase 8: Arena Overhaul
 **Goal**: Arenas use the provided tileset art (hedge, brick, wood, ground) and are roughly 2x larger (50x38 tiles), each with a distinct visual theme and defined spawn points
@@ -154,7 +155,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-6 | v1.0 | 38/38 | Complete | 2026-02-13 |
-| 7. HD Viewport & Camera | v2.0 | 8/8 | Complete | 2026-02-13 |
+| 7. HD Viewport & Camera | v2.0 | 8/9 | Gap closure | - |
 | 8. Arena Overhaul | v2.0 | 0/TBD | Not started | - |
 | 9. Multi-Stage Rounds | v2.0 | 0/TBD | Not started | - |
 | 10. Powerup System | v2.0 | 0/TBD | Not started | - |
@@ -163,4 +164,4 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-13 (Phase 7 complete)*
+*Last updated: 2026-02-13 (Phase 7 gap closure plan 09)*
