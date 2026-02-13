@@ -8,13 +8,13 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Character spritesheets (32x32 frames, 26 frames each in horizontal strip)
-    this.load.spritesheet('paran', 'sprites/paran.png', { frameWidth: 32, frameHeight: 32 });
-    this.load.spritesheet('faran', 'sprites/faran.png', { frameWidth: 32, frameHeight: 32 });
-    this.load.spritesheet('baran', 'sprites/baran.png', { frameWidth: 32, frameHeight: 32 });
+    // Character spritesheets (64x64 frames, 36 frames each in horizontal strip)
+    this.load.spritesheet('paran', 'sprites/paran.png', { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('faran', 'sprites/faran.png', { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('baran', 'sprites/baran.png', { frameWidth: 64, frameHeight: 64 });
 
-    // Projectile spritesheet (8x8 frames, 3 frames: paran=0, faran=1, baran=2)
-    this.load.spritesheet('projectiles', 'sprites/projectiles.png', { frameWidth: 8, frameHeight: 8 });
+    // Projectile spritesheet (16x16 frames, 3 frames: paran=0, faran=1, baran=2)
+    this.load.spritesheet('projectiles', 'sprites/projectiles.png', { frameWidth: 16, frameHeight: 16 });
 
     // Particle texture for runtime tinting
     this.load.image('particle', 'sprites/particle.png');
@@ -35,61 +35,61 @@ export class BootScene extends Phaser.Scene {
     audioManager.init();
     this.registry.set('audioManager', audioManager);
 
-    // Create character animations for all 3 roles
+    // Create character animations for all 3 roles (36-frame layout per character)
     const roles = ['paran', 'faran', 'baran'];
     for (const role of roles) {
-      // Walk Down: frames 0-3
+      // Walk Down: frames 0-5 (6 frames)
       this.anims.create({
         key: `${role}-walk-down`,
-        frames: this.anims.generateFrameNumbers(role, { start: 0, end: 3 }),
-        frameRate: 8,
+        frames: this.anims.generateFrameNumbers(role, { start: 0, end: 5 }),
+        frameRate: 10,
         repeat: -1,
       });
 
-      // Walk Up: frames 4-7
+      // Walk Up: frames 6-11 (6 frames)
       this.anims.create({
         key: `${role}-walk-up`,
-        frames: this.anims.generateFrameNumbers(role, { start: 4, end: 7 }),
-        frameRate: 8,
+        frames: this.anims.generateFrameNumbers(role, { start: 6, end: 11 }),
+        frameRate: 10,
         repeat: -1,
       });
 
-      // Walk Right: frames 8-11
+      // Walk Right: frames 12-17 (6 frames)
       this.anims.create({
         key: `${role}-walk-right`,
-        frames: this.anims.generateFrameNumbers(role, { start: 8, end: 11 }),
-        frameRate: 8,
+        frames: this.anims.generateFrameNumbers(role, { start: 12, end: 17 }),
+        frameRate: 10,
         repeat: -1,
       });
 
-      // Walk Left: frames 12-15
+      // Walk Left: frames 18-23 (6 frames)
       this.anims.create({
         key: `${role}-walk-left`,
-        frames: this.anims.generateFrameNumbers(role, { start: 12, end: 15 }),
-        frameRate: 8,
+        frames: this.anims.generateFrameNumbers(role, { start: 18, end: 23 }),
+        frameRate: 10,
         repeat: -1,
       });
 
-      // Idle: frames 16-17
+      // Idle: frames 24-26 (3 frames, slow breathing cycle)
       this.anims.create({
         key: `${role}-idle`,
-        frames: this.anims.generateFrameNumbers(role, { start: 16, end: 17 }),
-        frameRate: 4,
+        frames: this.anims.generateFrameNumbers(role, { start: 24, end: 26 }),
+        frameRate: 3,
         repeat: -1,
       });
 
-      // Shoot: frames 18-19
+      // Shoot: frames 27-29 (3 frames)
       this.anims.create({
         key: `${role}-shoot`,
-        frames: this.anims.generateFrameNumbers(role, { start: 18, end: 19 }),
+        frames: this.anims.generateFrameNumbers(role, { start: 27, end: 29 }),
         frameRate: 10,
         repeat: 0,
       });
 
-      // Death: frames 20-25
+      // Death: frames 30-35 (6 frames)
       this.anims.create({
         key: `${role}-death`,
-        frames: this.anims.generateFrameNumbers(role, { start: 20, end: 25 }),
+        frames: this.anims.generateFrameNumbers(role, { start: 30, end: 35 }),
         frameRate: 10,
         repeat: 0,
       });
@@ -98,18 +98,18 @@ export class BootScene extends Phaser.Scene {
     // --- Solarpunk Title Screen ---
 
     // Splash background image (hedge maze with golden temple)
-    const splashBg = this.add.image(400, 300, 'splash-bg');
-    splashBg.setDisplaySize(800, 600);
+    const splashBg = this.add.image(640, 360, 'splash-bg');
+    splashBg.setDisplaySize(1280, 720);
 
     // Dark overlay so text is readable
-    this.add.rectangle(400, 300, 800, 600, Colors.bg.deepNum, 0.55);
+    this.add.rectangle(640, 360, 1280, 720, Colors.bg.deepNum, 0.55);
 
     // Decorative golden sparkles
     const sparkleGfx = this.add.graphics();
     sparkleGfx.fillStyle(Decorative.solarDots.color, Decorative.solarDots.alphaMax);
     for (let i = 0; i < 30; i++) {
-      const sx = Phaser.Math.Between(40, 760);
-      const sy = Phaser.Math.Between(40, 560);
+      const sx = Phaser.Math.Between(60, 1220);
+      const sy = Phaser.Math.Between(50, 670);
       const sr = Phaser.Math.FloatBetween(Decorative.solarDots.radiusMin, Decorative.solarDots.radiusMax);
       sparkleGfx.fillCircle(sx, sy, sr);
     }
@@ -119,19 +119,19 @@ export class BootScene extends Phaser.Scene {
     vineGfx.lineStyle(Decorative.vine.thickness, Decorative.vine.color, Decorative.vine.alpha);
     // Left vine
     vineGfx.beginPath();
-    vineGfx.moveTo(50, 100);
-    vineGfx.lineTo(60, 200);
-    vineGfx.lineTo(45, 300);
-    vineGfx.lineTo(65, 400);
-    vineGfx.lineTo(50, 500);
+    vineGfx.moveTo(80, 120);
+    vineGfx.lineTo(96, 240);
+    vineGfx.lineTo(72, 360);
+    vineGfx.lineTo(104, 480);
+    vineGfx.lineTo(80, 600);
     vineGfx.strokePath();
     // Right vine
     vineGfx.beginPath();
-    vineGfx.moveTo(750, 100);
-    vineGfx.lineTo(740, 200);
-    vineGfx.lineTo(755, 300);
-    vineGfx.lineTo(735, 400);
-    vineGfx.lineTo(750, 500);
+    vineGfx.moveTo(1200, 120);
+    vineGfx.lineTo(1184, 240);
+    vineGfx.lineTo(1208, 360);
+    vineGfx.lineTo(1176, 480);
+    vineGfx.lineTo(1200, 600);
     vineGfx.strokePath();
 
     // BANGER title -- large, golden, with green stroke
