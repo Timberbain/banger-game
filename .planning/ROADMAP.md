@@ -49,12 +49,15 @@
   3. Camera stops at world edges -- no black void or out-of-bounds rendering is visible
   4. Boot, Lobby, Victory, Help, and HUD scenes all display correctly at 1280x720 with no elements cut off or mispositioned
   5. ARENA bounds are dynamic (read from map metadata, not a hardcoded global constant) so physics edge-clamping works for any map size
-**Plans**: TBD
+**Plans:** 6 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
-- [ ] 07-03: TBD
+- [ ] 07-01-PLAN.md -- 2x asset generation (characters 64x64, projectiles 16x16, improved tilesets)
+- [ ] 07-02-PLAN.md -- Resolution config (1280x720) and dynamic arena bounds
+- [ ] 07-03-PLAN.md -- BootScene 2x asset loading and 36-frame animation registration
+- [ ] 07-04-PLAN.md -- Camera system (follow, deadzone, look-ahead, speed zoom, shake, overview, spectator)
+- [ ] 07-05-PLAN.md -- HUD viewport-relative positioning + Lobby/Victory/Help scene updates
+- [ ] 07-06-PLAN.md -- Visual verification checkpoint
 
 ### Phase 8: Arena Overhaul
 **Goal**: Arenas use the provided tileset art (hedge, brick, wood, ground) and are roughly 2x larger (50x38 tiles), each with a distinct visual theme and defined spawn points
@@ -149,7 +152,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-6 | v1.0 | 38/38 | Complete | 2026-02-13 |
-| 7. HD Viewport & Camera | v2.0 | 0/TBD | Not started | - |
+| 7. HD Viewport & Camera | v2.0 | 0/6 | Planned | - |
 | 8. Arena Overhaul | v2.0 | 0/TBD | Not started | - |
 | 9. Multi-Stage Rounds | v2.0 | 0/TBD | Not started | - |
 | 10. Powerup System | v2.0 | 0/TBD | Not started | - |
