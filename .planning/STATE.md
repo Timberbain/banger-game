@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 7 of 12 (HD Viewport & Camera)
-Plan: 8 of 8 in current phase
+Plan: 9 of 9 in current phase
 Status: Phase Complete
-Last activity: 2026-02-13 -- Completed 07-08 (UI Overlap Fixes & Help Redesign)
+Last activity: 2026-02-13 -- Completed 07-09 (Gap Closure: Overview Camera Guard + Help Text Containment)
 
-Progress: [##############......] 61% (46/~56 plans est. across v1.0+v2.0)
+Progress: [##############......] 62% (47/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
 **Velocity (v1.0):**
-- Total plans completed: 38
+- Total plans completed: 39
 - Total execution time: ~4 days (2026-02-09 to 2026-02-13)
 
 **By Phase (v1.0):**
@@ -33,6 +33,7 @@ Progress: [##############......] 61% (46/~56 plans est. across v1.0+v2.0)
 | 5. Lobbies | 13 | Complete |
 | 5.1 Collisions | 4 | Complete |
 | 6. UX Polish | 11 | Complete |
+| 7. HD Viewport & Camera | 9 | Complete |
 
 ## Accumulated Context
 
@@ -56,6 +57,8 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - HUD cooldown bar at H*0.89 (was H*0.92) for clear gap above name label
 - Lobby panel offset titleY+100 (was titleY+70) with Players section shifted +30px
 - Help screen: playful taglines + flavor text, no stats or technical jargon
+- overviewActive guard in createTilemap: setBounds unconditional, setZoom+follow guarded
+- HelpScene panels 280x260 with 250px wordWrap and 28px line spacing
 
 ### Pending Todos
 
@@ -75,8 +78,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-08-PLAN.md (UI Overlap Fixes & Help Redesign) -- Phase 7 complete
+Stopped at: Completed 07-09-PLAN.md (Gap Closure: Overview Camera Guard + Help Text Containment) -- Phase 7 fully complete
 Next step: Execute Phase 8
 
 ---
-*Updated: 2026-02-13 after 07-08 execution*
+*Updated: 2026-02-13 after 07-09 execution*
