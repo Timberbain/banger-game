@@ -590,8 +590,8 @@ export class GameScene extends Phaser.Scene {
       const targetOffsetX = speed > 5 ? -(vx / speed) * maxLookAhead * lookFactor : 0;
       const targetOffsetY = speed > 5 ? -(vy / speed) * maxLookAhead * lookFactor : 0;
 
-      // Gentle lerp for smooth direction reversal (prevents jarring camera whip)
-      const OFFSET_LERP = 0.04;
+      // Lerp for smooth direction reversal (fast enough to be visible during typical runs)
+      const OFFSET_LERP = 0.14;
       cam.followOffset.x += (targetOffsetX - cam.followOffset.x) * OFFSET_LERP;
       cam.followOffset.y += (targetOffsetY - cam.followOffset.y) * OFFSET_LERP;
     }
@@ -1244,8 +1244,8 @@ export class GameScene extends Phaser.Scene {
       if (this.room) {
         const localSprite = this.playerSprites.get(this.room.sessionId);
         if (localSprite) {
-          cam.startFollow(localSprite, true, 0.08, 0.08);
-          cam.setDeadzone(40, 30);
+          cam.startFollow(localSprite, true, 0.12, 0.12);
+          cam.setDeadzone(20, 15);
         }
       }
       // Smooth zoom to gameplay level
@@ -1332,8 +1332,8 @@ export class GameScene extends Phaser.Scene {
       if (!this.pendingOverview && !(cam as any)._follow && this.room) {
         const localSprite = this.playerSprites.get(this.room.sessionId);
         if (localSprite) {
-          cam.startFollow(localSprite, true, 0.08, 0.08);
-          cam.setDeadzone(40, 30);
+          cam.startFollow(localSprite, true, 0.12, 0.12);
+          cam.setDeadzone(20, 15);
         }
       }
     }
