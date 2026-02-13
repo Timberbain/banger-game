@@ -19,12 +19,11 @@ const PROJECTILE_FRAME: Record<string, number> = {
   baran: 2,
 };
 
-/** Map of map name to tileset key and image path */
+/** Map of map name to tileset key and image path (composite tilesets: 4x3 grid, 12 tiles each) */
 const MAP_TILESET_INFO: Record<string, { key: string; image: string; name: string }> = {
-  test_arena: { key: 'tileset_ruins', image: 'tilesets/solarpunk_ruins.png', name: 'solarpunk_ruins' },
-  corridor_chaos: { key: 'tileset_living', image: 'tilesets/solarpunk_living.png', name: 'solarpunk_living' },
-  cross_fire: { key: 'tileset_tech', image: 'tilesets/solarpunk_tech.png', name: 'solarpunk_tech' },
-  pillars: { key: 'tileset_mixed', image: 'tilesets/solarpunk_mixed.png', name: 'solarpunk_mixed' },
+  hedge_garden:    { key: 'tileset_hedge', image: 'tilesets/arena_hedge.png', name: 'arena_hedge' },
+  brick_fortress:  { key: 'tileset_brick', image: 'tilesets/arena_brick.png', name: 'arena_brick' },
+  timber_yard:     { key: 'tileset_wood',  image: 'tilesets/arena_wood.png',  name: 'arena_wood' },
 };
 
 export class GameScene extends Phaser.Scene {
@@ -209,23 +208,23 @@ export class GameScene extends Phaser.Scene {
 
       // Load map dynamically based on server's mapName
       this.room.onStateChange.once((state: any) => {
-        const mapName = state.mapName || "test_arena";
+        const mapName = state.mapName || "hedge_garden";
         const mapData = MAPS.find(m => m.name === mapName);
 
         if (!mapData) {
-          console.error(`Unknown map: ${mapName}, falling back to test_arena`);
+          console.error(`Unknown map: ${mapName}, falling back to hedge_garden`);
         }
 
         // Store map metadata for camera bounds and other systems
         this.mapMetadata = mapData || MAPS[0];
 
-        const mapFile = mapData?.file || "maps/test_arena.json";
-        const mapKey = mapData?.name || "test_arena";
+        const mapFile = mapData?.file || "maps/hedge_garden.json";
+        const mapKey = mapData?.name || "hedge_garden";
 
         console.log(`Loading map: ${mapName} from ${mapFile}`);
 
         // Load per-map tileset image
-        const tilesetInfo = MAP_TILESET_INFO[mapKey] || MAP_TILESET_INFO.test_arena;
+        const tilesetInfo = MAP_TILESET_INFO[mapKey] || Object.values(MAP_TILESET_INFO)[0];
         this.currentTilesetKey = tilesetInfo.key;
         if (!this.textures.exists(tilesetInfo.key)) {
           this.load.image(tilesetInfo.key, tilesetInfo.image);
@@ -1233,9 +1232,13 @@ export class GameScene extends Phaser.Scene {
     this.controlsLocked = true;
     this.overviewActive = true;
 
-    // Show full arena at overview zoom
+    // Show full arena at overview zoom (dynamically calculated for arena size)
     cam.stopFollow();
-    cam.setZoom(1.0);
+    const overviewZoom = Math.min(
+      cam.width / this.mapMetadata.width,
+      cam.height / this.mapMetadata.height
+    );
+    cam.setZoom(overviewZoom);
     cam.centerOn(this.mapMetadata.width / 2, this.mapMetadata.height / 2);
 
     // After 1.5s, zoom to local player position
@@ -1276,7 +1279,7 @@ export class GameScene extends Phaser.Scene {
     const map = this.make.tilemap({ key: mapKey });
 
     // Get the tileset name from the map JSON (per-map tileset names)
-    const tilesetInfo = MAP_TILESET_INFO[mapKey] || MAP_TILESET_INFO.test_arena;
+    const tilesetInfo = MAP_TILESET_INFO[mapKey] || Object.values(MAP_TILESET_INFO)[0];
     const tileset = map.addTilesetImage(tilesetInfo.name, tilesetInfo.key);
 
     if (!tileset) {
