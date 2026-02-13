@@ -307,18 +307,18 @@ export const CooldownBar = {
 // ─── LAYOUT ────────────────────────────────────────────
 
 export const Layout = {
-  canvas: { width: 800, height: 600 },
-  center: { x: 400, y: 300 },
-  maxContentWidth: 640,
-  margin: 80,
+  canvas: { width: 1280, height: 720 },
+  center: { x: 640, y: 360 },
+  maxContentWidth: 960,
+  margin: 120,
 
   hud: {
-    roleReminder: { x: 10, y: 10 },
-    timer:        { x: 400, y: 20 },
-    ping:         { x: 780, y: 20 },
-    killFeed:     { x: 790, y: 60 },
-    cooldown:     { x: 400, y: 538 },
-    healthBarY:   575,
+    roleReminder: { x: 15, y: 15 },
+    timer:        { x: 640, y: 25 },
+    ping:         { x: 1250, y: 25 },
+    killFeed:     { x: 1265, y: 70 },
+    cooldown:     { x: 640, y: 680 },
+    healthBarY:   695,
   },
 } as const;
 
