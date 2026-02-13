@@ -1,0 +1,111 @@
+# Requirements: Banger v2.0 Arena Evolution
+
+**Defined:** 2026-02-13
+**Core Value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
+
+## v2.0 Requirements
+
+Requirements for v2.0 release. Each maps to roadmap phases.
+
+### Display & Camera
+
+- [ ] **DISP-01**: Game renders at 1280x720 viewport with pixel art scaling preserved
+- [ ] **DISP-02**: Camera follows the local player with smooth deadzone
+- [ ] **DISP-03**: Camera respects world bounds (no rendering outside arena)
+- [ ] **DISP-04**: All scenes (Boot, Lobby, Victory, Help, HUD) render correctly at 1280x720
+- [ ] **DISP-05**: Smooth zoom transition between stages
+
+### Arena & Maps
+
+- [ ] **ARENA-01**: Arenas use the 32x32 topdown tileset spreadsheet for ground tiles, and hedge/brick/wood tilesets for walls and obstacles
+- [ ] **ARENA-02**: Arenas are ~50x38 tiles (1600x1216px) with scrollable view
+- [ ] **ARENA-03**: Map data uses human-readable JSON format with tile type references
+- [ ] **ARENA-04**: Maps define spawn locations for each player role
+- [ ] **ARENA-05**: Each arena has a distinct visual theme using different tileset combinations
+
+### Multi-Stage Rounds
+
+- [ ] **ROUND-01**: Match consists of best-of-3 stages (first to win 2 stages wins)
+- [ ] **ROUND-02**: Each stage uses a different arena
+- [ ] **ROUND-03**: Stage intro screen shows arena name and round number before play begins
+- [ ] **ROUND-04**: Smooth transition between stages (score display, next arena load)
+- [ ] **ROUND-05**: Round score is displayed throughout the match
+- [ ] **ROUND-06**: Winner declared after best-of-3 with final stats
+
+### Powerup System
+
+- [ ] **PWR-01**: Powerups spawn at random positions in the arena during gameplay
+- [ ] **PWR-02**: Player collects powerup on contact (server-authoritative)
+- [ ] **PWR-03**: Speed boost powerup temporarily increases movement speed
+- [ ] **PWR-04**: Invincibility powerup temporarily prevents damage
+- [ ] **PWR-05**: Larger hitbox powerup temporarily increases projectile hit area
+- [ ] **PWR-06**: Active powerup shown in HUD with remaining duration
+- [ ] **PWR-07**: Powerups use potion icon assets for visual representation
+
+### Minimap
+
+- [ ] **MMAP-01**: Semi-transparent minimap overlay shows during gameplay
+- [ ] **MMAP-02**: Minimap displays player positions with role-colored markers
+- [ ] **MMAP-03**: Minimap shows only players (not full terrain detail)
+
+### Audio
+
+- [ ] **AUD-01**: Lobby plays music from assets/soundtrack/lobby/ on loop
+- [ ] **AUD-02**: A random stage track is selected when a new game starts and plays throughout all stages
+- [ ] **AUD-03**: Music crossfades between lobby and game transitions; a different track is picked each new game
+
+### HUD & UI
+
+- [ ] **HUD-01**: Health display uses heart icon assets
+- [ ] **HUD-02**: Timer uses timer icon asset
+- [ ] **HUD-03**: Kill feed uses skull/gravestone icon assets
+- [ ] **HUD-04**: Round counter shows current stage progress (e.g., 1-0)
+- [ ] **HUD-05**: Powerup indicators show active buff type and duration
+- [ ] **HUD-06**: All UI elements properly positioned for 1280x720 viewport
+
+## Future Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Gameplay Expansion
+
+- **GAME-01**: Additional powerup types (shield, teleport, slow enemies)
+- **GAME-02**: Ranked/competitive matchmaking with ELO
+- **GAME-03**: AI bots for practice mode
+- **GAME-04**: Spectator mode for watching live matches
+
+### Social
+
+- **SOC-01**: In-game text chat
+- **SOC-02**: Player profiles and stats tracking
+- **SOC-03**: Account system with persistent progression
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Mobile support | Desktop browser only — touch controls would need separate UX |
+| Voice chat | Players use external communication (Discord, etc.) |
+| Procedural map generation | Hand-crafted maps better for competitive balance |
+| Local/split-screen multiplayer | Online only architecture |
+| Map editor | v2.0 uses human-readable JSON but no visual editor |
+| Per-stage music selection | One track per game, randomly selected — simpler, avoids repetition across stages |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| | | |
+
+**Coverage:**
+- v2.0 requirements: 28 total
+- Mapped to phases: 0
+- Unmapped: 28
+
+---
+*Requirements defined: 2026-02-13*
+*Last updated: 2026-02-13 after initial definition*
