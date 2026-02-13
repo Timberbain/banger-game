@@ -72,12 +72,11 @@ Plans:
   3. Map JSON files are human-readable with named tile type references (not opaque numeric IDs)
   4. Each of the 3+ arenas has a visually distinct theme using different tileset combinations (e.g., hedge arena, brick arena, wood arena)
   5. Players spawn at map-defined locations appropriate to their role (Paran separated from Guardians)
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
-- [ ] 08-03: TBD
+- [ ] 08-01-PLAN.md -- Generate composite tilesets (128x96) and 50x38 map JSONs via Python script
+- [ ] 08-02-PLAN.md -- Integrate new tilesets/maps into game pipeline (tile IDs, map metadata, overview zoom, cleanup)
 
 ### Phase 9: Multi-Stage Rounds
 **Goal**: Matches play as best-of-3 with each stage on a different arena, smooth transitions between stages, and a final winner declaration
