@@ -379,9 +379,33 @@ export class GameScene extends Phaser.Scene {
     // Handle spectator mode when dead
     if (isDead && !this.isSpectating && !this.matchEnded) {
       this.isSpectating = true;
-      // Set initial spectator target to first alive player
-      this.spectatorTarget = this.getNextAlivePlayer(null);
+
+      // Find closest alive player as initial spectator target
+      const localPos = localPlayer ? { x: localPlayer.x, y: localPlayer.y } : { x: 0, y: 0 };
+      let closestId: string | null = null;
+      let closestDist = Infinity;
+      this.room.state.players.forEach((p: any, id: string) => {
+        if (id !== this.room!.sessionId && p.health > 0) {
+          const dist = Math.hypot(p.x - localPos.x, p.y - localPos.y);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestId = id;
+          }
+        }
+      });
+      this.spectatorTarget = closestId || this.getNextAlivePlayer(null);
       this.statusText.setText('SPECTATING - Press Tab to cycle players');
+
+      // Spectator camera: wider deadzone, smoother follow, no look-ahead
+      const specCam = this.cameras.main;
+      specCam.setDeadzone(60, 45);
+      specCam.followOffset.set(0, 0);
+      if (this.spectatorTarget) {
+        const targetSprite = this.playerSprites.get(this.spectatorTarget);
+        if (targetSprite) {
+          specCam.startFollow(targetSprite, true, 0.06, 0.06);
+        }
+      }
 
       // Emit localDied event for HUDScene
       this.events.emit('localDied');
@@ -401,6 +425,14 @@ export class GameScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(this.tabKey)) {
         this.spectatorTarget = this.getNextAlivePlayer(this.spectatorTarget);
 
+        // Switch camera follow to new target
+        if (this.spectatorTarget) {
+          const targetSprite = this.playerSprites.get(this.spectatorTarget);
+          if (targetSprite) {
+            this.cameras.main.startFollow(targetSprite, true, 0.06, 0.06);
+          }
+        }
+
         // Emit spectatorChanged for HUDScene
         if (this.spectatorTarget) {
           const targetPlayer = this.room.state.players.get(this.spectatorTarget);
@@ -411,14 +443,17 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      // Follow spectator target with camera
+      // If spectator target sprite was removed, find next alive player
       if (this.spectatorTarget) {
         const targetSprite = this.playerSprites.get(this.spectatorTarget);
-        if (targetSprite) {
-          this.cameras.main.centerOn(targetSprite.x, targetSprite.y);
-        } else {
-          // Target sprite gone, find next alive player
+        if (!targetSprite) {
           this.spectatorTarget = this.getNextAlivePlayer(this.spectatorTarget);
+          if (this.spectatorTarget) {
+            const newSprite = this.playerSprites.get(this.spectatorTarget);
+            if (newSprite) {
+              this.cameras.main.startFollow(newSprite, true, 0.06, 0.06);
+            }
+          }
         }
       }
     }
@@ -505,6 +540,8 @@ export class GameScene extends Phaser.Scene {
         if (wallSprite && this.particleFactory) {
           this.particleFactory.wallImpact(wallSprite.x, wallSprite.y);
         }
+        // Camera shake on wall impact (subtle tactile feedback)
+        this.cameras.main.shake(80, 0.003);
       }
       // Speed lines: emit every 3 frames when Paran is fast
       this.speedLineFrameCounter++;
@@ -530,6 +567,47 @@ export class GameScene extends Phaser.Scene {
     if (localSprite && this.localRole) {
       this.updatePlayerAnimation(localSessionId, this.localRole, state.vx, state.vy);
     }
+    }
+
+    // Camera look-ahead: shift camera in movement direction
+    const cam = this.cameras.main;
+    if (!this.overviewActive && !this.isSpectating && localPlayer && localPlayer.health > 0) {
+      const predState = this.prediction.getState();
+      const vx = predState.vx;
+      const vy = predState.vy;
+
+      const LOOK_AHEAD_PARAN = 60;    // pixels ahead for Paran
+      const LOOK_AHEAD_GUARDIAN = 30;  // pixels ahead for Guardians
+      const maxLookAhead = this.localRole === 'paran' ? LOOK_AHEAD_PARAN : LOOK_AHEAD_GUARDIAN;
+
+      const speed = Math.sqrt(vx * vx + vy * vy);
+      const maxSpeed = CHARACTERS[this.localRole]?.maxVelocity || 300;
+      const lookFactor = Math.min(speed / maxSpeed, 1);
+
+      // Target offset (followOffset is SUBTRACTED, so negate for look-ahead)
+      const targetOffsetX = speed > 5 ? -(vx / speed) * maxLookAhead * lookFactor : 0;
+      const targetOffsetY = speed > 5 ? -(vy / speed) * maxLookAhead * lookFactor : 0;
+
+      // Gentle lerp for smooth direction reversal (prevents jarring camera whip)
+      const OFFSET_LERP = 0.04;
+      cam.followOffset.x += (targetOffsetX - cam.followOffset.x) * OFFSET_LERP;
+      cam.followOffset.y += (targetOffsetY - cam.followOffset.y) * OFFSET_LERP;
+    }
+
+    // Speed zoom-out for Paran at high velocity
+    if (!this.overviewActive && this.localRole === 'paran' && localPlayer && localPlayer.health > 0) {
+      const predState = this.prediction.getState();
+      const speed = Math.sqrt(predState.vx ** 2 + predState.vy ** 2);
+      const maxSpeed = CHARACTERS.paran.maxVelocity;
+      const speedRatio = Math.min(speed / maxSpeed, 1);
+
+      const BASE_ZOOM = 2.0;
+      const MIN_ZOOM = 1.85;
+      const targetZoom = BASE_ZOOM - (BASE_ZOOM - MIN_ZOOM) * speedRatio;
+
+      // Smooth lerp
+      const currentZoom = cam.zoom;
+      cam.setZoom(currentZoom + (targetZoom - currentZoom) * 0.03);
     }
 
     // Update remote player sprites via interpolation
@@ -889,11 +967,19 @@ export class GameScene extends Phaser.Scene {
           if (sprite && this.particleFactory) {
             this.particleFactory.deathExplosion(sprite.x, sprite.y, roleColor);
           }
+          // Camera shake on death (stronger than damage)
+          if (isLocal) {
+            this.cameras.main.shake(100, 0.005);
+          }
         } else {
           // Damage: audio + sprite flash + hit burst
           if (this.audioManager) this.audioManager.playSFX(`${player.role}_hit`);
           if (sprite && this.particleFactory) {
             this.particleFactory.hitBurst(sprite.x, sprite.y, roleColor);
+          }
+          // Camera shake on damage taken (subtle tactile feedback)
+          if (isLocal) {
+            this.cameras.main.shake(100, 0.005);
           }
           // Sprite flash: white -> red -> clear
           if (sprite) {
