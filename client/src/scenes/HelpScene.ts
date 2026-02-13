@@ -85,25 +85,25 @@ export class HelpScene extends Phaser.Scene {
     roles.forEach((r, index) => {
       const x = roleStartX + index * roleSpacing;
 
-      // Panel background (280 x 220)
-      const panel = this.add.rectangle(x, rolesY + 110, 280, 220, Colors.bg.deepNum);
+      // Panel background (280 x 260)
+      const panel = this.add.rectangle(x, rolesY + 130, 280, 260, Colors.bg.deepNum);
       panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
       this.uiElements.push(panel);
 
       // Character sprite (idle animation)
       try {
-        const sprite = this.add.sprite(x, rolesY + 10, r.role);
+        const sprite = this.add.sprite(x, rolesY + 45, r.role);
         sprite.play(`${r.role}-idle`);
         sprite.setScale(2);
         this.uiElements.push(sprite);
       } catch (_e) {
         // Fallback: colored circle if sprite not available
-        const circle = this.add.circle(x, rolesY + 10, 16, Phaser.Display.Color.HexStringToColor(charColor(r.role)).color);
+        const circle = this.add.circle(x, rolesY + 45, 16, Phaser.Display.Color.HexStringToColor(charColor(r.role)).color);
         this.uiElements.push(circle);
       }
 
       // Role name
-      const nameText = this.add.text(x, rolesY + 50, r.name, {
+      const nameText = this.add.text(x, rolesY + 85, r.name, {
         fontSize: '18px',
         color: charColor(r.role),
         fontFamily: 'monospace',
@@ -114,7 +114,7 @@ export class HelpScene extends Phaser.Scene {
       this.uiElements.push(nameText);
 
       // Role tagline
-      const taglineText = this.add.text(x, rolesY + 72, r.tagline, {
+      const taglineText = this.add.text(x, rolesY + 105, r.tagline, {
         fontSize: '13px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
@@ -124,17 +124,18 @@ export class HelpScene extends Phaser.Scene {
 
       // Playful description lines
       r.lines.forEach((line, lineIdx) => {
-        const descText = this.add.text(x, rolesY + 98 + lineIdx * 22, line, {
+        const descText = this.add.text(x, rolesY + 128 + lineIdx * 28, line, {
           fontSize: '13px',
           color: Colors.text.secondary,
           fontFamily: 'monospace',
+          wordWrap: { width: 250 },
         }).setOrigin(0.5);
         this.uiElements.push(descText);
       });
     });
 
     // --- Win Conditions Section ---
-    const winY = 480;
+    const winY = 510;
     const winTitle = this.add.text(cx, winY, 'Win Conditions', {
       ...TextStyle.heroHeading,
       fontSize: '20px',
@@ -166,7 +167,7 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(tipText);
 
     // --- Back Button ---
-    const backButton = this.add.text(cx, 600, 'Back to Lobby', {
+    const backButton = this.add.text(cx, 640, 'Back to Lobby', {
       fontSize: '20px',
       color: Buttons.primary.text,
       fontFamily: 'monospace',
