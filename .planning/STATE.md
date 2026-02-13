@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 8 of 12 (Arena Overhaul)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-13 -- Completed 08-01 (Arena Asset Generation)
+Phase: 8 of 12 (Arena Overhaul) -- COMPLETE
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-13 -- Completed 08-02 (Arena Integration)
 
-Progress: [##############......] 63% (48/~56 plans est. across v1.0+v2.0)
+Progress: [################....] 66% (49/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -34,7 +34,7 @@ Progress: [##############......] 63% (48/~56 plans est. across v1.0+v2.0)
 | 5.1 Collisions | 4 | Complete |
 | 6. UX Polish | 11 | Complete |
 | 7. HD Viewport & Camera | 9 | Complete |
-| 8. Arena Overhaul | 1/2 | In Progress |
+| 8. Arena Overhaul | 2 | Complete |
 
 ## Accumulated Context
 
@@ -66,6 +66,9 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Tile ID shift from old convention (WALL=3) to new (WALL=5) due to ground tiles in row 0
 - Arena layouts: hedge=open corridors (Paran-favoring), brick=chambers (Guardian-favoring), timber=symmetric cross (balanced)
 - Ground tiles cherry-picked from 42x12 ground atlas per theme palette
+- Overview zoom calculated dynamically: Math.min(viewport/arena) for arena-size-independent camera
+- Generic tileset fallback via Object.values() instead of named map key
+- GameState schema default mapName updated to hedge_garden (first map in rotation)
 
 ### Pending Todos
 
@@ -85,8 +88,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 08-01-PLAN.md (Arena Asset Generation)
-Next step: Execute 08-02 (Arena Integration)
+Stopped at: Completed 08-02-PLAN.md (Arena Integration) -- Phase 8 complete
+Next step: Begin Phase 9 (Multi-Stage Rounds)
 
 ---
-*Updated: 2026-02-13 after 08-01 execution*
+*Updated: 2026-02-13 after 08-02 execution*
