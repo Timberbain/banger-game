@@ -42,6 +42,8 @@ All v1.0 decisions logged in PROJECT.md Key Decisions table.
 v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tilesets, powerups, music.
 
 **Phase 7 decisions:**
+- Characters at 64x64 with genuine 2x detail (not naive upscale), tilesets stay 1x (32x32 tiles)
+- 36 frames per character: 6-frame walks, 3-frame idle breathing, 3-frame shoot, 6-frame death
 - ARENA constant preserved as fallback default, PredictionSystem uses optional constructor injection for dynamic bounds
 - Removed unused arcade physics block from Phaser config (custom shared physics used)
 
@@ -63,8 +65,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-02-PLAN.md (Resolution & Dynamic Bounds)
+Stopped at: Completed 07-01-PLAN.md (2x HD Assets) and 07-02-PLAN.md (Resolution & Dynamic Bounds)
 Next step: Execute 07-03-PLAN.md
 
 ---
-*Updated: 2026-02-13 after 07-02 execution*
+*Updated: 2026-02-13 after 07-01 execution*
