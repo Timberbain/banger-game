@@ -1,7 +1,7 @@
 # Requirements: Banger v2.0 Arena Evolution
 
 **Defined:** 2026-02-13
-**Core Value:** The asymmetric momentum mechanic must feel right — Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
+**Core Value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
 
 ## v2.0 Requirements
 
@@ -86,12 +86,12 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Mobile support | Desktop browser only — touch controls would need separate UX |
+| Mobile support | Desktop browser only -- touch controls would need separate UX |
 | Voice chat | Players use external communication (Discord, etc.) |
 | Procedural map generation | Hand-crafted maps better for competitive balance |
 | Local/split-screen multiplayer | Online only architecture |
 | Map editor | v2.0 uses human-readable JSON but no visual editor |
-| Per-stage music selection | One track per game, randomly selected — simpler, avoids repetition across stages |
+| Per-stage music selection | One track per game, randomly selected -- simpler, avoids repetition across stages |
 
 ## Traceability
 
@@ -99,13 +99,47 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| | | |
+| DISP-01 | Phase 7: HD Viewport & Camera | Pending |
+| DISP-02 | Phase 7: HD Viewport & Camera | Pending |
+| DISP-03 | Phase 7: HD Viewport & Camera | Pending |
+| DISP-04 | Phase 7: HD Viewport & Camera | Pending |
+| DISP-05 | Phase 9: Multi-Stage Rounds | Pending |
+| ARENA-01 | Phase 8: Arena Overhaul | Pending |
+| ARENA-02 | Phase 8: Arena Overhaul | Pending |
+| ARENA-03 | Phase 8: Arena Overhaul | Pending |
+| ARENA-04 | Phase 8: Arena Overhaul | Pending |
+| ARENA-05 | Phase 8: Arena Overhaul | Pending |
+| ROUND-01 | Phase 9: Multi-Stage Rounds | Pending |
+| ROUND-02 | Phase 9: Multi-Stage Rounds | Pending |
+| ROUND-03 | Phase 9: Multi-Stage Rounds | Pending |
+| ROUND-04 | Phase 9: Multi-Stage Rounds | Pending |
+| ROUND-05 | Phase 9: Multi-Stage Rounds | Pending |
+| ROUND-06 | Phase 9: Multi-Stage Rounds | Pending |
+| PWR-01 | Phase 10: Powerup System | Pending |
+| PWR-02 | Phase 10: Powerup System | Pending |
+| PWR-03 | Phase 10: Powerup System | Pending |
+| PWR-04 | Phase 10: Powerup System | Pending |
+| PWR-05 | Phase 10: Powerup System | Pending |
+| PWR-06 | Phase 10: Powerup System | Pending |
+| PWR-07 | Phase 10: Powerup System | Pending |
+| MMAP-01 | Phase 11: Minimap & Music | Pending |
+| MMAP-02 | Phase 11: Minimap & Music | Pending |
+| MMAP-03 | Phase 11: Minimap & Music | Pending |
+| AUD-01 | Phase 11: Minimap & Music | Pending |
+| AUD-02 | Phase 11: Minimap & Music | Pending |
+| AUD-03 | Phase 11: Minimap & Music | Pending |
+| HUD-01 | Phase 12: HUD Icon Overhaul | Pending |
+| HUD-02 | Phase 12: HUD Icon Overhaul | Pending |
+| HUD-03 | Phase 12: HUD Icon Overhaul | Pending |
+| HUD-04 | Phase 12: HUD Icon Overhaul | Pending |
+| HUD-05 | Phase 12: HUD Icon Overhaul | Pending |
+| HUD-06 | Phase 12: HUD Icon Overhaul | Pending |
 
 **Coverage:**
-- v2.0 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28
+- v2.0 requirements: 35 total
+- Mapped to phases: 35
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 after initial definition*
+*Last updated: 2026-02-13 after roadmap creation (traceability complete)*
