@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ParticleFactory } from '../systems/ParticleFactory';
 import { AudioManager } from '../systems/AudioManager';
+import { Colors, TextStyle, Buttons, Decorative, charColor } from '../ui/designTokens';
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -10,38 +11,42 @@ export class VictoryScene extends Phaser.Scene {
   create(data: { winner: string; stats: Record<string, any>; duration: number; localSessionId: string; room: any }) {
     const { winner, stats, duration, localSessionId, room } = data;
 
-    // Semi-transparent black overlay
-    this.add.rectangle(400, 300, 800, 600, 0x000000, 0.85).setDepth(0);
-
     // Determine if local player won
     const localStats = stats[localSessionId];
     const localRole = localStats?.role || "unknown";
     const didWin = (winner === "paran" && localRole === "paran") ||
                    (winner === "guardians" && localRole !== "paran");
 
-    // Color wash overlay (between black overlay and content)
-    const washColor = didWin ? 0x00ff00 : 0xff0000;
-    const washAlpha = 0.15;
-    this.add.rectangle(400, 300, 800, 600, washColor, washAlpha).setDepth(0.5);
+    // Victory splash image background (different for each outcome)
+    const splashKey = winner === "paran" ? 'victory-paran' : 'victory-guardian';
+    const splashBg = this.add.image(400, 300, splashKey);
+    splashBg.setDisplaySize(800, 600);
+    splashBg.setDepth(0);
 
-    // Victory/Defeat title -- solarpunk styled
+    // Dark overlay for readability
+    this.add.rectangle(400, 300, 800, 600, 0x000000, Colors.bg.overlayAlpha).setDepth(0.5);
+
+    // Color wash overlay (between image and content)
+    const washColor = didWin ? Colors.status.successNum : Colors.status.dangerNum;
+    this.add.rectangle(400, 300, 800, 600, washColor, 0.10).setDepth(0.6);
+
+    // Victory/Defeat title
     const titleText = didWin ? "VICTORY!" : "DEFEAT";
-    const titleColor = didWin ? "#d4a746" : "#cc3333";
+    const titleColor = didWin ? Colors.gold.primary : Colors.status.danger;
     this.add.text(400, 60, titleText, {
-      fontSize: '64px',
+      ...TextStyle.hero,
       color: titleColor,
       fontFamily: 'monospace',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 4
     }).setOrigin(0.5).setDepth(1);
 
     // Winner subtitle
     const winnerLabel = winner === "paran" ? "Paran Wins!" : "Guardians Win!";
     this.add.text(400, 130, winnerLabel, {
       fontSize: '24px',
-      color: '#ffffff',
+      color: Colors.text.primary,
       fontFamily: 'monospace',
+      stroke: '#000000',
+      strokeThickness: 3,
     }).setOrigin(0.5).setDepth(1);
 
     // Match duration
@@ -50,31 +55,38 @@ export class VictoryScene extends Phaser.Scene {
     const seconds = durationSec % 60;
     this.add.text(400, 165, `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`, {
       fontSize: '16px',
-      color: '#aaaaaa',
+      color: Colors.text.secondary,
       fontFamily: 'monospace',
+      stroke: '#000000',
+      strokeThickness: 2,
     }).setOrigin(0.5).setDepth(1);
+
+    // Gold divider above stats
+    const dividerGfx = this.add.graphics();
+    dividerGfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
+    dividerGfx.lineBetween(150, 195, 650, 195);
+    dividerGfx.setDepth(1);
 
     // Stats header -- golden
     this.add.text(400, 210, "MATCH STATISTICS", {
-      fontSize: '22px',
-      color: '#d4a746',
+      ...TextStyle.heroHeading,
       fontFamily: 'monospace',
-      fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(1);
 
     // Table header row
     const headerY = 250;
     const cols = { name: 100, role: 250, kills: 340, deaths: 400, damage: 470, accuracy: 570 };
-    this.add.text(cols.name, headerY, "Player", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
-    this.add.text(cols.role, headerY, "Role", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
-    this.add.text(cols.kills, headerY, "K", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
-    this.add.text(cols.deaths, headerY, "D", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
-    this.add.text(cols.damage, headerY, "Damage", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
-    this.add.text(cols.accuracy, headerY, "Accuracy", { fontSize: '14px', color: '#888888', fontFamily: 'monospace' }).setDepth(1);
+    const headerStyle = { fontSize: '14px', color: Colors.text.secondary, fontFamily: 'monospace', stroke: '#000000' as string, strokeThickness: 1 };
+    this.add.text(cols.name, headerY, "Player", headerStyle).setDepth(1);
+    this.add.text(cols.role, headerY, "Role", headerStyle).setDepth(1);
+    this.add.text(cols.kills, headerY, "K", headerStyle).setDepth(1);
+    this.add.text(cols.deaths, headerY, "D", headerStyle).setDepth(1);
+    this.add.text(cols.damage, headerY, "Damage", headerStyle).setDepth(1);
+    this.add.text(cols.accuracy, headerY, "Accuracy", headerStyle).setDepth(1);
 
-    // Header underline
+    // Header underline -- gold
     const line = this.add.graphics();
-    line.lineStyle(1, 0x555555);
+    line.lineStyle(1, Colors.gold.darkNum, 0.5);
     line.lineBetween(80, headerY + 22, 720, headerY + 22);
     line.setDepth(1);
 
@@ -82,17 +94,19 @@ export class VictoryScene extends Phaser.Scene {
     let yOffset = headerY + 35;
     Object.entries(stats).forEach(([sessionId, playerStats]: [string, any]) => {
       const isLocal = sessionId === localSessionId;
-      const color = isLocal ? '#d4a746' : '#ffffff';
+      const color = isLocal ? Colors.gold.primary : Colors.text.primary;
       const style: Phaser.Types.GameObjects.Text.TextStyle = {
         fontSize: '16px',
         color,
         fontFamily: 'monospace',
         fontStyle: isLocal ? 'bold' : 'normal',
+        stroke: '#000000',
+        strokeThickness: 2,
       };
 
       // Highlight row for local player
       if (isLocal) {
-        this.add.rectangle(400, yOffset + 8, 640, 28, 0x333333, 0.5).setDepth(1);
+        this.add.rectangle(400, yOffset + 8, 640, 28, Colors.bg.elevatedNum, 0.5).setDepth(1);
       }
 
       // Player name (truncate)
@@ -104,7 +118,7 @@ export class VictoryScene extends Phaser.Scene {
       // Role
       const roleLabel = playerStats.role === 'paran' ? 'Paran' :
                          playerStats.role === 'faran' ? 'Faran' : 'Baran';
-      this.add.text(cols.role, yOffset, roleLabel, style).setDepth(2);
+      this.add.text(cols.role, yOffset, roleLabel, { ...style, color: charColor(playerStats.role) }).setDepth(2);
 
       // K/D/Damage/Accuracy
       this.add.text(cols.kills, yOffset, String(playerStats.kills), style).setDepth(2);
@@ -115,20 +129,27 @@ export class VictoryScene extends Phaser.Scene {
       yOffset += 35;
     });
 
-    // Return to Lobby button -- solarpunk styled
+    // Gold divider below stats
+    const dividerGfx2 = this.add.graphics();
+    dividerGfx2.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
+    dividerGfx2.lineBetween(150, yOffset + 5, 650, yOffset + 5);
+    dividerGfx2.setDepth(1);
+
+    // Return to Lobby button -- primary preset
     const button = this.add.text(400, 500, "Return to Lobby", {
-      fontSize: '22px',
-      color: '#ffffff',
+      fontSize: Buttons.primary.fontSize,
+      color: Buttons.primary.text,
       fontFamily: 'monospace',
-      backgroundColor: '#2d5a2d',
+      fontStyle: 'bold',
+      backgroundColor: Buttons.primary.bg,
       padding: { x: 24, y: 12 }
     })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true })
       .setDepth(2);
 
-    button.on('pointerover', () => button.setBackgroundColor('#3d7a3d'));
-    button.on('pointerout', () => button.setBackgroundColor('#2d5a2d'));
+    button.on('pointerover', () => button.setBackgroundColor(Buttons.primary.hover));
+    button.on('pointerout', () => button.setBackgroundColor(Buttons.primary.bg));
     button.on('pointerdown', () => {
       // Play button click if audio available
       const audioManager = this.registry.get('audioManager') as AudioManager | null;
@@ -138,7 +159,7 @@ export class VictoryScene extends Phaser.Scene {
 
     // --- Particle Effects ---
     const particleFactory = new ParticleFactory(this);
-    const particleColor = didWin ? 0x00ff00 : 0xff4444;
+    const particleColor = didWin ? Colors.status.successNum : Colors.status.dangerNum;
 
     // Multiple victory/defeat bursts at different positions
     particleFactory.victoryBurst(200, 100, particleColor);

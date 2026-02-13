@@ -3,6 +3,7 @@ import { Client, Room } from 'colyseus.js';
 import { LOBBY_CONFIG, VALID_ROLES } from '../../../shared/lobby';
 import { CHARACTERS } from '../../../shared/characters';
 import { AudioManager } from '../systems/AudioManager';
+import { Colors, TextStyle, Buttons, Panels, Decorative, Spacing, charColor, charColorNum } from '../ui/designTokens';
 
 export class LobbyScene extends Phaser.Scene {
   private client!: Client;
@@ -37,6 +38,26 @@ export class LobbyScene extends Phaser.Scene {
     await this.checkReconnection();
   }
 
+  /** Helper: add a solarpunk background (deep green) to any sub-view */
+  private addSceneBg(): Phaser.GameObjects.Rectangle {
+    const bg = this.add.rectangle(400, 300, 800, 600, Colors.bg.deepNum);
+    this.uiElements.push(bg);
+    return bg;
+  }
+
+  /** Helper: styled status text with stroke for readability */
+  private addStatusText(x: number, y: number, msg: string, color: string = Colors.text.primary): Phaser.GameObjects.Text {
+    const text = this.add.text(x, y, msg, {
+      fontSize: '22px',
+      color,
+      fontFamily: 'monospace',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    this.uiElements.push(text);
+    return text;
+  }
+
   private async checkReconnection() {
     // Check for lobby reconnection token FIRST (lobby refresh)
     const lobbyStored = sessionStorage.getItem('bangerLobbyRoom');
@@ -47,12 +68,8 @@ export class LobbyScene extends Phaser.Scene {
         const elapsed = Date.now() - timestamp;
 
         if (elapsed < graceMs) {
-          const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-          this.uiElements.push(bg);
-          const text = this.add.text(400, 300, 'Reconnecting to lobby...', {
-            fontSize: '24px', color: '#ffff00'
-          }).setOrigin(0.5);
-          this.uiElements.push(text);
+          this.addSceneBg();
+          const text = this.addStatusText(400, 300, 'Reconnecting to lobby...', Colors.status.warning);
 
           // Attempt lobby reconnection with retries (server needs ~9s to process F5 disconnect)
           const LOBBY_MAX_RETRIES = 12;
@@ -128,14 +145,8 @@ export class LobbyScene extends Phaser.Scene {
       }
 
       // Show reconnecting message
-      const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-      this.uiElements.push(bg);
-
-      const text = this.add.text(400, 300, 'Reconnecting to match...', {
-        fontSize: '24px',
-        color: '#ffff00'
-      }).setOrigin(0.5);
-      this.uiElements.push(text);
+      this.addSceneBg();
+      const text = this.addStatusText(400, 300, 'Reconnecting to match...', Colors.status.warning);
 
       // Attempt reconnection with retries (server may not have processed disconnect yet)
       const MAX_RETRIES = 12;
@@ -181,14 +192,8 @@ export class LobbyScene extends Phaser.Scene {
 
       // Show session expired message briefly
       this.clearUI();
-      const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-      this.uiElements.push(bg);
-
-      const errorText = this.add.text(400, 300, 'Session expired', {
-        fontSize: '22px',
-        color: '#ff6666'
-      }).setOrigin(0.5);
-      this.uiElements.push(errorText);
+      this.addSceneBg();
+      this.addStatusText(400, 300, 'Session expired', Colors.status.danger);
 
       // Show menu after 2 seconds
       this.time.delayedCall(2000, () => this.showMainMenu());
@@ -201,13 +206,18 @@ export class LobbyScene extends Phaser.Scene {
     sessionStorage.removeItem('bangerLobbyRoom');
     this.currentView = 'menu';
 
-    // Solarpunk dark green background
-    const bg = this.add.rectangle(400, 300, 800, 600, 0x0d1f0d);
-    this.uiElements.push(bg);
+    // City background image (solarpunk cityscape)
+    const cityBg = this.add.image(400, 300, 'city-bg');
+    cityBg.setDisplaySize(800, 600);
+    this.uiElements.push(cityBg);
+
+    // Dark overlay for readability
+    const overlay = this.add.rectangle(400, 300, 800, 600, Colors.bg.deepNum, 0.7);
+    this.uiElements.push(overlay);
 
     // Subtle vine decorations
     const vineGfx = this.add.graphics();
-    vineGfx.lineStyle(1, 0x4a7c3f, 0.25);
+    vineGfx.lineStyle(Decorative.vine.thickness, Decorative.vine.color, Decorative.vine.alpha);
     vineGfx.beginPath();
     vineGfx.moveTo(30, 80); vineGfx.lineTo(40, 180); vineGfx.lineTo(25, 280);
     vineGfx.lineTo(45, 380); vineGfx.lineTo(30, 480);
@@ -217,57 +227,56 @@ export class LobbyScene extends Phaser.Scene {
     vineGfx.lineTo(755, 380); vineGfx.lineTo(770, 480);
     vineGfx.strokePath();
     // Small golden solar dots
-    vineGfx.fillStyle(0xd4a746, 0.3);
+    vineGfx.fillStyle(Decorative.solarDots.color, Decorative.solarDots.alphaMin);
     for (let i = 0; i < 15; i++) {
       vineGfx.fillCircle(
         Phaser.Math.Between(60, 740),
         Phaser.Math.Between(60, 540),
-        Phaser.Math.FloatBetween(1, 2)
+        Phaser.Math.FloatBetween(Decorative.solarDots.radiusMin, Decorative.solarDots.radiusMax)
       );
     }
     this.uiElements.push(vineGfx);
 
     // Title -- golden with green stroke
     const title = this.add.text(400, 120, 'BANGER', {
+      ...TextStyle.hero,
       fontSize: '52px',
-      color: '#d4a746',
       fontFamily: 'monospace',
-      fontStyle: 'bold',
-      stroke: '#1a2e1a',
       strokeThickness: 4,
     }).setOrigin(0.5);
     this.uiElements.push(title);
 
-    // Decorative line under title
+    // Decorative gold line under title
     const lineGfx = this.add.graphics();
-    lineGfx.lineStyle(2, 0xd4a746, 0.5);
+    lineGfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color, Decorative.divider.alpha);
     lineGfx.lineBetween(250, 150, 550, 150);
     this.uiElements.push(lineGfx);
 
-    // Menu buttons -- solarpunk themed
-    const buttons = [
-      { text: 'Create Private Room', color: 0x2d5a2d, hoverColor: 0x3d7a3d, y: 220, handler: () => this.createPrivateRoom() },
-      { text: 'Join Private Room', color: 0x2d5a2d, hoverColor: 0x3d7a3d, y: 290, handler: () => this.showJoinInput() },
-      { text: 'Find Match', color: 0x8b6d3c, hoverColor: 0xab8d5c, y: 360, handler: () => this.showRoleSelectForMatchmaking() },
-      { text: 'How to Play', color: 0x2a4a5a, hoverColor: 0x3a6a7a, y: 430, handler: () => this.scene.start('HelpScene') },
+    // Menu buttons -- using design token button presets
+    const menuItems = [
+      { text: 'Create Private Room', preset: Buttons.primary, y: 220, handler: () => this.createPrivateRoom() },
+      { text: 'Join Private Room', preset: Buttons.primary, y: 290, handler: () => this.showJoinInput() },
+      { text: 'Find Match', preset: Buttons.accent, y: 360, handler: () => this.showRoleSelectForMatchmaking() },
+      { text: 'How to Play', preset: Buttons.secondary, y: 430, handler: () => this.scene.start('HelpScene') },
     ];
 
-    buttons.forEach(btn => {
+    menuItems.forEach(btn => {
       const button = this.add.text(400, btn.y, btn.text, {
-        fontSize: '22px',
-        color: '#ffffff',
+        fontSize: btn.preset.fontSize,
+        color: btn.preset.text,
         fontFamily: 'monospace',
-        backgroundColor: `#${btn.color.toString(16).padStart(6, '0')}`,
-        padding: { x: 24, y: 12 }
+        fontStyle: 'bold',
+        backgroundColor: btn.preset.bg,
+        padding: { x: Spacing.lg, y: Spacing.md }
       })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
       button.on('pointerover', () => {
-        button.setBackgroundColor(`#${btn.hoverColor.toString(16).padStart(6, '0')}`);
+        button.setBackgroundColor(btn.preset.hover);
       });
       button.on('pointerout', () => {
-        button.setBackgroundColor(`#${btn.color.toString(16).padStart(6, '0')}`);
+        button.setBackgroundColor(btn.preset.bg);
       });
       button.on('pointerdown', () => {
         if (this.audioManager) this.audioManager.playSFX('button_click');
@@ -283,13 +292,10 @@ export class LobbyScene extends Phaser.Scene {
 
   private async createPrivateRoom() {
     this.clearUI();
+    this.addSceneBg();
 
     // Show loading text
-    const loadingText = this.add.text(400, 300, 'Creating private room...', {
-      fontSize: '18px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-    this.uiElements.push(loadingText);
+    const loadingText = this.addStatusText(400, 300, 'Creating private room...');
 
     try {
       this.room = await this.client.create('lobby_room', {
@@ -302,6 +308,7 @@ export class LobbyScene extends Phaser.Scene {
     } catch (e) {
       console.error('Failed to create private room:', e);
       loadingText.setText('Failed to create room. Press any key to retry.');
+      loadingText.setColor(Colors.status.danger);
       this.input.keyboard?.once('keydown', () => this.showMainMenu());
     }
   }
@@ -310,17 +317,16 @@ export class LobbyScene extends Phaser.Scene {
     this.clearUI();
 
     // Background
-    const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-    this.uiElements.push(bg);
+    this.addSceneBg();
 
     // Label
     const label = this.add.text(400, 200, 'Enter Room Code:', {
-      fontSize: '24px',
-      color: '#ffffff'
+      ...TextStyle.heroHeading,
+      fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.uiElements.push(label);
 
-    // HTML input element for room code
+    // HTML input element for room code -- styled to match solarpunk aesthetic
     this.htmlInput = document.createElement('input');
     this.htmlInput.type = 'text';
     this.htmlInput.maxLength = LOBBY_CONFIG.ROOM_CODE_LENGTH;
@@ -334,11 +340,13 @@ export class LobbyScene extends Phaser.Scene {
     this.htmlInput.style.textAlign = 'center';
     this.htmlInput.style.textTransform = 'uppercase';
     this.htmlInput.style.fontFamily = 'monospace';
-    this.htmlInput.style.border = '2px solid #ffffff';
-    this.htmlInput.style.backgroundColor = '#333333';
-    this.htmlInput.style.color = '#ffffff';
+    this.htmlInput.style.letterSpacing = '4px';
+    this.htmlInput.style.border = `2px solid ${Colors.gold.brass}`;
+    this.htmlInput.style.backgroundColor = Colors.bg.surface;
+    this.htmlInput.style.color = Colors.gold.primary;
     this.htmlInput.style.outline = 'none';
     this.htmlInput.style.zIndex = '1000';
+    this.htmlInput.style.borderRadius = '0'; // Art Deco: sharp corners
     document.body.appendChild(this.htmlInput);
 
     // Disable Phaser keyboard capture while HTML input is focused
@@ -358,16 +366,20 @@ export class LobbyScene extends Phaser.Scene {
 
     this.htmlInput.focus();
 
-    // Join button
+    // Join button -- primary preset
     const joinButton = this.add.text(400, 380, 'Join', {
-      fontSize: '24px',
-      color: '#ffffff',
-      backgroundColor: '#00aa44',
+      fontSize: Buttons.primary.fontSize,
+      color: Buttons.primary.text,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      backgroundColor: Buttons.primary.bg,
       padding: { x: 32, y: 12 }
     })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
+    joinButton.on('pointerover', () => joinButton.setBackgroundColor(Buttons.primary.hover));
+    joinButton.on('pointerout', () => joinButton.setBackgroundColor(Buttons.primary.bg));
     joinButton.on('pointerdown', () => {
       if (this.audioManager) this.audioManager.playSFX('button_click');
       if (this.htmlInput) {
@@ -380,16 +392,19 @@ export class LobbyScene extends Phaser.Scene {
 
     this.uiElements.push(joinButton);
 
-    // Back button
+    // Back button -- secondary preset
     const backButton = this.add.text(400, 450, 'Back', {
-      fontSize: '20px',
-      color: '#aaaaaa',
-      backgroundColor: '#444444',
+      fontSize: Buttons.secondary.fontSize,
+      color: Colors.text.secondary,
+      fontFamily: 'monospace',
+      backgroundColor: Buttons.secondary.bg,
       padding: { x: 20, y: 8 }
     })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
+    backButton.on('pointerover', () => backButton.setBackgroundColor(Buttons.secondary.hover));
+    backButton.on('pointerout', () => backButton.setBackgroundColor(Buttons.secondary.bg));
     backButton.on('pointerdown', () => {
       if (this.audioManager) this.audioManager.playSFX('button_click');
       this.showMainMenu();
@@ -409,12 +424,9 @@ export class LobbyScene extends Phaser.Scene {
 
   private async joinPrivateRoom(code: string) {
     this.clearUI();
+    this.addSceneBg();
 
-    const statusText = this.add.text(400, 300, `Joining room ${code}...`, {
-      fontSize: '18px',
-      color: '#ffffff'
-    }).setOrigin(0.5);
-    this.uiElements.push(statusText);
+    const statusText = this.addStatusText(400, 300, `Joining room ${code}...`);
 
     try {
       // Query server for room with this code
@@ -439,7 +451,7 @@ export class LobbyScene extends Phaser.Scene {
         ? 'Room is full!'
         : 'Room not found!';
       statusText.setText(errorMsg);
-      statusText.setColor('#ff0000');
+      statusText.setColor(Colors.status.danger);
 
       // Auto-hide after 3 seconds
       this.time.delayedCall(3000, () => this.showMainMenu());
@@ -450,34 +462,43 @@ export class LobbyScene extends Phaser.Scene {
     this.clearUI();
 
     // Background
-    const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-    this.uiElements.push(bg);
+    this.addSceneBg();
 
     // Title
     const title = this.add.text(400, 150, 'Select Preferred Role', {
-      fontSize: '28px',
-      color: '#ffffff',
-      fontStyle: 'bold'
+      ...TextStyle.heroHeading,
+      fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.uiElements.push(title);
 
-    // Role buttons
+    // Role buttons -- use character colors from tokens
     const roles = [
-      { role: 'paran', label: 'Paran (1v2)', color: 0xffcc00, y: 230 },
-      { role: 'faran', label: 'Faran (Guardian)', color: 0xff4444, y: 310 },
-      { role: 'baran', label: 'Baran (Guardian)', color: 0x44ff88, y: 390 },
+      { role: 'paran', label: 'Paran (1v2)', y: 230 },
+      { role: 'faran', label: 'Faran (Guardian)', y: 310 },
+      { role: 'baran', label: 'Baran (Guardian)', y: 390 },
     ];
 
     roles.forEach(r => {
+      const roleColor = charColor(r.role);
       const button = this.add.text(400, r.y, r.label, {
         fontSize: '22px',
-        color: '#ffffff',
-        backgroundColor: `#${r.color.toString(16).padStart(6, '0')}`,
-        padding: { x: 28, y: 14 }
+        color: Colors.text.primary,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        backgroundColor: Colors.bg.elevated,
+        padding: { x: 28, y: 14 },
+        stroke: '#000000',
+        strokeThickness: 2,
       })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
+      // Gold left accent bar for each role
+      const accentBar = this.add.rectangle(400 - 120, r.y, 4, 40, charColorNum(r.role));
+      this.uiElements.push(accentBar);
+
+      button.on('pointerover', () => button.setBackgroundColor(Buttons.secondary.hover));
+      button.on('pointerout', () => button.setBackgroundColor(Colors.bg.elevated));
       button.on('pointerdown', () => {
         if (this.audioManager) this.audioManager.playSFX('button_click');
         this.joinMatchmaking(r.role);
@@ -487,14 +508,17 @@ export class LobbyScene extends Phaser.Scene {
 
     // Back button
     const backButton = this.add.text(400, 500, 'Back', {
-      fontSize: '20px',
-      color: '#aaaaaa',
-      backgroundColor: '#444444',
+      fontSize: Buttons.secondary.fontSize,
+      color: Colors.text.secondary,
+      fontFamily: 'monospace',
+      backgroundColor: Buttons.secondary.bg,
       padding: { x: 20, y: 8 }
     })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
+    backButton.on('pointerover', () => backButton.setBackgroundColor(Buttons.secondary.hover));
+    backButton.on('pointerout', () => backButton.setBackgroundColor(Buttons.secondary.bg));
     backButton.on('pointerdown', () => {
       if (this.audioManager) this.audioManager.playSFX('button_click');
       this.showMainMenu();
@@ -506,14 +530,9 @@ export class LobbyScene extends Phaser.Scene {
     this.clearUI();
 
     // Background
-    const bg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-    this.uiElements.push(bg);
+    this.addSceneBg();
 
-    const statusText = this.add.text(400, 280, 'Searching for match...', {
-      fontSize: '22px',
-      color: '#ffff00'
-    }).setOrigin(0.5);
-    this.uiElements.push(statusText);
+    const statusText = this.addStatusText(400, 280, 'Searching for match...', Colors.status.warning);
 
     // Add spinner animation
     let dots = 0;
@@ -529,20 +548,27 @@ export class LobbyScene extends Phaser.Scene {
     // Queue size display
     const queueText = this.add.text(400, 330, '', {
       fontSize: '16px',
-      color: '#aaaaaa'
+      color: Colors.text.secondary,
+      fontFamily: 'monospace',
+      stroke: '#000000',
+      strokeThickness: 2,
     }).setOrigin(0.5);
     this.uiElements.push(queueText);
 
-    // Cancel button
+    // Cancel button -- danger preset
     const cancelButton = this.add.text(400, 420, 'Cancel', {
-      fontSize: '20px',
-      color: '#ffffff',
-      backgroundColor: '#aa0000',
+      fontSize: Buttons.danger.fontSize,
+      color: Buttons.danger.text,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      backgroundColor: Buttons.danger.bg,
       padding: { x: 24, y: 10 }
     })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
+    cancelButton.on('pointerover', () => cancelButton.setBackgroundColor(Buttons.danger.hover));
+    cancelButton.on('pointerout', () => cancelButton.setBackgroundColor(Buttons.danger.bg));
     cancelButton.on('pointerdown', () => {
       spinnerInterval.destroy();
       if (this.room) {
@@ -580,13 +606,8 @@ export class LobbyScene extends Phaser.Scene {
 
         // Show transition message
         this.clearUI();
-        const transitionBg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-        this.uiElements.push(transitionBg);
-        const transitionText = this.add.text(400, 300, 'Match found! Joining lobby...', {
-          fontSize: '22px',
-          color: '#00ff00'
-        }).setOrigin(0.5);
-        this.uiElements.push(transitionText);
+        this.addSceneBg();
+        this.addStatusText(400, 300, 'Match found! Joining lobby...', Colors.status.success);
 
         try {
           // Join the lobby that matchmaking created
@@ -609,13 +630,8 @@ export class LobbyScene extends Phaser.Scene {
         } catch (e) {
           console.error('Failed to join matchmaking lobby:', e);
           this.clearUI();
-          const errBg = this.add.rectangle(400, 300, 800, 600, 0x1a1a2e);
-          this.uiElements.push(errBg);
-          const errText = this.add.text(400, 300, 'Failed to join lobby', {
-            fontSize: '22px',
-            color: '#ff0000'
-          }).setOrigin(0.5);
-          this.uiElements.push(errText);
+          this.addSceneBg();
+          this.addStatusText(400, 300, 'Failed to join lobby', Colors.status.danger);
           this.time.delayedCall(3000, () => this.showMainMenu());
         }
       });
@@ -632,7 +648,7 @@ export class LobbyScene extends Phaser.Scene {
       console.error('Failed to join matchmaking:', e);
       spinnerInterval.destroy();
       statusText.setText('Failed to join matchmaking');
-      statusText.setColor('#ff0000');
+      statusText.setColor(Colors.status.danger);
       this.time.delayedCall(3000, () => this.showMainMenu());
     }
   }
@@ -645,8 +661,7 @@ export class LobbyScene extends Phaser.Scene {
     this.currentView = 'lobby';
 
     // Solarpunk dark green background
-    const bg = this.add.rectangle(400, 300, 800, 600, 0x0d1f0d);
-    this.uiElements.push(bg);
+    this.addSceneBg();
 
     // Room code display -- use listener because state may not be synced yet
     let codeLabel: Phaser.GameObjects.Text | null = null;
@@ -656,9 +671,11 @@ export class LobbyScene extends Phaser.Scene {
         if (!codeLabel) {
           codeLabel = this.add.text(400, 40, `Room Code: ${value}`, {
             fontSize: '28px',
-            color: '#ffff00',
+            color: Colors.gold.primary,
             fontStyle: 'bold',
-            fontFamily: 'monospace'
+            fontFamily: 'monospace',
+            stroke: '#000000',
+            strokeThickness: 3,
           }).setOrigin(0.5);
           this.uiElements.push(codeLabel);
         } else {
@@ -698,7 +715,8 @@ export class LobbyScene extends Phaser.Scene {
     // Countdown display (initially hidden)
     const countdownText = this.add.text(400, 130, '', {
       fontSize: '64px',
-      color: '#ffff00',
+      color: Colors.gold.primary,
+      fontFamily: 'monospace',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 4
@@ -721,9 +739,12 @@ export class LobbyScene extends Phaser.Scene {
     this.room.onMessage('roleError', (message: string) => {
       const errorText = this.add.text(400, 550, message, {
         fontSize: '16px',
-        color: '#ff0000',
+        color: Colors.status.danger,
+        fontFamily: 'monospace',
         backgroundColor: '#000000',
-        padding: { x: 12, y: 6 }
+        padding: { x: 12, y: 6 },
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
       this.uiElements.push(errorText);
 
@@ -771,10 +792,8 @@ export class LobbyScene extends Phaser.Scene {
 
     const titleY = this.room.state.isPrivate ? 100 : 60;
     const title = this.add.text(400, titleY, 'Select Character', {
-      fontSize: '22px',
-      color: '#d4a746',
+      ...TextStyle.heroHeading,
       fontFamily: 'monospace',
-      fontStyle: 'bold'
     }).setOrigin(0.5);
     this.uiElements.push(title);
 
@@ -784,17 +803,17 @@ export class LobbyScene extends Phaser.Scene {
     const startX = 400 - spacing;
 
     const characters = [
-      { role: 'paran', name: 'Paran', color: 0xffcc00, desc: 'Force - 150HP' },
-      { role: 'faran', name: 'Faran', color: 0xff4444, desc: 'Guardian - 50HP' },
-      { role: 'baran', name: 'Baran', color: 0x44ff88, desc: 'Guardian - 50HP' },
+      { role: 'paran', name: 'Paran', desc: 'Force - 150HP' },
+      { role: 'faran', name: 'Faran', desc: 'Guardian - 50HP' },
+      { role: 'baran', name: 'Baran', desc: 'Guardian - 50HP' },
     ];
 
     characters.forEach((char, index) => {
       const x = startX + index * spacing;
 
-      // Character panel background -- solarpunk styled
-      const panel = this.add.rectangle(x, panelY, 140, 120, 0x1a2e1a);
-      panel.setStrokeStyle(2, 0x4a7c3f);
+      // Character panel background -- using Panels.card preset
+      const panel = this.add.rectangle(x, panelY, 140, 120, Panels.card.bg);
+      panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
       panel.setInteractive({ useHandCursor: true });
       this.uiElements.push(panel);
 
@@ -804,20 +823,22 @@ export class LobbyScene extends Phaser.Scene {
       sprite.setScale(2);
       this.uiElements.push(sprite);
 
-      // Character name
+      // Character name -- role-colored with stroke
       const nameText = this.add.text(x, panelY + 30, char.name, {
         fontSize: '16px',
-        color: '#ffffff',
+        color: charColor(char.role),
         fontFamily: 'monospace',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
       this.uiElements.push(nameText);
 
       // Character description
       const descText = this.add.text(x, panelY + 50, char.desc, {
         fontSize: '12px',
-        color: '#aaaaaa',
-        fontFamily: 'monospace'
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
       }).setOrigin(0.5);
       this.uiElements.push(descText);
 
@@ -835,20 +856,20 @@ export class LobbyScene extends Phaser.Scene {
         const isAvailable = this.isRoleAvailable(char.role);
 
         if (isSelected) {
-          panel.setStrokeStyle(4, 0x00ff00);
+          panel.setStrokeStyle(Panels.card.selectedWidth, Panels.card.selectedBorder);
         } else if (!isAvailable) {
-          panel.setAlpha(0.5);
-          sprite.setAlpha(0.5);
-          nameText.setAlpha(0.5);
-          descText.setAlpha(0.5);
-          panel.setStrokeStyle(2, 0x4a7c3f);
+          panel.setAlpha(Panels.card.disabledAlpha);
+          sprite.setAlpha(Panels.card.disabledAlpha);
+          nameText.setAlpha(Panels.card.disabledAlpha);
+          descText.setAlpha(Panels.card.disabledAlpha);
+          panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
           panel.disableInteractive();
         } else {
           panel.setAlpha(1);
           sprite.setAlpha(1);
           nameText.setAlpha(1);
           descText.setAlpha(1);
-          panel.setStrokeStyle(2, 0x4a7c3f);
+          panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
           panel.setInteractive({ useHandCursor: true });
         }
       };
@@ -880,9 +901,9 @@ export class LobbyScene extends Phaser.Scene {
 
     const titleY = this.room.state.isPrivate ? 280 : 240;
     const title = this.add.text(400, titleY, 'Players', {
+      ...TextStyle.heroHeading,
       fontSize: '20px',
-      color: '#ffffff',
-      fontStyle: 'bold'
+      fontFamily: 'monospace',
     }).setOrigin(0.5);
     this.uiElements.push(title);
 
@@ -900,7 +921,7 @@ export class LobbyScene extends Phaser.Scene {
         const y = listStartY + index * 30;
         const roleName = player.role ? player.role.charAt(0).toUpperCase() + player.role.slice(1) : 'Selecting...';
         const readyIcon = player.ready ? '✓' : '○';
-        const readyColor = player.ready ? '#00ff00' : '#666666';
+        const readyColor = player.ready ? Colors.status.success : Colors.text.disabled;
         const connectedStatus = player.connected ? '' : ' [DC]';
 
         const text = this.add.text(
@@ -909,7 +930,10 @@ export class LobbyScene extends Phaser.Scene {
           `${player.name} - ${roleName} ${readyIcon}${connectedStatus}`,
           {
             fontSize: '16px',
-            color: readyColor
+            color: readyColor,
+            fontFamily: 'monospace',
+            stroke: '#000000',
+            strokeThickness: 2,
           }
         ).setOrigin(0.5);
 
@@ -934,9 +958,11 @@ export class LobbyScene extends Phaser.Scene {
 
     const buttonY = 500;
     const readyButton = this.add.text(400, buttonY, 'Ready', {
-      fontSize: '24px',
-      color: '#ffffff',
-      backgroundColor: '#666666',
+      fontSize: Buttons.primary.fontSize,
+      color: Buttons.primary.text,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      backgroundColor: Buttons.disabled.bg,
       padding: { x: 32, y: 12 }
     })
       .setOrigin(0.5)
@@ -952,11 +978,13 @@ export class LobbyScene extends Phaser.Scene {
 
       if (!hasRole) {
         readyButton.setText('Select a role first');
-        readyButton.setBackgroundColor('#444444');
+        readyButton.setBackgroundColor(Buttons.disabled.bg);
+        readyButton.setColor(Buttons.disabled.text);
         readyButton.disableInteractive();
       } else {
         readyButton.setText(isReady ? 'Not Ready' : 'Ready');
-        readyButton.setBackgroundColor(isReady ? '#00aa44' : '#666666');
+        readyButton.setBackgroundColor(isReady ? Colors.status.success : Buttons.primary.bg);
+        readyButton.setColor(Buttons.primary.text);
         readyButton.setInteractive({ useHandCursor: true });
       }
     };
@@ -1017,20 +1045,33 @@ export class LobbyScene extends Phaser.Scene {
     controls.forEach((ctrl, index) => {
       const y = startY + index * 35;
       const labelText = this.add.text(280, y, ctrl.label + ':', {
-        fontSize: '16px', color: '#aaaaaa'
+        fontSize: '16px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0, 0.5);
       this.uiElements.push(labelText);
 
       const volText = this.add.text(400, y, `${Math.round(ctrl.get() * 100)}%`, {
-        fontSize: '16px', color: '#ffffff'
+        fontSize: '16px',
+        color: Colors.text.primary,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0.5, 0.5);
       this.uiElements.push(volText);
 
       // Minus button
       const minusBtn = this.add.text(350, y, ' - ', {
-        fontSize: '18px', color: '#ffffff', backgroundColor: '#555555',
+        fontSize: '18px',
+        color: Colors.text.primary,
+        fontFamily: 'monospace',
+        backgroundColor: Colors.bg.elevated,
         padding: { x: 6, y: 2 }
       }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
+      minusBtn.on('pointerover', () => minusBtn.setBackgroundColor(Buttons.secondary.hover));
+      minusBtn.on('pointerout', () => minusBtn.setBackgroundColor(Colors.bg.elevated));
       minusBtn.on('pointerdown', () => {
         const newVal = Math.max(0, ctrl.get() - 0.1);
         ctrl.set(newVal);
@@ -1040,9 +1081,14 @@ export class LobbyScene extends Phaser.Scene {
 
       // Plus button
       const plusBtn = this.add.text(450, y, ' + ', {
-        fontSize: '18px', color: '#ffffff', backgroundColor: '#555555',
+        fontSize: '18px',
+        color: Colors.text.primary,
+        fontFamily: 'monospace',
+        backgroundColor: Colors.bg.elevated,
         padding: { x: 6, y: 2 }
       }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
+      plusBtn.on('pointerover', () => plusBtn.setBackgroundColor(Buttons.secondary.hover));
+      plusBtn.on('pointerout', () => plusBtn.setBackgroundColor(Colors.bg.elevated));
       plusBtn.on('pointerdown', () => {
         const newVal = Math.min(1, ctrl.get() + 0.1);
         ctrl.set(newVal);

@@ -9,19 +9,13 @@ import { CHARACTERS } from '../../../shared/characters';
 import { MAPS } from '../../../shared/maps';
 import { CollisionGrid } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS } from '../../../shared/obstacles';
+import { charColorNum } from '../ui/designTokens';
 
 /** Map of role name to projectile spritesheet frame index */
 const PROJECTILE_FRAME: Record<string, number> = {
   paran: 0,
   faran: 1,
   baran: 2,
-};
-
-/** Map of role name to color tint for particles */
-const ROLE_COLOR: Record<string, number> = {
-  paran: 0xffd700,  // gold/yellow
-  faran: 0xff4444,  // red
-  baran: 0x44cc66,  // green
 };
 
 /** Map of map name to tileset key and image path */
@@ -731,7 +725,7 @@ export class GameScene extends Phaser.Scene {
       if (this.room) {
         const ownerPlayer = this.room.state.players.get(projectile.ownerId);
         if (ownerPlayer && ownerPlayer.role) {
-          trailColor = ROLE_COLOR[ownerPlayer.role] || 0xff4444;
+          trailColor = charColorNum(ownerPlayer.role);
         }
       }
       const trail = this.particleFactory.createTrail(sprite, trailColor);
@@ -856,7 +850,7 @@ export class GameScene extends Phaser.Scene {
       const prevHealth = this.playerHealthCache.get(sessionId);
       if (prevHealth !== undefined && player.health < prevHealth) {
         const sprite = this.playerSprites.get(sessionId);
-        const roleColor = ROLE_COLOR[player.role] || 0xffffff;
+        const roleColor = charColorNum(player.role);
 
         if (player.health <= 0) {
           // Death: audio + explosion particles

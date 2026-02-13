@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
+import { Colors, TextStyle, Decorative } from '../ui/designTokens';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -17,6 +18,12 @@ export class BootScene extends Phaser.Scene {
 
     // Particle texture for runtime tinting
     this.load.image('particle', 'sprites/particle.png');
+
+    // Splash/background images
+    this.load.image('splash-bg', 'images/splash-bg.png');
+    this.load.image('city-bg', 'images/city.png');
+    this.load.image('victory-guardian', 'images/victory-guardian-splash.png');
+    this.load.image('victory-paran', 'images/victory-paran-splash.png');
 
     // Note: Tileset images are loaded per-map in GameScene after receiving mapName from server
   }
@@ -90,22 +97,26 @@ export class BootScene extends Phaser.Scene {
 
     // --- Solarpunk Title Screen ---
 
-    // Dark green background
-    this.add.rectangle(400, 300, 800, 600, 0x0d1f0d);
+    // Splash background image (hedge maze with golden temple)
+    const splashBg = this.add.image(400, 300, 'splash-bg');
+    splashBg.setDisplaySize(800, 600);
 
-    // Decorative golden sparkles (small circles at random positions)
+    // Dark overlay so text is readable
+    this.add.rectangle(400, 300, 800, 600, Colors.bg.deepNum, 0.55);
+
+    // Decorative golden sparkles
     const sparkleGfx = this.add.graphics();
-    sparkleGfx.fillStyle(0xd4a746, 0.4);
+    sparkleGfx.fillStyle(Decorative.solarDots.color, Decorative.solarDots.alphaMax);
     for (let i = 0; i < 30; i++) {
       const sx = Phaser.Math.Between(40, 760);
       const sy = Phaser.Math.Between(40, 560);
-      const sr = Phaser.Math.FloatBetween(1, 3);
+      const sr = Phaser.Math.FloatBetween(Decorative.solarDots.radiusMin, Decorative.solarDots.radiusMax);
       sparkleGfx.fillCircle(sx, sy, sr);
     }
 
     // Vine-like decorative lines
     const vineGfx = this.add.graphics();
-    vineGfx.lineStyle(1, 0x4a7c3f, 0.3);
+    vineGfx.lineStyle(Decorative.vine.thickness, Decorative.vine.color, Decorative.vine.alpha);
     // Left vine
     vineGfx.beginPath();
     vineGfx.moveTo(50, 100);
@@ -129,12 +140,8 @@ export class BootScene extends Phaser.Scene {
       this.cameras.main.centerY - 60,
       'BANGER',
       {
-        fontSize: '64px',
-        color: '#d4a746',
+        ...TextStyle.hero,
         fontFamily: 'monospace',
-        fontStyle: 'bold',
-        stroke: '#1a2e1a',
-        strokeThickness: 6,
       }
     ).setOrigin(0.5);
 
@@ -145,8 +152,10 @@ export class BootScene extends Phaser.Scene {
       'Asymmetric Arena Combat',
       {
         fontSize: '18px',
-        color: '#ffffff',
+        color: Colors.text.primary,
         fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 3,
       }
     ).setOrigin(0.5);
 
@@ -157,8 +166,10 @@ export class BootScene extends Phaser.Scene {
       'Click to Start',
       {
         fontSize: '22px',
-        color: '#4a7c3f',
+        color: Colors.accent.vine,
         fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
       }
     ).setOrigin(0.5);
 

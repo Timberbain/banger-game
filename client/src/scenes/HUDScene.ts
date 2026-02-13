@@ -1,19 +1,7 @@
 import Phaser from 'phaser';
 import { Room } from 'colyseus.js';
 import { CHARACTERS } from '../../../shared/characters';
-
-/** Role colors for consistent display */
-const ROLE_COLORS: Record<string, string> = {
-  paran: '#ffcc00',
-  faran: '#ff4444',
-  baran: '#44cc66',
-};
-
-const ROLE_COLORS_NUM: Record<string, number> = {
-  paran: 0xffcc00,
-  faran: 0xff4444,
-  baran: 0x44cc66,
-};
+import { Colors, TextStyle, HealthBar, CooldownBar, Layout, charColor, charColorNum } from '../ui/designTokens';
 
 const MATCH_DURATION_MS = 300000; // 5 minutes
 
@@ -255,12 +243,12 @@ export class HUDScene extends Phaser.Scene {
       const barX = spacing * (i + 1);
 
       // Background (dark red)
-      const bg = this.add.rectangle(barX, barY, barW, barH, 0x440000);
+      const bg = this.add.rectangle(barX, barY, barW, barH, HealthBar.bg);
       bg.setOrigin(0.5, 0.5);
       bg.setDepth(200);
 
       // Fill (role color)
-      const color = ROLE_COLORS_NUM[p.role] || 0xffffff;
+      const color = charColorNum(p.role);
       const fill = this.add.rectangle(barX - barW / 2, barY, barW, barH, color);
       fill.setOrigin(0, 0.5);
       fill.setDepth(201);
@@ -270,8 +258,11 @@ export class HUDScene extends Phaser.Scene {
       const displayName = isLocal ? `${p.name} (YOU)` : p.name;
       const label = this.add.text(barX, barY - barH / 2 - 10, displayName, {
         fontSize: labelSize,
-        color: ROLE_COLORS[p.role] || '#ffffff',
+        color: charColor(p.role),
+        fontFamily: 'monospace',
         fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
       });
       label.setOrigin(0.5, 1);
       label.setDepth(202);
@@ -324,11 +315,8 @@ export class HUDScene extends Phaser.Scene {
 
   private createMatchTimer(): void {
     this.timerText = this.add.text(400, 20, '', {
+      ...TextStyle.hud,
       fontSize: '20px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 3,
     });
     this.timerText.setOrigin(0.5, 0.5);
     this.timerText.setDepth(200);
@@ -359,7 +347,7 @@ export class HUDScene extends Phaser.Scene {
     if (remaining <= 30000 && remaining > 0) {
       if (!this.isTimerFlashing) {
         this.isTimerFlashing = true;
-        this.timerText.setColor('#ff0000');
+        this.timerText.setColor(Colors.status.danger);
         this.timerFlashTimer = this.time.addEvent({
           delay: 500,
           loop: true,
@@ -376,7 +364,7 @@ export class HUDScene extends Phaser.Scene {
         this.timerFlashTimer.destroy();
         this.timerFlashTimer = null;
       }
-      this.timerText.setColor('#ffffff');
+      this.timerText.setColor(Colors.text.primary);
       this.timerText.setAlpha(1);
     }
   }
@@ -410,11 +398,13 @@ export class HUDScene extends Phaser.Scene {
     bg.setDepth(200);
 
     // Create text with killer colored by role
-    const killerColor = ROLE_COLORS[data.killerRole] || '#ffffff';
     const text = this.add.text(killFeedX - 8, baseY, displayText, {
       fontSize: '12px',
-      color: killerColor,
+      color: charColor(data.killerRole),
+      fontFamily: 'monospace',
       fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2,
     });
     text.setOrigin(1, 0.5);
     text.setDepth(201);
@@ -475,11 +465,11 @@ export class HUDScene extends Phaser.Scene {
     const barW = 40;
     const barH = 6;
 
-    this.cooldownBg = this.add.rectangle(barX, barY, barW, barH, 0x333333);
+    this.cooldownBg = this.add.rectangle(barX, barY, barW, barH, CooldownBar.bg);
     this.cooldownBg.setOrigin(0.5, 0.5);
     this.cooldownBg.setDepth(200);
 
-    this.cooldownFill = this.add.rectangle(barX - barW / 2, barY, 0, barH, 0xcccc00);
+    this.cooldownFill = this.add.rectangle(barX - barW / 2, barY, 0, barH, CooldownBar.recharging);
     this.cooldownFill.setOrigin(0, 0.5);
     this.cooldownFill.setDepth(201);
   }
@@ -490,7 +480,7 @@ export class HUDScene extends Phaser.Scene {
     if (this.lastFireTime === 0 || this.cooldownMs === 0) {
       // No fire yet, show fully ready
       this.cooldownFill.setSize(40, 6);
-      this.cooldownFill.setFillStyle(0x44cc44); // green = ready
+      this.cooldownFill.setFillStyle(CooldownBar.ready);
       return;
     }
 
@@ -500,9 +490,9 @@ export class HUDScene extends Phaser.Scene {
     this.cooldownFill.setSize(40 * progress, 6);
 
     if (progress >= 1) {
-      this.cooldownFill.setFillStyle(0x44cc44); // green = ready
+      this.cooldownFill.setFillStyle(CooldownBar.ready);
     } else {
-      this.cooldownFill.setFillStyle(0xcccc00); // yellow = recharging
+      this.cooldownFill.setFillStyle(CooldownBar.recharging);
     }
   }
 
@@ -513,7 +503,8 @@ export class HUDScene extends Phaser.Scene {
   private createPingDisplay(): void {
     this.pingText = this.add.text(780, 20, '0ms', {
       fontSize: '12px',
-      color: '#44cc44',
+      color: Colors.status.success,
+      fontFamily: 'monospace',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 2,
@@ -541,11 +532,11 @@ export class HUDScene extends Phaser.Scene {
     this.pingText.setText(`${this.currentPing}ms`);
 
     if (this.currentPing < 50) {
-      this.pingText.setColor('#44cc44'); // green
+      this.pingText.setColor(Colors.status.success);
     } else if (this.currentPing <= 100) {
-      this.pingText.setColor('#cccc00'); // yellow
+      this.pingText.setColor(Colors.status.warning);
     } else {
-      this.pingText.setColor('#ff4444'); // red
+      this.pingText.setColor(Colors.status.danger);
     }
   }
 
@@ -555,15 +546,12 @@ export class HUDScene extends Phaser.Scene {
 
   private showRoleBanner(): void {
     const roleName = this.localRole.toUpperCase();
-    const roleColor = ROLE_COLORS[this.localRole] || '#ffffff';
+    const roleColor = charColor(this.localRole);
 
     // Large banner: "YOU ARE PARAN"
     this.roleBanner = this.add.text(400, 200, `YOU ARE ${roleName}`, {
-      fontSize: '48px',
+      ...TextStyle.splash,
       color: roleColor,
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 6,
     });
     this.roleBanner.setOrigin(0.5, 0.5);
     this.roleBanner.setDepth(300);
@@ -586,6 +574,7 @@ export class HUDScene extends Phaser.Scene {
     this.roleReminder = this.add.text(10, 10, roleName.charAt(0) + roleName.slice(1).toLowerCase(), {
       fontSize: '14px',
       color: roleColor,
+      fontFamily: 'monospace',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 2,
@@ -600,11 +589,7 @@ export class HUDScene extends Phaser.Scene {
   private createSpectatorHUD(): void {
     // Hidden by default, shown when spectating
     this.spectatorBar = this.add.text(400, 50, '', {
-      fontSize: '16px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 3,
+      ...TextStyle.hud,
       backgroundColor: '#00000088',
       padding: { x: 12, y: 6 },
     });
@@ -614,7 +599,8 @@ export class HUDScene extends Phaser.Scene {
 
     this.spectatorInstruction = this.add.text(400, 75, 'Press TAB to cycle', {
       fontSize: '12px',
-      color: '#aaaaaa',
+      color: Colors.text.secondary,
+      fontFamily: 'monospace',
       stroke: '#000000',
       strokeThickness: 2,
     });
@@ -629,7 +615,7 @@ export class HUDScene extends Phaser.Scene {
     this.spectatorTargetRole = targetRole;
 
     if (this.spectatorBar) {
-      const roleColor = ROLE_COLORS[targetRole] || '#ffffff';
+      const roleColor = charColor(targetRole);
       this.spectatorBar.setText(`SPECTATING: ${targetName} (${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)})`);
       this.spectatorBar.setColor(roleColor);
       this.spectatorBar.setVisible(true);
@@ -663,10 +649,8 @@ export class HUDScene extends Phaser.Scene {
   private showMatchStart(): void {
     // Show "FIGHT!" text when match starts
     this.countdownText = this.add.text(400, 300, 'FIGHT!', {
+      ...TextStyle.splash,
       fontSize: '72px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      stroke: '#000000',
       strokeThickness: 8,
     });
     this.countdownText.setOrigin(0.5, 0.5);
