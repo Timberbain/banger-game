@@ -9,17 +9,17 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 7 of 12 (HD Viewport & Camera)
-Plan: 9 of 9 in current phase
-Status: Phase Complete
-Last activity: 2026-02-13 -- Completed 07-09 (Gap Closure: Overview Camera Guard + Help Text Containment)
+Phase: 8 of 12 (Arena Overhaul)
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-02-13 -- Completed 08-01 (Arena Asset Generation)
 
-Progress: [##############......] 62% (47/~56 plans est. across v1.0+v2.0)
+Progress: [##############......] 63% (48/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
 **Velocity (v1.0):**
-- Total plans completed: 39
+- Total plans completed: 40
 - Total execution time: ~4 days (2026-02-09 to 2026-02-13)
 
 **By Phase (v1.0):**
@@ -34,6 +34,7 @@ Progress: [##############......] 62% (47/~56 plans est. across v1.0+v2.0)
 | 5.1 Collisions | 4 | Complete |
 | 6. UX Polish | 11 | Complete |
 | 7. HD Viewport & Camera | 9 | Complete |
+| 8. Arena Overhaul | 1/2 | In Progress |
 
 ## Accumulated Context
 
@@ -60,6 +61,12 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - overviewActive guard in createTilemap: setBounds unconditional, setZoom+follow guarded
 - HelpScene panels 280x260 with 250px wordWrap and 28px line spacing
 
+**Phase 8 decisions:**
+- Composite tileset layout: 4x3 grid (128x96), IDs 1-4=ground, 5-8=wall/obstacles, 9-12=deco
+- Tile ID shift from old convention (WALL=3) to new (WALL=5) due to ground tiles in row 0
+- Arena layouts: hedge=open corridors (Paran-favoring), brick=chambers (Guardian-favoring), timber=symmetric cross (balanced)
+- Ground tiles cherry-picked from 42x12 ground atlas per theme palette
+
 ### Pending Todos
 
 None.
@@ -78,8 +85,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-09-PLAN.md (Gap Closure: Overview Camera Guard + Help Text Containment) -- Phase 7 fully complete
-Next step: Execute Phase 8
+Stopped at: Completed 08-01-PLAN.md (Arena Asset Generation)
+Next step: Execute 08-02 (Arena Integration)
 
 ---
-*Updated: 2026-02-13 after 07-09 execution*
+*Updated: 2026-02-13 after 08-01 execution*
