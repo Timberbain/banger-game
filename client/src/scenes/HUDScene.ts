@@ -471,7 +471,7 @@ export class HUDScene extends Phaser.Scene {
   private createCooldownDisplay(): void {
     // Small bar above the local player's health bar area (center bottom)
     const barX = this.W * 0.5;
-    const barY = this.H * 0.92;
+    const barY = this.H * 0.89;
     const barW = 40;
     const barH = 6;
 

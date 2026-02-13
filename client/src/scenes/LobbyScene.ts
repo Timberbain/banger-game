@@ -826,7 +826,7 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(title);
 
     // Character panels -- space evenly across wider screen
-    const panelY = titleY + 70;
+    const panelY = titleY + 100;
     const spacing = 240;
     const startX = cx - spacing;
 
@@ -929,7 +929,7 @@ export class LobbyScene extends Phaser.Scene {
 
     const cx = this.cameras.main.centerX;
 
-    const titleY = this.room.state.isPrivate ? 320 : 280;
+    const titleY = this.room.state.isPrivate ? 350 : 310;
     const title = this.add.text(cx, titleY, 'Players', {
       ...TextStyle.heroHeading,
       fontSize: '20px',
