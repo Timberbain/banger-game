@@ -38,7 +38,7 @@ export class GameState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
   @type([Projectile]) projectiles = new ArraySchema<Projectile>();
   @type("number") serverTime: number = 0;
-  @type("string") mapName: string = "test_arena";
+  @type("string") mapName: string = "hedge_garden";
   @type("number") tickCount: number = 0;
   @type("string") matchState: string = MatchState.WAITING;
   @type("number") matchStartTime: number = 0;

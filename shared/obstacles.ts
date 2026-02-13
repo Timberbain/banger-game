@@ -5,10 +5,10 @@
 
 /** Tile IDs used in Tiled map JSON wall layer data */
 export const OBSTACLE_TILES = {
-  WALL: 3,    // Indestructible wall
-  HEAVY: 4,   // Heavy destructible obstacle (5 HP)
-  MEDIUM: 5,  // Medium destructible obstacle (3 HP)
-  LIGHT: 6,   // Light destructible obstacle (2 HP)
+  WALL: 5,    // Indestructible wall (row 1, col 0 in composite tileset)
+  HEAVY: 6,   // Heavy destructible obstacle, 5 HP (row 1, col 1)
+  MEDIUM: 7,  // Medium destructible obstacle, 3 HP (row 1, col 2)
+  LIGHT: 8,   // Light destructible obstacle, 2 HP (row 1, col 3)
 } as const;
 
 /** Maps destructible tile IDs to their starting HP values */

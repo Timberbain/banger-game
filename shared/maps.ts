@@ -7,9 +7,9 @@ export interface MapMetadata {
   name: string;
   displayName: string;
   file: string;         // Path relative to client public dir
-  tileset: string;      // Tileset key name
-  width: number;        // Arena width in pixels
-  height: number;       // Arena height in pixels
+  tileset: string;      // Tileset key name (matches Tiled tileset name)
+  width: number;        // Arena width in pixels (50 tiles * 32px = 1600)
+  height: number;       // Arena height in pixels (38 tiles * 32px = 1216)
   spawnPoints: {
     paran: { x: number; y: number };
     guardians: [{ x: number; y: number }, { x: number; y: number }];
@@ -18,51 +18,39 @@ export interface MapMetadata {
 
 export const MAPS: MapMetadata[] = [
   {
-    name: "test_arena",
-    displayName: "Test Arena",
-    file: "maps/test_arena.json",
-    tileset: "tiles",
-    width: 800,
-    height: 608,
+    name: "hedge_garden",
+    displayName: "Hedge Garden",
+    file: "maps/hedge_garden.json",
+    tileset: "arena_hedge",
+    width: 1600,   // 50 * 32
+    height: 1216,  // 38 * 32
     spawnPoints: {
-      paran: { x: 400, y: 304 },
-      guardians: [{ x: 150, y: 150 }, { x: 650, y: 460 }]
+      paran: { x: 800, y: 608 },
+      guardians: [{ x: 200, y: 200 }, { x: 1400, y: 1016 }]
     }
   },
   {
-    name: "corridor_chaos",
-    displayName: "Corridor Chaos",
-    file: "maps/corridor_chaos.json",
-    tileset: "tiles",
-    width: 800,
-    height: 608,
+    name: "brick_fortress",
+    displayName: "Brick Fortress",
+    file: "maps/brick_fortress.json",
+    tileset: "arena_brick",
+    width: 1600,
+    height: 1216,
     spawnPoints: {
-      paran: { x: 400, y: 304 },
-      guardians: [{ x: 100, y: 100 }, { x: 700, y: 500 }]
+      paran: { x: 800, y: 608 },
+      guardians: [{ x: 200, y: 200 }, { x: 1400, y: 1016 }]
     }
   },
   {
-    name: "cross_fire",
-    displayName: "Cross Fire",
-    file: "maps/cross_fire.json",
-    tileset: "tiles",
-    width: 800,
-    height: 608,
+    name: "timber_yard",
+    displayName: "Timber Yard",
+    file: "maps/timber_yard.json",
+    tileset: "arena_wood",
+    width: 1600,
+    height: 1216,
     spawnPoints: {
-      paran: { x: 400, y: 304 },
-      guardians: [{ x: 100, y: 500 }, { x: 700, y: 100 }]
-    }
-  },
-  {
-    name: "pillars",
-    displayName: "Pillars",
-    file: "maps/pillars.json",
-    tileset: "tiles",
-    width: 800,
-    height: 608,
-    spawnPoints: {
-      paran: { x: 400, y: 304 },
-      guardians: [{ x: 130, y: 304 }, { x: 670, y: 304 }]
+      paran: { x: 800, y: 608 },
+      guardians: [{ x: 200, y: 200 }, { x: 1400, y: 1016 }]
     }
   }
 ];
