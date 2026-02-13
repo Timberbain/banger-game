@@ -96,6 +96,7 @@ export class GameScene extends Phaser.Scene {
   private controlsLocked: boolean = false;
   private overviewActive: boolean = false;
   private mapMetadata: MapMetadata | null = null;
+  private pendingOverview: boolean = false;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -143,6 +144,7 @@ export class GameScene extends Phaser.Scene {
     this.controlsLocked = false;
     this.overviewActive = false;
     this.mapMetadata = null;
+    this.pendingOverview = false;
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -1219,7 +1221,11 @@ export class GameScene extends Phaser.Scene {
    * Controls are locked during the animation.
    */
   private startMatchOverview(): void {
-    if (!this.mapMetadata) return;
+    if (!this.mapMetadata) {
+      // Defer: matchState arrived before onStateChange.once() set mapMetadata
+      this.pendingOverview = true;
+      return;
+    }
 
     const cam = this.cameras.main;
 
@@ -1320,8 +1326,24 @@ export class GameScene extends Phaser.Scene {
       const cam = this.cameras.main;
       cam.setBounds(0, 0, this.mapMetadata.width, this.mapMetadata.height);
       cam.setZoom(2);
+
+      // Fallback: if no overview animation is pending and camera isn't following anyone,
+      // start following local player directly (safety net for any missed code path)
+      if (!this.pendingOverview && !(cam as any)._follow && this.room) {
+        const localSprite = this.playerSprites.get(this.room.sessionId);
+        if (localSprite) {
+          cam.startFollow(localSprite, true, 0.08, 0.08);
+          cam.setDeadzone(40, 30);
+        }
+      }
     }
 
     console.log(`Tilemap ${mapKey} created successfully`);
+
+    // Fire deferred match overview if matchState arrived before mapMetadata
+    if (this.pendingOverview) {
+      this.pendingOverview = false;
+      this.startMatchOverview();
+    }
   }
 }
