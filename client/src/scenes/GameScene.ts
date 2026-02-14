@@ -63,6 +63,8 @@ export class GameScene extends Phaser.Scene {
   private collisionGrid: CollisionGrid | null = null;
   private wallsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private wallFrontsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+  private currentTilemap: Phaser.Tilemaps.Tilemap | null = null;
+  private groundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
 
   // Spectator mode
   private spectatorTarget: string | null = null;
@@ -127,6 +129,8 @@ export class GameScene extends Phaser.Scene {
     this.collisionGrid = null;
     this.wallsLayer = null;
     this.wallFrontsLayer = null;
+    this.currentTilemap = null;
+    this.groundLayer = null;
     this.spectatorTarget = null;
     this.isSpectating = false;
     this.matchEnded = false;
@@ -304,7 +308,8 @@ export class GameScene extends Phaser.Scene {
           stats: data.stats,
           duration: data.duration,
           localSessionId: this.room!.sessionId,
-          room: this.room
+          room: this.room,
+          stageResults: data.stageResults || [],
         });
 
         // Pause game scene input (scene stays visible underneath)
@@ -1148,7 +1153,8 @@ export class GameScene extends Phaser.Scene {
         stats: data.stats,
         duration: data.duration,
         localSessionId: this.room!.sessionId,
-        room: this.room
+        room: this.room,
+        stageResults: data.stageResults || [],
       });
 
       this.scene.pause();
