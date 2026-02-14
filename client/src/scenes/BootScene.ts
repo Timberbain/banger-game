@@ -9,12 +9,24 @@ export class BootScene extends Phaser.Scene {
 
   preload() {
     // Character spritesheets (64x64 frames, 36 frames each in horizontal strip)
-    this.load.spritesheet('paran', 'sprites/paran.png', { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('faran', 'sprites/faran.png', { frameWidth: 64, frameHeight: 64 });
-    this.load.spritesheet('baran', 'sprites/baran.png', { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('paran', 'sprites/paran.png', {
+      frameWidth: 64,
+      frameHeight: 64,
+    });
+    this.load.spritesheet('faran', 'sprites/faran.png', {
+      frameWidth: 64,
+      frameHeight: 64,
+    });
+    this.load.spritesheet('baran', 'sprites/baran.png', {
+      frameWidth: 64,
+      frameHeight: 64,
+    });
 
     // Projectile spritesheet (16x16 frames, 3 frames: paran=0, faran=1, baran=2)
-    this.load.spritesheet('projectiles', 'sprites/projectiles.png', { frameWidth: 16, frameHeight: 16 });
+    this.load.spritesheet('projectiles', 'sprites/projectiles.png', {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
 
     // Particle texture for runtime tinting
     this.load.image('particle', 'sprites/particle.png');
@@ -25,7 +37,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image('victory-guardian', 'images/victory-guardian-splash.png');
     this.load.image('victory-paran', 'images/victory-paran-splash.png');
 
-    // Note: Tileset images are loaded per-map in GameScene after receiving mapName from server
+    // Preload all arena tilesets and tilemaps for instant stage transitions
+    this.load.image('tileset_hedge', 'tilesets/arena_hedge.png');
+    this.load.image('tileset_brick', 'tilesets/arena_brick.png');
+    this.load.image('tileset_wood', 'tilesets/arena_wood.png');
+    this.load.tilemapTiledJSON('hedge_garden', 'maps/hedge_garden.json');
+    this.load.tilemapTiledJSON('brick_fortress', 'maps/brick_fortress.json');
+    this.load.tilemapTiledJSON('timber_yard', 'maps/timber_yard.json');
   }
 
   create() {
@@ -102,76 +120,93 @@ export class BootScene extends Phaser.Scene {
     splashBg.setDisplaySize(1280, 720);
 
     // Dark overlay so text is readable
-    this.add.rectangle(640, 360, 1280, 720, Colors.bg.deepNum, 0.55);
+    this.add.rectangle(
+      640,
+      360,
+      1280,
+      720,
+      Colors.bg.deepNum,
+      Colors.bg.overlayAlpha,
+    );
 
     // Decorative golden sparkles
-    const sparkleGfx = this.add.graphics();
-    sparkleGfx.fillStyle(Decorative.solarDots.color, Decorative.solarDots.alphaMax);
-    for (let i = 0; i < 30; i++) {
-      const sx = Phaser.Math.Between(60, 1220);
-      const sy = Phaser.Math.Between(50, 670);
-      const sr = Phaser.Math.FloatBetween(Decorative.solarDots.radiusMin, Decorative.solarDots.radiusMax);
-      sparkleGfx.fillCircle(sx, sy, sr);
-    }
+    // const sparkleGfx = this.add.graphics();
+    // sparkleGfx.fillStyle(Decorative.solarDots.color, Decorative.solarDots.alphaMax);
+    // for (let i = 0; i < 30; i++) {
+    //   const sx = Phaser.Math.Between(60, 1220);
+    //   const sy = Phaser.Math.Between(50, 670);
+    //   const sr = Phaser.Math.FloatBetween(Decorative.solarDots.radiusMin, Decorative.solarDots.radiusMax);
+    //   sparkleGfx.fillCircle(sx, sy, sr);
+    // }
 
     // Vine-like decorative lines
-    const vineGfx = this.add.graphics();
-    vineGfx.lineStyle(Decorative.vine.thickness, Decorative.vine.color, Decorative.vine.alpha);
-    // Left vine
-    vineGfx.beginPath();
-    vineGfx.moveTo(80, 120);
-    vineGfx.lineTo(96, 240);
-    vineGfx.lineTo(72, 360);
-    vineGfx.lineTo(104, 480);
-    vineGfx.lineTo(80, 600);
-    vineGfx.strokePath();
-    // Right vine
-    vineGfx.beginPath();
-    vineGfx.moveTo(1200, 120);
-    vineGfx.lineTo(1184, 240);
-    vineGfx.lineTo(1208, 360);
-    vineGfx.lineTo(1176, 480);
-    vineGfx.lineTo(1200, 600);
-    vineGfx.strokePath();
+    // const vineGfx = this.add.graphics();
+    // vineGfx.lineStyle(
+    //   Decorative.vine.thickness,
+    //   Decorative.vine.color,
+    //   Decorative.vine.alpha,
+    // );
+    // // Left vine
+    // vineGfx.beginPath();
+    // vineGfx.moveTo(80, 120);
+    // vineGfx.lineTo(96, 240);
+    // vineGfx.lineTo(72, 360);
+    // vineGfx.lineTo(104, 480);
+    // vineGfx.lineTo(80, 600);
+    // vineGfx.strokePath();
+    // // Right vine
+    // vineGfx.beginPath();
+    // vineGfx.moveTo(1200, 120);
+    // vineGfx.lineTo(1184, 240);
+    // vineGfx.lineTo(1208, 360);
+    // vineGfx.lineTo(1176, 480);
+    // vineGfx.lineTo(1200, 600);
+    // vineGfx.strokePath();
 
     // BANGER title -- large, golden, with green stroke
-    this.add.text(
-      this.cameras.main.centerX,
-      this.cameras.main.centerY - 60,
-      'BANGER',
-      {
-        ...TextStyle.hero,
-        fontFamily: 'monospace',
-      }
-    ).setOrigin(0.5);
+    this.add
+      .text(
+        this.cameras.main.centerX,
+        this.cameras.main.centerY - 60,
+        'BANGER',
+        {
+          ...TextStyle.hero,
+          fontFamily: 'monospace',
+        },
+      )
+      .setOrigin(0.5);
 
     // Subtitle
-    this.add.text(
-      this.cameras.main.centerX,
-      this.cameras.main.centerY,
-      'Asymmetric Arena Combat',
-      {
-        fontSize: '18px',
-        color: Colors.text.primary,
-        fontFamily: 'monospace',
-        stroke: '#000000',
-        strokeThickness: 3,
-      }
-    ).setOrigin(0.5);
+    this.add
+      .text(
+        this.cameras.main.centerX,
+        this.cameras.main.centerY,
+        'Asymmetric Arena Combat',
+        {
+          fontSize: '18px',
+          color: Colors.text.primary,
+          fontFamily: 'monospace',
+          stroke: '#000000',
+          strokeThickness: 3,
+        },
+      )
+      .setOrigin(0.5);
 
     // Click to Start text (ensures audio context unlock via user interaction)
-    const clickText = this.add.text(
-      this.cameras.main.centerX,
-      this.cameras.main.centerY + 80,
-      'Click to Start',
-      {
-        fontSize: '22px',
-        color: Colors.accent.vine,
-        fontFamily: 'monospace',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }
-    ).setOrigin(0.5);
+    const clickText = this.add
+      .text(
+        this.cameras.main.centerX,
+        this.cameras.main.centerY + 80,
+        'Click to Start',
+        {
+          fontSize: '22px',
+          color: Colors.accent.vine,
+          fontFamily: 'monospace',
+          stroke: '#000000',
+          strokeThickness: 2,
+        },
+      )
+      .setOrigin(0.5);
 
     // Pulsing alpha animation on click text
     this.tweens.add({

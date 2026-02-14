@@ -5,6 +5,7 @@ import { GameScene } from './scenes/GameScene';
 import { HUDScene } from './scenes/HUDScene';
 import { VictoryScene } from './scenes/VictoryScene';
 import { HelpScene } from './scenes/HelpScene';
+import { StageIntroScene } from './scenes/StageIntroScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -14,7 +15,7 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: '#1a1a2e',
   pixelArt: true,
   roundPixels: true,
-  scene: [BootScene, LobbyScene, GameScene, HUDScene, VictoryScene, HelpScene],
+  scene: [BootScene, LobbyScene, GameScene, HUDScene, VictoryScene, HelpScene, StageIntroScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
