@@ -45,6 +45,10 @@ export class PredictionSystem {
     this.collisionGrid = grid;
   }
 
+  setArenaBounds(bounds: { width: number; height: number }): void {
+    this.arenaBounds = bounds;
+  }
+
   clearCollisionTile(tileX: number, tileY: number): void {
     if (this.collisionGrid) this.collisionGrid.clearTile(tileX, tileY);
   }

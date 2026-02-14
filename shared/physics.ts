@@ -11,10 +11,10 @@ export const PHYSICS = {
   facingThreshold: 10, // speed threshold for updating facing angle
 };
 
-/** Default arena bounds. Server and client should use map-specific bounds from MapMetadata instead. */
+/** Default arena bounds (fallback). Server and client should use map-specific bounds from MapMetadata instead. */
 export const ARENA = {
-  width: 800,
-  height: 608, // 19 tiles x 32px = 608 (matches actual map pixel dimensions)
+  width: 1600,  // 50 tiles x 32px = 1600
+  height: 1216, // 38 tiles x 32px = 1216
 };
 
 export const NETWORK = {
