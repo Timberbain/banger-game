@@ -41,7 +41,7 @@ export class PredictionSystem {
     this.arenaBounds = arenaBounds || ARENA;
   }
 
-  setCollisionGrid(grid: CollisionGrid): void {
+  setCollisionGrid(grid: CollisionGrid | null): void {
     this.collisionGrid = grid;
   }
 

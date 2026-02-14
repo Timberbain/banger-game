@@ -105,8 +105,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Tilemap JSON loaded dynamically in create() after receiving mapName from server
-    // Tileset image also loaded dynamically per-map
+    // All tileset images and tilemap JSONs are preloaded in BootScene
   }
 
   async create(data?: { room?: Room }) {
@@ -212,7 +211,7 @@ export class GameScene extends Phaser.Scene {
         }));
       }
 
-      // Load map dynamically based on server's mapName
+      // Load initial map based on server's mapName (assets preloaded in BootScene)
       this.room.onStateChange.once((state: any) => {
         const mapName = state.mapName || "hedge_garden";
         const mapData = MAPS.find(m => m.name === mapName);
@@ -224,24 +223,27 @@ export class GameScene extends Phaser.Scene {
         // Store map metadata for camera bounds and other systems
         this.mapMetadata = mapData || MAPS[0];
 
-        const mapFile = mapData?.file || "maps/hedge_garden.json";
         const mapKey = mapData?.name || "hedge_garden";
 
-        console.log(`Loading map: ${mapName} from ${mapFile}`);
+        console.log(`Loading map: ${mapName}`);
 
-        // Load per-map tileset image
+        // Assets preloaded in BootScene -- create tilemap directly
+        // Check cache in case BootScene preload hasn't completed (safety)
         const tilesetInfo = MAP_TILESET_INFO[mapKey] || Object.values(MAP_TILESET_INFO)[0];
         this.currentTilesetKey = tilesetInfo.key;
-        if (!this.textures.exists(tilesetInfo.key)) {
-          this.load.image(tilesetInfo.key, tilesetInfo.image);
-        }
-
-        // Load the tilemap JSON dynamically
-        this.load.tilemapTiledJSON(mapKey, mapFile);
-        this.load.once('complete', () => {
+        if (this.textures.exists(tilesetInfo.key) && this.cache.tilemap.has(mapKey)) {
           this.createTilemap(mapKey);
-        });
-        this.load.start();
+        } else {
+          // Fallback: dynamic load (shouldn't happen with BootScene preload)
+          if (!this.textures.exists(tilesetInfo.key)) {
+            this.load.image(tilesetInfo.key, tilesetInfo.image);
+          }
+          if (!this.cache.tilemap.has(mapKey)) {
+            this.load.tilemapTiledJSON(mapKey, mapData?.file || `maps/${mapKey}.json`);
+          }
+          this.load.once('complete', () => this.createTilemap(mapKey));
+          this.load.start();
+        }
       });
 
       // Schema-based matchState listener -- sole source of truth for status text
@@ -262,6 +264,13 @@ export class GameScene extends Phaser.Scene {
         } else if (value === 'waiting') {
           const count = this.room ? this.room.state.players.size : 0;
           this.statusText.setText(`Waiting for players... (${count}/3)`);
+          this.statusText.setVisible(true);
+        } else if (value === 'stage_end') {
+          // Stage ended -- controls already locked by stageEnd message
+          this.statusText.setText('Stage complete!');
+          this.statusText.setVisible(true);
+        } else if (value === 'stage_transition') {
+          this.statusText.setText('Loading next arena...');
           this.statusText.setVisible(true);
         }
       });
@@ -314,6 +323,78 @@ export class GameScene extends Phaser.Scene {
 
         // Pause game scene input (scene stays visible underneath)
         this.scene.pause();
+      });
+
+      // Stage End: lock controls, zoom out camera
+      this.room.onMessage("stageEnd", (data: any) => {
+        this.controlsLocked = true;
+
+        // Camera zoom out for dramatic effect (DISP-05)
+        const cam = this.cameras.main;
+        cam.zoomTo(0.5, 1500, 'Sine.easeInOut');
+
+        // Audio: stage end fanfare
+        if (this.audioManager) this.audioManager.playSFX('match_end_fanfare');
+      });
+
+      // Stage Transition: fade to black, swap tilemap, show intro overlay
+      this.room.onMessage("stageTransition", (data: any) => {
+        const cam = this.cameras.main;
+        cam.fade(500, 0, 0, 0, false, (_cam: any, progress: number) => {
+          if (progress >= 1) {
+            // Clean up old stage visuals
+            this.cleanupStageVisuals();
+
+            // Destroy old tilemap
+            this.destroyTilemap();
+
+            // Update map metadata reference
+            const mapData = MAPS.find(m => m.name === data.mapName);
+            this.mapMetadata = mapData || MAPS[0];
+
+            // Create new tilemap (assets already preloaded in BootScene)
+            this.createTilemap(data.mapName);
+
+            // Update prediction arena bounds for new map
+            if (this.prediction && this.mapMetadata) {
+              this.prediction.setArenaBounds({
+                width: this.mapMetadata.width,
+                height: this.mapMetadata.height,
+              });
+            }
+
+            // Launch StageIntroScene overlay
+            this.scene.launch("StageIntroScene", {
+              stageNumber: data.stageNumber,
+              arenaName: data.arenaName,
+              paranWins: data.paranWins,
+              guardianWins: data.guardianWins,
+            });
+          }
+        });
+      });
+
+      // Stage Start: dismiss intro, fade in, start overview animation
+      this.room.onMessage("stageStart", (data: any) => {
+        // Stop stage intro overlay
+        this.scene.stop("StageIntroScene");
+
+        // Re-launch HUD if needed (it persists across stages, but re-ensure)
+        if (!this.scene.isActive('HUDScene') && this.room) {
+          this.hudLaunched = true;
+          this.scene.launch('HUDScene', {
+            room: this.room,
+            localSessionId: this.room.sessionId,
+            localRole: this.localRole,
+          });
+        }
+
+        // Fade in from black
+        this.cameras.main.fadeIn(500, 0, 0, 0);
+
+        // Overview zoom animation (same as match start)
+        this.matchEnded = false;  // Reset for new stage
+        this.startMatchOverview();
       });
 
       // Handle unexpected disconnection
@@ -1111,6 +1192,12 @@ export class GameScene extends Phaser.Scene {
         const count = this.room ? this.room.state.players.size : 0;
         this.statusText.setText(`Waiting for players... (${count}/3)`);
         this.statusText.setVisible(true);
+      } else if (value === 'stage_end') {
+        this.statusText.setText('Stage complete!');
+        this.statusText.setVisible(true);
+      } else if (value === 'stage_transition') {
+        this.statusText.setText('Loading next arena...');
+        this.statusText.setVisible(true);
       }
     });
 
@@ -1158,6 +1245,78 @@ export class GameScene extends Phaser.Scene {
       });
 
       this.scene.pause();
+    });
+
+    // Stage End: lock controls, zoom out camera (reconnect path)
+    this.room.onMessage("stageEnd", (data: any) => {
+      this.controlsLocked = true;
+
+      // Camera zoom out for dramatic effect (DISP-05)
+      const cam = this.cameras.main;
+      cam.zoomTo(0.5, 1500, 'Sine.easeInOut');
+
+      // Audio: stage end fanfare
+      if (this.audioManager) this.audioManager.playSFX('match_end_fanfare');
+    });
+
+    // Stage Transition: fade to black, swap tilemap, show intro overlay (reconnect path)
+    this.room.onMessage("stageTransition", (data: any) => {
+      const cam = this.cameras.main;
+      cam.fade(500, 0, 0, 0, false, (_cam: any, progress: number) => {
+        if (progress >= 1) {
+          // Clean up old stage visuals
+          this.cleanupStageVisuals();
+
+          // Destroy old tilemap
+          this.destroyTilemap();
+
+          // Update map metadata reference
+          const mapData = MAPS.find(m => m.name === data.mapName);
+          this.mapMetadata = mapData || MAPS[0];
+
+          // Create new tilemap (assets already preloaded in BootScene)
+          this.createTilemap(data.mapName);
+
+          // Update prediction arena bounds for new map
+          if (this.prediction && this.mapMetadata) {
+            this.prediction.setArenaBounds({
+              width: this.mapMetadata.width,
+              height: this.mapMetadata.height,
+            });
+          }
+
+          // Launch StageIntroScene overlay
+          this.scene.launch("StageIntroScene", {
+            stageNumber: data.stageNumber,
+            arenaName: data.arenaName,
+            paranWins: data.paranWins,
+            guardianWins: data.guardianWins,
+          });
+        }
+      });
+    });
+
+    // Stage Start: dismiss intro, fade in, start overview animation (reconnect path)
+    this.room.onMessage("stageStart", (data: any) => {
+      // Stop stage intro overlay
+      this.scene.stop("StageIntroScene");
+
+      // Re-launch HUD if needed
+      if (!this.scene.isActive('HUDScene') && this.room) {
+        this.hudLaunched = true;
+        this.scene.launch('HUDScene', {
+          room: this.room,
+          localSessionId: this.room.sessionId,
+          localRole: this.localRole,
+        });
+      }
+
+      // Fade in from black
+      this.cameras.main.fadeIn(500, 0, 0, 0);
+
+      // Overview zoom animation (same as match start)
+      this.matchEnded = false;  // Reset for new stage
+      this.startMatchOverview();
     });
 
     this.room.onLeave((code: number) => {
@@ -1233,6 +1392,70 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Clean up all stage-specific visual objects between stages.
+   * Preserves player sprites (they persist across stages) but resets their visual state.
+   */
+  private cleanupStageVisuals(): void {
+    // Destroy all projectile sprites and trails
+    this.projectileSprites.forEach((sprite) => sprite.destroy());
+    this.projectileSprites.clear();
+    this.projectileVelocities.clear();
+    this.projectileTrails.forEach((trail) => {
+      if (this.particleFactory) this.particleFactory.destroyTrail(trail);
+    });
+    this.projectileTrails.clear();
+
+    // Destroy eliminated texts and DC labels
+    this.eliminatedTexts.forEach((text) => text.destroy());
+    this.eliminatedTexts.clear();
+    this.dcLabels.forEach((text) => text.destroy());
+    this.dcLabels.clear();
+
+    // Reset player sprite alpha and animations (but keep sprites alive -- players persist)
+    this.playerSprites.forEach((sprite, sessionId) => {
+      sprite.setAlpha(1.0);
+      sprite.clearTint();
+      const role = this.playerRoles.get(sessionId);
+      if (role) {
+        sprite.play(`${role}-idle`);
+        this.playerAnimKeys.set(sessionId, `${role}-idle`);
+      }
+    });
+
+    // Reset health cache
+    this.playerHealthCache.clear();
+    this.prevHealth.clear();
+
+    // Destroy particle factory (recreated after new tilemap)
+    if (this.particleFactory) {
+      this.particleFactory.destroy();
+      this.particleFactory = null;
+    }
+
+    // Reset spectator state (players are alive again)
+    this.isSpectating = false;
+    this.spectatorTarget = null;
+  }
+
+  /**
+   * Destroy the current tilemap and all its layers.
+   * Must be called before creating a new tilemap for stage transitions.
+   */
+  private destroyTilemap(): void {
+    // Destroy layers (must destroy before tilemap)
+    if (this.wallsLayer) { this.wallsLayer.destroy(); this.wallsLayer = null; }
+    if (this.wallFrontsLayer) { this.wallFrontsLayer.destroy(); this.wallFrontsLayer = null; }
+    if (this.groundLayer) { this.groundLayer.destroy(); this.groundLayer = null; }
+    // Destroy tilemap itself (cleans up layer cache)
+    if (this.currentTilemap) { this.currentTilemap.destroy(); this.currentTilemap = null; }
+    // Clear collision grid
+    this.collisionGrid = null;
+    if (this.prediction) {
+      this.prediction.setCollisionGrid(null);
+    }
+  }
+
+  /**
    * Match-start overview: show full arena at zoom=1.0 for 1.5s, then zoom to local player.
    * Controls are locked during the animation.
    */
@@ -1295,6 +1518,9 @@ export class GameScene extends Phaser.Scene {
   private createTilemap(mapKey: string): void {
     const map = this.make.tilemap({ key: mapKey });
 
+    // Store tilemap reference for destroy on stage transition
+    this.currentTilemap = map;
+
     // Get the tileset name from the map JSON (per-map tileset names)
     const tilesetInfo = MAP_TILESET_INFO[mapKey] || Object.values(MAP_TILESET_INFO)[0];
     const tileset = map.addTilesetImage(tilesetInfo.name, tilesetInfo.key);
@@ -1315,9 +1541,10 @@ export class GameScene extends Phaser.Scene {
 
     wallsLayer.setCollisionByExclusion([-1, 0]);
 
-    // Store layer references for obstacle destruction rendering
+    // Store layer references for obstacle destruction rendering and stage transitions
     this.wallsLayer = wallsLayer;
     this.wallFrontsLayer = wallFrontsLayer;
+    this.groundLayer = groundLayer;
 
     // Build collision grid from map data for client prediction
     const mapData = this.cache.tilemap.get(mapKey);
