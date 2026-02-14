@@ -19,7 +19,7 @@ const PROJECTILE_FRAME: Record<string, number> = {
   baran: 2,
 };
 
-/** Map of map name to tileset key and image path (composite tilesets: 4x3 grid, 12 tiles each) */
+/** Map of map name to tileset key and image path (composite tilesets: 8x14 grid, 112 tiles each) */
 const MAP_TILESET_INFO: Record<string, { key: string; image: string; name: string }> = {
   hedge_garden:    { key: 'tileset_hedge', image: 'tilesets/arena_hedge.png', name: 'arena_hedge' },
   brick_fortress:  { key: 'tileset_brick', image: 'tilesets/arena_brick.png', name: 'arena_brick' },
@@ -62,6 +62,7 @@ export class GameScene extends Phaser.Scene {
   // Collision grid for client prediction
   private collisionGrid: CollisionGrid | null = null;
   private wallsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+  private wallFrontsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
 
   // Spectator mode
   private spectatorTarget: string | null = null;
@@ -125,6 +126,7 @@ export class GameScene extends Phaser.Scene {
     this.localRole = '';
     this.collisionGrid = null;
     this.wallsLayer = null;
+    this.wallFrontsLayer = null;
     this.spectatorTarget = null;
     this.isSpectating = false;
     this.matchEnded = false;
@@ -353,9 +355,12 @@ export class GameScene extends Phaser.Scene {
                 this.collisionGrid.clearTile(obstacle.tileX, obstacle.tileY);
               }
 
-              // Update tilemap visual: remove obstacle tile
+              // Update tilemap visual: remove obstacle canopy + front face
               if (this.wallsLayer) {
                 this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
+              }
+              if (this.wallFrontsLayer) {
+                this.wallFrontsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY + 1);
               }
             }
           });
@@ -1200,6 +1205,9 @@ export class GameScene extends Phaser.Scene {
           if (this.wallsLayer) {
             this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
           }
+          if (this.wallFrontsLayer) {
+            this.wallFrontsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY + 1);
+          }
         }
         obstacle.onChange(() => {
           if (obstacle.destroyed) {
@@ -1208,6 +1216,9 @@ export class GameScene extends Phaser.Scene {
             }
             if (this.wallsLayer) {
               this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
+            }
+            if (this.wallFrontsLayer) {
+              this.wallFrontsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY + 1);
             }
           }
         });
@@ -1288,6 +1299,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const groundLayer = map.createLayer('Ground', tileset, 0, 0);
+    const wallFrontsLayer = map.createLayer('WallFronts', tileset, 0, 0);
     const wallsLayer = map.createLayer('Walls', tileset, 0, 0);
 
     if (!wallsLayer) {
@@ -1297,8 +1309,9 @@ export class GameScene extends Phaser.Scene {
 
     wallsLayer.setCollisionByExclusion([-1, 0]);
 
-    // Store walls layer reference for obstacle destruction rendering
+    // Store layer references for obstacle destruction rendering
     this.wallsLayer = wallsLayer;
+    this.wallFrontsLayer = wallFrontsLayer;
 
     // Build collision grid from map data for client prediction
     const mapData = this.cache.tilemap.get(mapKey);
@@ -1317,6 +1330,14 @@ export class GameScene extends Phaser.Scene {
         // Pass collision grid to prediction system
         if (this.prediction) {
           this.prediction.setCollisionGrid(this.collisionGrid);
+        }
+
+        // Update prediction arena bounds now that mapMetadata is confirmed
+        if (this.prediction && this.mapMetadata) {
+          this.prediction.setArenaBounds({
+            width: this.mapMetadata.width,
+            height: this.mapMetadata.height,
+          });
         }
       }
     }
