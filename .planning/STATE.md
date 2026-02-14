@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 8 of 12 (Arena Overhaul) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase Complete
-Last activity: 2026-02-13 -- Completed 08-02 (Arena Integration)
+Phase: 8 of 12 (Arena Overhaul) -- Gap Closure In Progress
+Plan: 3 of 4 in current phase (gap closure)
+Status: Executing gap closure plans
+Last activity: 2026-02-14 -- Completed 08-03 (Collision Desync Fix)
 
-Progress: [################....] 66% (49/~56 plans est. across v1.0+v2.0)
+Progress: [################....] 67% (50/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -34,7 +34,7 @@ Progress: [################....] 66% (49/~56 plans est. across v1.0+v2.0)
 | 5.1 Collisions | 4 | Complete |
 | 6. UX Polish | 11 | Complete |
 | 7. HD Viewport & Camera | 9 | Complete |
-| 8. Arena Overhaul | 2 | Complete |
+| 8. Arena Overhaul | 4 | 3/4 (gap closure) |
 
 ## Accumulated Context
 
@@ -69,6 +69,8 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Overview zoom calculated dynamically: Math.min(viewport/arena) for arena-size-independent camera
 - Generic tileset fallback via Object.values() instead of named map key
 - GameState schema default mapName updated to hedge_garden (first map in rotation)
+- setArenaBounds as post-construction setter rather than re-instantiating PredictionSystem
+- ARENA fallback updated to 1600x1216 so any code path using it as default is safe
 
 ### Pending Todos
 
@@ -87,9 +89,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13
-Stopped at: Completed 08-02-PLAN.md (Arena Integration) -- Phase 8 complete
-Next step: Begin Phase 9 (Multi-Stage Rounds)
+Last session: 2026-02-14
+Stopped at: Completed 08-03-PLAN.md (Collision Desync Fix)
+Next step: Execute 08-04 (Spawn Position Fix)
 
 ---
-*Updated: 2026-02-13 after 08-02 execution*
+*Updated: 2026-02-14 after 08-03 execution*
