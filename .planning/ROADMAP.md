@@ -31,7 +31,7 @@
 - Decimal phases (7.1, 8.1...): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 7: HD Viewport & Camera** - 1280x720 resolution with camera follow and viewport-relative UI -- completed 2026-02-13
-- [x] **Phase 8: Arena Overhaul** - Tileset art and larger scrollable arenas (50x38 tiles) -- completed 2026-02-13
+- [ ] **Phase 8: Arena Overhaul** - Tileset art and larger scrollable arenas (50x38 tiles) -- gap closure in progress
 - [ ] **Phase 9: Multi-Stage Rounds** - Best-of-3 match structure with stage transitions
 - [ ] **Phase 10: Powerup System** - Server-authoritative powerup spawning, collection, and temporary buffs
 - [ ] **Phase 11: Minimap & Music** - Minimap overlay and music system with crossfade transitions
@@ -72,11 +72,13 @@ Plans:
   3. Map JSON files are human-readable with named tile type references (not opaque numeric IDs)
   4. Each of the 3+ arenas has a visually distinct theme using different tileset combinations (e.g., hedge arena, brick arena, wood arena)
   5. Players spawn at map-defined locations appropriate to their role (Paran separated from Guardians)
-**Plans:** 2 plans -- completed 2026-02-13
+**Plans:** 4 plans
 
 Plans:
 - [x] 08-01-PLAN.md -- Generate composite tilesets (128x96) and 50x38 map JSONs via Python script
 - [x] 08-02-PLAN.md -- Integrate new tilesets/maps into game pipeline (tile IDs, map metadata, overview zoom, cleanup)
+- [ ] 08-03-PLAN.md -- Gap closure: fix PredictionSystem arena bounds race condition (collision desync)
+- [ ] 08-04-PLAN.md -- Gap closure: per-map validated spawn points (spawn inside walls)
 
 ### Phase 9: Multi-Stage Rounds
 **Goal**: Matches play as best-of-3 with each stage on a different arena, smooth transitions between stages, and a final winner declaration
@@ -155,7 +157,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 |-------|-----------|----------------|--------|-----------|
 | 1-6 | v1.0 | 38/38 | Complete | 2026-02-13 |
 | 7. HD Viewport & Camera | v2.0 | 9/9 | Complete | 2026-02-13 |
-| 8. Arena Overhaul | v2.0 | 2/2 | Complete | 2026-02-13 |
+| 8. Arena Overhaul | v2.0 | 2/4 | Gap closure | - |
 | 9. Multi-Stage Rounds | v2.0 | 0/TBD | Not started | - |
 | 10. Powerup System | v2.0 | 0/TBD | Not started | - |
 | 11. Minimap & Music | v2.0 | 0/TBD | Not started | - |
@@ -163,4 +165,4 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-13 (Phase 8 complete)*
+*Last updated: 2026-02-14 (Phase 8 gap closure plans created)*
