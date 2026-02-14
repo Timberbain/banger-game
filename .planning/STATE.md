@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 8 of 12 (Arena Overhaul) -- COMPLETE
-Plan: 4 of 4 in current phase
+Plan: 5 of 5 in current phase
 Status: Phase Complete
-Last activity: 2026-02-14 -- Completed 08-04 (Spawn Position Fix)
+Last activity: 2026-02-14 -- Completed 08-05 (Auto-Tile Rule Shadowing Fix)
 
-Progress: [################....] 68% (51/~56 plans est. across v1.0+v2.0)
+Progress: [################....] 69% (52/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
 **Velocity (v1.0):**
-- Total plans completed: 40
+- Total plans completed: 41
 - Total execution time: ~4 days (2026-02-09 to 2026-02-13)
 
 **By Phase (v1.0):**
@@ -34,7 +34,7 @@ Progress: [################....] 68% (51/~56 plans est. across v1.0+v2.0)
 | 5.1 Collisions | 4 | Complete |
 | 6. UX Polish | 11 | Complete |
 | 7. HD Viewport & Camera | 9 | Complete |
-| 8. Arena Overhaul | 4 | Complete |
+| 8. Arena Overhaul | 5 | Complete |
 
 ## Accumulated Context
 
@@ -73,6 +73,8 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - ARENA fallback updated to 1600x1216 so any code path using it as default is safe
 - Per-map spawn coordinates validated with 1-tile buffer clearance; paran center, faran top-left, baran bottom-right
 - Spawn validation runs automatically in generate-arenas.py after map generation
+- Auto-tile rules need explicit false constraints to prevent subset shadowing in first-match-wins evaluation
+- Rule 46 added for bottom-edge NE-only-inner/NW-false/SE-false gap case
 
 ### Pending Todos
 
@@ -92,8 +94,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-04-PLAN.md (Spawn Position Fix) -- Phase 8 complete
+Stopped at: Completed 08-05-PLAN.md (Auto-Tile Rule Shadowing Fix) -- Phase 8 complete
 Next step: Begin Phase 9 (Multi-Stage Rounds)
 
 ---
-*Updated: 2026-02-14 after 08-04 execution*
+*Updated: 2026-02-14 after 08-05 execution*
