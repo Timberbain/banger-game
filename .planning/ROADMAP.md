@@ -32,7 +32,7 @@
 
 - [x] **Phase 7: HD Viewport & Camera** - 1280x720 resolution with camera follow and viewport-relative UI -- completed 2026-02-13
 - [x] **Phase 8: Arena Overhaul** - Tileset art and larger scrollable arenas (50x38 tiles) -- completed 2026-02-14
-- [ ] **Phase 9: Multi-Stage Rounds** - Best-of-3 match structure with stage transitions
+- [x] **Phase 9: Multi-Stage Rounds** - Best-of-3 match structure with stage transitions -- completed 2026-02-14
 - [ ] **Phase 10: Powerup System** - Server-authoritative powerup spawning, collection, and temporary buffs
 - [ ] **Phase 11: Minimap & Music** - Minimap overlay and music system with crossfade transitions
 - [ ] **Phase 12: HUD Icon Overhaul** - Icon-based HUD replacing text-only elements
@@ -91,12 +91,12 @@ Plans:
   3. Between stages, a transition screen shows the round number, arena name, and current score before play begins
   4. All game state resets cleanly between stages (health, positions, projectiles, obstacles) with no ghost entities or stale data
   5. The round score (e.g., "1-0") is visible throughout the match and the final victory screen shows best-of-3 results with per-stage breakdown
-**Plans:** 3 plans
+**Plans:** 3 plans -- completed 2026-02-14
 
 Plans:
-- [ ] 09-01-PLAN.md -- Server-side best-of-3 stage lifecycle (schema, state machine, arena selection, state reset)
-- [ ] 09-02-PLAN.md -- Client stage transitions (tilemap swap, camera zoom, StageIntroScene overlay, BootScene preload)
-- [ ] 09-03-PLAN.md -- HUD round score display and VictoryScene per-stage breakdown
+- [x] 09-01-PLAN.md -- Server-side best-of-3 stage lifecycle (schema, state machine, arena selection, state reset)
+- [x] 09-02-PLAN.md -- Client stage transitions (tilemap swap, camera zoom, StageIntroScene overlay, BootScene preload)
+- [x] 09-03-PLAN.md -- HUD round score display and VictoryScene per-stage breakdown
 
 ### Phase 10: Powerup System
 **Goal**: Powerups spawn during gameplay, players collect them on contact, and temporary buffs (speed, invincibility, larger projectiles) add tactical depth to arena combat
@@ -158,11 +158,11 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 1-6 | v1.0 | 38/38 | Complete | 2026-02-13 |
 | 7. HD Viewport & Camera | v2.0 | 9/9 | Complete | 2026-02-13 |
 | 8. Arena Overhaul | v2.0 | 5/5 | Complete | 2026-02-14 |
-| 9. Multi-Stage Rounds | v2.0 | 0/3 | Planned | - |
+| 9. Multi-Stage Rounds | v2.0 | 3/3 | Complete | 2026-02-14 |
 | 10. Powerup System | v2.0 | 0/TBD | Not started | - |
 | 11. Minimap & Music | v2.0 | 0/TBD | Not started | - |
 | 12. HUD Icon Overhaul | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-14 (Phase 9 planned)*
+*Last updated: 2026-02-14 (Phase 9 complete)*
