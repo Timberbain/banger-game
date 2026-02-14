@@ -1,5 +1,5 @@
 import { Room, Client } from "colyseus";
-import { GameState, Player, MatchState, PlayerStats } from "../schema/GameState";
+import { GameState, Player, MatchState, PlayerStats, StageSnapshot } from "../schema/GameState";
 import { Projectile } from "../schema/Projectile";
 import { ObstacleState } from "../schema/Obstacle";
 import { SERVER_CONFIG, GAME_CONFIG } from "../config";
@@ -12,17 +12,20 @@ import { OBSTACLE_TILE_IDS, OBSTACLE_TIER_HP } from "../../../shared/obstacles";
 import * as fs from "fs";
 import * as path from "path";
 
-const MATCH_DURATION_MS = 5 * 60 * 1000; // 5 minutes -- guardians win on timeout
+const MATCH_DURATION_MS = 5 * 60 * 1000; // 5 minutes per stage -- guardians win on timeout
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
   patchRate = SERVER_CONFIG.patchRate; // 1000/60 - must match tick rate for 60Hz sync
 
-  // Static map rotation index shared across room instances
-  private static currentMapIndex: number = 0;
   private mapMetadata!: MapMetadata;
   private roleAssignments?: Record<string, string>;
   private collisionGrid!: CollisionGrid;
+
+  // Multi-stage round state (server-only)
+  private stageArenas: MapMetadata[] = [];
+  private stageSnapshots: StageSnapshot[] = [];
+  private matchStartEpoch: number = 0; // Tracks overall match start for total duration
 
   /**
    * Validate input structure and types
@@ -60,28 +63,27 @@ export class GameRoom extends Room<GameState> {
     return true;
   }
 
-  onCreate(options: any) {
-    this.setState(new GameState());
-    this.state.matchState = MatchState.WAITING; // Explicit state initialization
-    this.autoDispose = true;
-
-    // Store role assignments if from lobby
-    if (options.fromLobby && options.roleAssignments) {
-      this.roleAssignments = options.roleAssignments;
-      console.log("GameRoom created from lobby with role assignments:", this.roleAssignments);
+  /**
+   * Select 3 unique arenas for the best-of-3 match via Fisher-Yates shuffle.
+   * Called in onCreate so stageArenas[0] is available for initial map loading.
+   */
+  private selectArenas(): void {
+    const indices = MAPS.map((_, i) => i);
+    // Fisher-Yates shuffle
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
     }
+    this.stageArenas = indices.map(i => MAPS[i]);
+    console.log(`Stage arenas selected: ${this.stageArenas.map(m => m.displayName).join(', ')}`);
+  }
 
-    // Select map (sequential rotation across room instances)
-    this.mapMetadata = MAPS[GameRoom.currentMapIndex % MAPS.length];
-    this.state.mapName = this.mapMetadata.name;
-
-    // Advance rotation for next room
-    GameRoom.currentMapIndex++;
-
-    console.log(`GameRoom created with map: ${this.mapMetadata.displayName}`);
-
-    // Load Tiled JSON map file and build collision grid
-    const mapPath = path.join(__dirname, '../../../client/public', this.mapMetadata.file);
+  /**
+   * Load a Tiled JSON map, build collision grid, and initialize obstacles.
+   * Shared by onCreate (initial map) and resetStage (new map between stages).
+   */
+  private loadMap(mapMeta: MapMetadata): void {
+    const mapPath = path.join(__dirname, '../../../client/public', mapMeta.file);
     const mapJson = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
     const wallLayer = mapJson.layers.find((l: any) => l.name === 'Walls');
 
@@ -110,7 +112,30 @@ export class GameRoom extends Room<GameState> {
         }
       }
     }
-    console.log(`Collision grid loaded: ${mapJson.width}x${mapJson.height} tiles, ${obstacleCount} destructible obstacles`);
+
+    this.mapMetadata = mapMeta;
+    this.state.mapName = mapMeta.name;
+
+    console.log(`Map loaded: ${mapMeta.displayName} (${mapJson.width}x${mapJson.height} tiles, ${obstacleCount} destructible obstacles)`);
+  }
+
+  onCreate(options: any) {
+    this.setState(new GameState());
+    this.state.matchState = MatchState.WAITING; // Explicit state initialization
+    this.state.currentStage = 1;
+    this.autoDispose = true;
+
+    // Store role assignments if from lobby
+    if (options.fromLobby && options.roleAssignments) {
+      this.roleAssignments = options.roleAssignments;
+      console.log("GameRoom created from lobby with role assignments:", this.roleAssignments);
+    }
+
+    // Select 3 unique arenas for the best-of-3 match
+    this.selectArenas();
+
+    // Load the first arena
+    this.loadMap(this.stageArenas[0]);
 
     // Set up fixed timestep loop using accumulator pattern
     let elapsedTime = 0;
@@ -205,16 +230,7 @@ export class GameRoom extends Room<GameState> {
     }
 
     // Set spawn position based on role
-    if (role === "paran") {
-      player.x = this.mapMetadata.spawnPoints.paran.x;
-      player.y = this.mapMetadata.spawnPoints.paran.y;
-    } else if (role === "faran") {
-      player.x = this.mapMetadata.spawnPoints.guardians[0].x;
-      player.y = this.mapMetadata.spawnPoints.guardians[0].y;
-    } else {
-      player.x = this.mapMetadata.spawnPoints.guardians[1].x;
-      player.y = this.mapMetadata.spawnPoints.guardians[1].y;
-    }
+    this.setSpawnPosition(player, role);
 
     const stats = CHARACTERS[role];
 
@@ -241,6 +257,22 @@ export class GameRoom extends Room<GameState> {
     }
   }
 
+  /**
+   * Set spawn position for a player based on their role and current map metadata.
+   */
+  private setSpawnPosition(player: Player, role: string): void {
+    if (role === "paran") {
+      player.x = this.mapMetadata.spawnPoints.paran.x;
+      player.y = this.mapMetadata.spawnPoints.paran.y;
+    } else if (role === "faran") {
+      player.x = this.mapMetadata.spawnPoints.guardians[0].x;
+      player.y = this.mapMetadata.spawnPoints.guardians[0].y;
+    } else {
+      player.x = this.mapMetadata.spawnPoints.guardians[1].x;
+      player.y = this.mapMetadata.spawnPoints.guardians[1].y;
+    }
+  }
+
   async onLeave(client: Client, consented: boolean) {
     const player = this.state.players.get(client.sessionId);
 
@@ -253,16 +285,24 @@ export class GameRoom extends Room<GameState> {
     // Mark player as disconnected
     player.connected = false;
 
+    // Check if match is in an active state (PLAYING, STAGE_END, or STAGE_TRANSITION)
+    const isActiveMatch = this.state.matchState === MatchState.PLAYING
+      || this.state.matchState === MatchState.STAGE_END
+      || this.state.matchState === MatchState.STAGE_TRANSITION;
+
     // If consented (intentional leave), handle based on match state
     if (consented) {
       console.log(`Player left (consented): ${client.sessionId}`);
 
-      if (this.state.matchState === MatchState.PLAYING) {
+      if (isActiveMatch) {
         // During active match: show disconnect state briefly before removing
         // This gives clients time to render the ghosted state
         this.clock.setTimeout(() => {
           this.state.players.delete(client.sessionId);
-          this.checkWinConditions();
+          // Only check win conditions if we're still in PLAYING state
+          if (this.state.matchState === MatchState.PLAYING) {
+            this.checkWinConditions();
+          }
         }, 2000);
       } else {
         // Not in active match: remove immediately
@@ -272,8 +312,8 @@ export class GameRoom extends Room<GameState> {
     }
 
     // Non-consented leave: handle reconnection based on match state
-    if (this.state.matchState === MatchState.PLAYING) {
-      // Active match: allow reconnection with grace period
+    if (isActiveMatch) {
+      // Active match (including between stages): allow reconnection with grace period
       console.log(`Player disconnected during match: ${client.sessionId}, grace period: ${LOBBY_CONFIG.MATCH_RECONNECT_GRACE}s`);
 
       try {
@@ -294,11 +334,13 @@ export class GameRoom extends Room<GameState> {
         this.state.players.delete(client.sessionId);
         // Keep stats for display
 
-        // Check win conditions after grace period expiration
-        this.checkWinConditions();
+        // Check win conditions after grace period expiration (only during PLAYING)
+        if (this.state.matchState === MatchState.PLAYING) {
+          this.checkWinConditions();
+        }
       }
     } else {
-      // Not in active match (WAITING or ENDED): no point reconnecting
+      // Not in active match (WAITING or ENDED/MATCH_END): no point reconnecting
       console.log(`Player left during ${this.state.matchState}: ${client.sessionId}`);
       this.state.players.delete(client.sessionId);
     }
@@ -346,7 +388,8 @@ export class GameRoom extends Room<GameState> {
   fixedTick(deltaTime: number) {
     // Guard: only run game logic during PLAYING state
     if (this.state.matchState !== MatchState.PLAYING) {
-      // Still increment serverTime during WAITING (needed for matchStartTime comparison)
+      // Still increment serverTime during non-PLAYING states
+      // (needed for matchStartTime comparison, stage transition timing, etc.)
       this.state.serverTime += deltaTime;
       return;
     }
@@ -358,8 +401,9 @@ export class GameRoom extends Room<GameState> {
     this.state.serverTime += deltaTime;
 
     // Match timer: guardians win if time runs out (forces aggressive Paran play)
+    // Timer resets per stage via matchStartTime reset in startStage()
     if (this.state.serverTime - this.state.matchStartTime >= MATCH_DURATION_MS) {
-      this.endMatch("guardians");
+      this.endStage("guardians");
       return;
     }
 
@@ -580,6 +624,7 @@ export class GameRoom extends Room<GameState> {
   private startMatch() {
     this.state.matchState = MatchState.PLAYING;
     this.state.matchStartTime = this.state.serverTime;
+    this.matchStartEpoch = this.state.serverTime; // Track overall match start
     this.lock(); // Prevent additional joins
     this.broadcast("matchStart", { startTime: this.state.matchStartTime });
     console.log("Match started!");
@@ -591,20 +636,171 @@ export class GameRoom extends Room<GameState> {
     const aliveGuardians = players.filter(p => p.role !== "paran" && p.health > 0);
 
     if (!aliveParan) {
-      this.endMatch("guardians");
+      this.endStage("guardians");
     } else if (aliveGuardians.length === 0) {
-      this.endMatch("paran");
+      this.endStage("paran");
     }
   }
 
-  private endMatch(winner: string) {
+  /**
+   * End the current stage. Snapshots stats, increments win count,
+   * checks for match winner, and either transitions to next stage or ends match.
+   */
+  private endStage(stageWinner: string) {
     // Drain all input queues
     this.state.players.forEach(p => { p.inputQueue = []; });
 
-    // Set winner
-    this.state.winner = winner;
+    // Take a StageSnapshot: capture cumulative stats at this point
+    const stageDuration = this.state.serverTime - this.state.matchStartTime;
+    const stageStats: StageSnapshot['stats'] = {};
+    this.state.matchStats.forEach((playerStats, sessionId) => {
+      stageStats[sessionId] = {
+        kills: playerStats.kills,
+        deaths: playerStats.deaths,
+        damageDealt: playerStats.damageDealt,
+        shotsFired: playerStats.shotsFired,
+        shotsHit: playerStats.shotsHit,
+      };
+    });
 
-    // Serialize stats for broadcast (client can also read from matchStats, but broadcast provides clean object)
+    this.stageSnapshots.push({
+      stageNumber: this.state.currentStage,
+      arenaName: this.mapMetadata.displayName,
+      winner: stageWinner,
+      duration: stageDuration,
+      stats: stageStats,
+    });
+
+    // Increment stage win count
+    if (stageWinner === "paran") {
+      this.state.paranStageWins++;
+    } else {
+      this.state.guardianStageWins++;
+    }
+
+    console.log(`Stage ${this.state.currentStage} ended! Winner: ${stageWinner} (Paran ${this.state.paranStageWins} - ${this.state.guardianStageWins} Guardians)`);
+
+    // Check for match winner (best of 3: first to 2 wins)
+    if (this.state.paranStageWins >= 2 || this.state.guardianStageWins >= 2) {
+      this.endMatch(stageWinner);
+      return;
+    }
+
+    // No match winner yet -- transition to next stage
+    this.state.matchState = MatchState.STAGE_END;
+
+    // Broadcast stage result
+    this.broadcast("stageEnd", {
+      stageWinner,
+      stageNumber: this.state.currentStage,
+      paranWins: this.state.paranStageWins,
+      guardianWins: this.state.guardianStageWins,
+    });
+
+    // After 2s pause, begin transition to next stage
+    this.clock.setTimeout(() => {
+      this.beginStageTransition();
+    }, 2000);
+  }
+
+  /**
+   * Begin transition to the next stage: reset state, load new map, notify clients.
+   */
+  private beginStageTransition() {
+    this.state.matchState = MatchState.STAGE_TRANSITION;
+    this.state.currentStage++;
+
+    // Get next arena from pre-selected list
+    const nextMap = this.stageArenas[this.state.currentStage - 1];
+
+    // Reset all game entities and load new map
+    this.resetStage(nextMap);
+
+    // Broadcast transition info for client overlay
+    this.broadcast("stageTransition", {
+      stageNumber: this.state.currentStage,
+      arenaName: nextMap.displayName,
+      mapName: nextMap.name,
+      paranWins: this.state.paranStageWins,
+      guardianWins: this.state.guardianStageWins,
+    });
+
+    console.log(`Stage transition: loading ${nextMap.displayName} for stage ${this.state.currentStage}`);
+
+    // After 4s (client loads new map + shows intro), start next stage
+    this.clock.setTimeout(() => {
+      this.startStage();
+    }, 4000);
+  }
+
+  /**
+   * Reset all game state between stages following Colyseus 0.15 safe patterns.
+   * NEVER uses .clear() on ArraySchema or MapSchema.
+   * NEVER deletes/re-adds players (resets in-place).
+   */
+  private resetStage(newMap: MapMetadata) {
+    // 1. Clear projectiles: pop individually (NOT .clear() -- Colyseus 0.15 bug)
+    while (this.state.projectiles.length > 0) {
+      this.state.projectiles.pop();
+    }
+
+    // 2. Clear obstacles: collect keys first, then delete individually (NOT .clear())
+    const obstacleKeys: string[] = [];
+    this.state.obstacles.forEach((_, key) => obstacleKeys.push(key));
+    for (const key of obstacleKeys) {
+      this.state.obstacles.delete(key);
+    }
+
+    // 3. Reset players IN-PLACE (do NOT delete/re-add -- preserves client listeners)
+    this.state.players.forEach((player) => {
+      const stats = CHARACTERS[player.role];
+      player.health = stats.maxHealth;
+      player.vx = 0;
+      player.vy = 0;
+      player.inputQueue = [];
+      player.lastFireTime = 0;
+      player.lastProcessedSeq = 0;
+      player.connected = true; // Re-confirm connection status
+      // Set spawn position for new map
+      this.setSpawnPosition(player, player.role);
+    });
+
+    // Note: matchStats accumulate across stages (per research recommendation).
+    // StageSnapshot already captured cumulative stats at stage end.
+    // Victory screen can diff consecutive snapshots to show per-stage deltas.
+
+    // 4. Load new map (collision grid + obstacles + mapName)
+    this.loadMap(newMap);
+
+    // 5. Reset winner field (stage winner is in stageSnapshots, not schema)
+    this.state.winner = "";
+  }
+
+  /**
+   * Start a new stage: set PLAYING, reset timer, notify clients.
+   */
+  private startStage() {
+    this.state.matchState = MatchState.PLAYING;
+    // Each stage gets a fresh 5-minute timer
+    this.state.matchStartTime = this.state.serverTime;
+
+    this.broadcast("stageStart", {
+      stageNumber: this.state.currentStage,
+      startTime: this.state.serverTime,
+    });
+
+    console.log(`Stage ${this.state.currentStage} started!`);
+  }
+
+  /**
+   * End the entire best-of-3 match. Called when one side reaches 2 stage wins.
+   * Broadcasts comprehensive match results including per-stage breakdown.
+   */
+  private endMatch(matchWinner: string) {
+    // Set winner
+    this.state.winner = matchWinner;
+
+    // Serialize cumulative stats for broadcast
     const stats: Record<string, any> = {};
     this.state.matchStats.forEach((playerStats, sessionId) => {
       const player = this.state.players.get(sessionId);
@@ -622,18 +818,22 @@ export class GameRoom extends Room<GameState> {
       };
     });
 
-    // Broadcast final stats
+    // Calculate total match duration from all stage snapshots
+    const totalDuration = this.stageSnapshots.reduce((sum, s) => sum + s.duration, 0);
+
+    // Broadcast final match results with per-stage breakdown
     this.broadcast("matchEnd", {
-      winner,
+      winner: matchWinner,
       stats,
-      duration: this.state.serverTime - this.state.matchStartTime
+      stageResults: this.stageSnapshots,
+      duration: totalDuration,
     });
 
-    // Set match state to ENDED (triggers client scene transitions)
-    this.state.matchState = MatchState.ENDED;
+    // Set match state to MATCH_END (new terminal state for best-of-3)
+    this.state.matchState = MatchState.MATCH_END;
     this.state.matchEndTime = this.state.serverTime;
 
-    console.log(`Match ended! Winner: ${winner}`);
+    console.log(`Match ended! Winner: ${matchWinner} (Paran ${this.state.paranStageWins} - ${this.state.guardianStageWins} Guardians, ${this.stageSnapshots.length} stages played)`);
 
     // Auto-disconnect after 15 seconds (gives time to view stats)
     this.clock.setTimeout(() => {
