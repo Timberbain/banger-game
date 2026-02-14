@@ -6,7 +6,19 @@ import { ObstacleState } from "./Obstacle";
 export enum MatchState {
   WAITING = "waiting",
   PLAYING = "playing",
-  ENDED = "ended"
+  ENDED = "ended",
+  STAGE_END = "stage_end",
+  STAGE_TRANSITION = "stage_transition",
+  MATCH_END = "match_end"
+}
+
+// Server-only: not synced via Schema. Captures per-stage stats for victory screen breakdown.
+export interface StageSnapshot {
+  stageNumber: number;
+  arenaName: string;
+  winner: string;
+  duration: number;
+  stats: Record<string, { kills: number; deaths: number; damageDealt: number; shotsFired: number; shotsHit: number }>;
 }
 
 export class PlayerStats extends Schema {
@@ -46,4 +58,9 @@ export class GameState extends Schema {
   @type({ map: PlayerStats }) matchStats = new MapSchema<PlayerStats>();
   @type("string") winner: string = "";
   @type({ map: ObstacleState }) obstacles = new MapSchema<ObstacleState>();
+
+  // Multi-stage round tracking
+  @type("uint8") currentStage: number = 1;
+  @type("uint8") paranStageWins: number = 0;
+  @type("uint8") guardianStageWins: number = 0;
 }
