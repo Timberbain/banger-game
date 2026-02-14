@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 8 -- Arena Overhaul (Complete)
+**Current focus:** Phase 9 -- Multi-Stage Rounds (In Progress)
 
 ## Current Position
 
-Phase: 8 of 12 (Arena Overhaul) -- COMPLETE
-Plan: 5 of 5 in current phase
-Status: Phase Complete
-Last activity: 2026-02-14 -- Completed 08-05 (Auto-Tile Rule Shadowing Fix)
+Phase: 9 of 12 (Multi-Stage Rounds)
+Plan: 1 of 3 in current phase
+Status: Plan 09-01 Complete
+Last activity: 2026-02-14 -- Completed 09-01 (Server Stage Lifecycle)
 
-Progress: [################....] 69% (52/~56 plans est. across v1.0+v2.0)
+Progress: [################....] 71% (53/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -35,6 +35,7 @@ Progress: [################....] 69% (52/~56 plans est. across v1.0+v2.0)
 | 6. UX Polish | 11 | Complete |
 | 7. HD Viewport & Camera | 9 | Complete |
 | 8. Arena Overhaul | 5 | Complete |
+| 9. Multi-Stage Rounds | 3 | In Progress (1/3) |
 
 ## Accumulated Context
 
@@ -76,6 +77,15 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Auto-tile rules need explicit false constraints to prevent subset shadowing in first-match-wins evaluation
 - Rule 46 added for bottom-edge NE-only-inner/NW-false/SE-false gap case
 
+**Phase 9 decisions:**
+- Stats accumulate across stages, not reset -- StageSnapshot captures cumulative state, victory screen diffs for per-stage
+- Arena selection at room creation (onCreate) not match start -- stageArenas[0] needed for initial map loading
+- MATCH_END as new terminal state, ENDED kept for backward compatibility
+- loadMap() extracted as shared method for onCreate and resetStage
+- setSpawnPosition() helper extracted for reuse in onJoin and resetStage
+- onLeave allows reconnection during STAGE_END and STAGE_TRANSITION (active match states)
+- Colyseus 0.15 safe reset: pop() for ArraySchema, iterate+delete for MapSchema, in-place for players
+
 ### Pending Todos
 
 None.
@@ -88,14 +98,14 @@ None.
 ### Blockers/Concerns
 
 - ~~ARENA constant hardcoded in physics.ts, PredictionSystem, GameRoom~~ -- RESOLVED in 07-02 (dynamic bounds)
-- 30+ hardcoded pixel positions across HUD/UI scenes -- Phase 7 must establish viewport-relative pattern
-- Multi-stage state reset without room recreation (session ID issue from v1.0 Phase 5) -- Phase 9 concern
+- ~~30+ hardcoded pixel positions across HUD/UI scenes~~ -- RESOLVED in Phase 7 (viewport-relative)
+- ~~Multi-stage state reset without room recreation (session ID issue from v1.0 Phase 5)~~ -- RESOLVED in 09-01 (in-room reset with safe Colyseus patterns)
 
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-05-PLAN.md (Auto-Tile Rule Shadowing Fix) -- Phase 8 complete
-Next step: Begin Phase 9 (Multi-Stage Rounds)
+Stopped at: Completed 09-01-PLAN.md (Server Stage Lifecycle)
+Next step: Execute 09-02-PLAN.md (Client Stage Transitions)
 
 ---
-*Updated: 2026-02-14 after 08-05 execution*
+*Updated: 2026-02-14 after 09-01 execution*
