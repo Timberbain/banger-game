@@ -85,6 +85,11 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - setSpawnPosition() helper extracted for reuse in onJoin and resetStage
 - onLeave allows reconnection during STAGE_END and STAGE_TRANSITION (active match states)
 - Colyseus 0.15 safe reset: pop() for ArraySchema, iterate+delete for MapSchema, in-place for players
+- Preload all 3 tilesets and tilemaps in BootScene for zero-delay stage transitions
+- Camera fade callback with progress >= 1 for safe tilemap swap during black screen
+- Reuse startMatchOverview() for stage starts (consistent cinematic experience)
+- Controls locked from stageEnd through overview completion (prevents ghost inputs)
+- PredictionSystem.setCollisionGrid accepts null for clean stage reset
 - Consolidated matchState listener in HUDScene for countdown + stage_end + stage_transition
 - Stage breakdown only rendered when stageResults non-empty (backward compatible)
 - VictoryScene falls back to simple winner label when no stageResults available
@@ -107,8 +112,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 09-03-PLAN.md (HUD Round Score & Victory Breakdown)
+Stopped at: Completed 09-02-PLAN.md (Client Stage Transitions)
 Next step: Phase 9 complete. Proceed to Phase 10.
 
 ---
-*Updated: 2026-02-14 after 09-03 execution*
+*Updated: 2026-02-14 after 09-02 execution*
