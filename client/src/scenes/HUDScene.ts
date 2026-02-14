@@ -74,6 +74,10 @@ export class HUDScene extends Phaser.Scene {
   // Match countdown
   private countdownText: Phaser.GameObjects.Text | null = null;
 
+  // Round score display
+  private roundScoreText: Phaser.GameObjects.Text | null = null;
+  private stageLabel: Phaser.GameObjects.Text | null = null;
+
   // GameScene reference for cross-scene events
   private gameScene: Phaser.Scene | null = null;
 
@@ -110,6 +114,8 @@ export class HUDScene extends Phaser.Scene {
     this.spectatorTargetName = '';
     this.spectatorTargetRole = '';
     this.countdownText = null;
+    this.roundScoreText = null;
+    this.stageLabel = null;
     this.gameScene = null;
 
     // Transparent background so GameScene shows through
@@ -152,6 +158,9 @@ export class HUDScene extends Phaser.Scene {
 
     // 8. Set up match countdown listener
     this.setupMatchCountdown();
+
+    // 9. Create round score display (top center, below timer)
+    this.createRoundScore();
 
     // Cross-scene event listeners
     this.setupCrossSceneEvents();
@@ -649,10 +658,32 @@ export class HUDScene extends Phaser.Scene {
   private setupMatchCountdown(): void {
     if (!this.room) return;
 
-    // Listen for matchState changing to 'playing'
+    // Consolidated matchState listener: handles countdown, stage transitions, and resets
     this.room.state.listen('matchState', (value: string) => {
       if (value === 'playing') {
         this.showMatchStart();
+        // Reset timer flash state for new stage
+        this.isTimerFlashing = false;
+        if (this.timerFlashTimer) {
+          this.timerFlashTimer.destroy();
+          this.timerFlashTimer = null;
+        }
+        if (this.timerText) {
+          this.timerText.setColor(Colors.text.primary);
+          this.timerText.setAlpha(1);
+        }
+        // Reset spectator HUD when new stage begins
+        this.hideSpectatorHUD();
+      } else if (value === 'stage_end') {
+        // Stage ended -- keep HUD visible but show stage result briefly
+      } else if (value === 'stage_transition') {
+        // Rebuild health bars (players reset to full health)
+        this.time.delayedCall(200, () => this.rebuildHealthBars());
+        // Reset low health flash timers
+        for (const timer of this.lowHealthFlashTimers.values()) {
+          timer.destroy();
+        }
+        this.lowHealthFlashTimers.clear();
       }
     });
   }
@@ -680,6 +711,57 @@ export class HUDScene extends Phaser.Scene {
         }
       },
     });
+  }
+
+  // =====================
+  // 9. ROUND SCORE DISPLAY
+  // =====================
+
+  private createRoundScore(): void {
+    if (!this.room) return;
+
+    // Stage label: "Stage 1" above the score
+    this.stageLabel = this.add.text(this.W * 0.5, this.H * 0.06, 'Stage 1', {
+      fontSize: '12px',
+      color: Colors.text.secondary,
+      fontFamily: 'monospace',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this.stageLabel.setOrigin(0.5, 0.5);
+    this.stageLabel.setDepth(200);
+
+    // Score text: "0 - 0" below the timer
+    this.roundScoreText = this.add.text(this.W * 0.5, this.H * 0.09, '0 - 0', {
+      fontSize: '16px',
+      color: Colors.gold.primary,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    this.roundScoreText.setOrigin(0.5, 0.5);
+    this.roundScoreText.setDepth(200);
+
+    // Listen for schema changes on stage wins
+    this.room.state.listen("paranStageWins", (value: number) => {
+      this.updateRoundScore();
+    });
+    this.room.state.listen("guardianStageWins", (value: number) => {
+      this.updateRoundScore();
+    });
+    this.room.state.listen("currentStage", (value: number) => {
+      if (this.stageLabel) {
+        this.stageLabel.setText(`Stage ${value}`);
+      }
+    });
+  }
+
+  private updateRoundScore(): void {
+    if (!this.roundScoreText || !this.room) return;
+    const paranWins = this.room.state.paranStageWins || 0;
+    const guardianWins = this.room.state.guardianStageWins || 0;
+    this.roundScoreText.setText(`${paranWins} - ${guardianWins}`);
   }
 
   // =====================
