@@ -110,12 +110,13 @@ Plans:
   3. Speed boost, invincibility, and larger projectile hitbox each produce a distinct, observable gameplay effect
   4. The HUD shows which powerup is active on the player with a visible countdown indicator for remaining duration
   5. Powerups are cleared between stages and spawn fresh each stage
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
-- [ ] 10-03: TBD
+- [ ] 10-01-PLAN.md -- Shared powerup constants, Schema definitions, server spawn/collection/buff/stage-cleanup
+- [ ] 10-02-PLAN.md -- Client asset preloading (potion sprites), SFX definitions, ParticleFactory aura methods
+- [ ] 10-03-PLAN.md -- Server buff gameplay effects (speed/invincibility/projectile/beam) + client prediction sync
+- [ ] 10-04-PLAN.md -- GameScene powerup rendering + HUD buff indicators + kill feed + beam visuals
 
 ### Phase 11: Minimap & Music
 **Goal**: Players have global arena awareness via a minimap overlay and matches have atmosphere through looping music with smooth transitions
@@ -161,10 +162,10 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 7. HD Viewport & Camera | v2.0 | 9/9 | Complete | 2026-02-13 |
 | 8. Arena Overhaul | v2.0 | 5/5 | Complete | 2026-02-14 |
 | 9. Multi-Stage Rounds | v2.0 | 4/5 | Gap closure | - |
-| 10. Powerup System | v2.0 | 0/TBD | Not started | - |
+| 10. Powerup System | v2.0 | 0/4 | Planned | - |
 | 11. Minimap & Music | v2.0 | 0/TBD | Not started | - |
 | 12. HUD Icon Overhaul | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-16 (Phase 9 gap closure round 2 planned)*
+*Last updated: 2026-02-16 (Phase 10 planned: 4 plans in 3 waves)*
