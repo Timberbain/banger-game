@@ -87,6 +87,8 @@ export class GameRoom extends Room<GameState> {
     const mapJson = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
     const wallLayer = mapJson.layers.find((l: any) => l.name === 'Walls');
 
+    const collisionShapes = mapJson.tilesets?.[0]?.properties?.collisionShapes || {};
+
     this.collisionGrid = new CollisionGrid(
       wallLayer.data,
       mapJson.width,
@@ -94,6 +96,7 @@ export class GameRoom extends Room<GameState> {
       mapJson.tilewidth,
       OBSTACLE_TILE_IDS.destructible,
       OBSTACLE_TILE_IDS.indestructible,
+      collisionShapes,
     );
 
     // Initialize destructible obstacles in state for client sync
@@ -623,9 +626,9 @@ export class GameRoom extends Room<GameState> {
         continue;
       }
 
-      // Tile/obstacle collision check (replaces old bounds check)
+      // Tile/obstacle collision check: use sub-rect precision for projectile-vs-wall
       const projTile = this.collisionGrid.worldToTile(proj.x, proj.y);
-      if (this.collisionGrid.isSolid(projTile.tileX, projTile.tileY)) {
+      if (this.collisionGrid.isPointInSolidRect(proj.x, proj.y)) {
         // Check if destructible obstacle -- damage it
         const obsKey = `${projTile.tileX},${projTile.tileY}`;
         const obs = this.state.obstacles.get(obsKey);
