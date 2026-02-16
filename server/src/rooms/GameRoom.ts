@@ -1,16 +1,16 @@
-import { Room, Client } from "colyseus";
-import { GameState, Player, MatchState, PlayerStats, StageSnapshot } from "../schema/GameState";
-import { Projectile } from "../schema/Projectile";
-import { ObstacleState } from "../schema/Obstacle";
-import { SERVER_CONFIG, GAME_CONFIG } from "../config";
-import { applyMovementPhysics, updateFacingDirection, PHYSICS } from "../../../shared/physics";
-import { CHARACTERS, COMBAT } from "../../../shared/characters";
-import { MAPS, MapMetadata } from "../../../shared/maps";
-import { LOBBY_CONFIG } from "../../../shared/lobby";
-import { CollisionGrid, resolveCollisions } from "../../../shared/collisionGrid";
-import { OBSTACLE_TILE_IDS, OBSTACLE_TIER_HP } from "../../../shared/obstacles";
-import * as fs from "fs";
-import * as path from "path";
+import { Room, Client } from 'colyseus';
+import { GameState, Player, MatchState, PlayerStats, StageSnapshot } from '../schema/GameState';
+import { Projectile } from '../schema/Projectile';
+import { ObstacleState } from '../schema/Obstacle';
+import { SERVER_CONFIG, GAME_CONFIG } from '../config';
+import { applyMovementPhysics, updateFacingDirection, PHYSICS } from '../../../shared/physics';
+import { CHARACTERS, COMBAT } from '../../../shared/characters';
+import { MAPS, MapMetadata } from '../../../shared/maps';
+import { LOBBY_CONFIG } from '../../../shared/lobby';
+import { CollisionGrid, resolveCollisions } from '../../../shared/collisionGrid';
+import { OBSTACLE_TILE_IDS, OBSTACLE_TIER_HP } from '../../../shared/obstacles';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const MATCH_DURATION_MS = 5 * 60 * 1000; // 5 minutes per stage -- guardians win on timeout
 
@@ -74,8 +74,8 @@ export class GameRoom extends Room<GameState> {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    this.stageArenas = indices.map(i => MAPS[i]);
-    console.log(`Stage arenas selected: ${this.stageArenas.map(m => m.displayName).join(', ')}`);
+    this.stageArenas = indices.map((i) => MAPS[i]);
+    console.log(`Stage arenas selected: ${this.stageArenas.map((m) => m.displayName).join(', ')}`);
   }
 
   /**
@@ -93,7 +93,7 @@ export class GameRoom extends Room<GameState> {
       mapJson.height,
       mapJson.tilewidth,
       OBSTACLE_TILE_IDS.destructible,
-      OBSTACLE_TILE_IDS.indestructible
+      OBSTACLE_TILE_IDS.indestructible,
     );
 
     // Initialize destructible obstacles in state for client sync
@@ -116,7 +116,9 @@ export class GameRoom extends Room<GameState> {
     this.mapMetadata = mapMeta;
     this.state.mapName = mapMeta.name;
 
-    console.log(`Map loaded: ${mapMeta.displayName} (${mapJson.width}x${mapJson.height} tiles, ${obstacleCount} destructible obstacles)`);
+    console.log(
+      `Map loaded: ${mapMeta.displayName} (${mapJson.width}x${mapJson.height} tiles, ${obstacleCount} destructible obstacles)`,
+    );
   }
 
   onCreate(options: any) {
@@ -128,7 +130,7 @@ export class GameRoom extends Room<GameState> {
     // Store role assignments if from lobby
     if (options.fromLobby && options.roleAssignments) {
       this.roleAssignments = options.roleAssignments;
-      console.log("GameRoom created from lobby with role assignments:", this.roleAssignments);
+      console.log('GameRoom created from lobby with role assignments:', this.roleAssignments);
     }
 
     // Select 3 unique arenas for the best-of-3 match
@@ -153,7 +155,7 @@ export class GameRoom extends Room<GameState> {
     });
 
     // Register message handler for input queueing
-    this.onMessage("input", (client, message) => {
+    this.onMessage('input', (client, message) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
@@ -199,7 +201,7 @@ export class GameRoom extends Room<GameState> {
     let role: string;
 
     // If client sends role from lobby, use it (with validation)
-    if (options?.role && ["paran", "faran", "baran"].includes(options.role)) {
+    if (options?.role && ['paran', 'faran', 'baran'].includes(options.role)) {
       role = options.role;
     } else if (this.roleAssignments && this.roleAssignments[client.sessionId]) {
       // Fallback to roleAssignments lookup (unlikely to match but kept for safety)
@@ -208,11 +210,11 @@ export class GameRoom extends Room<GameState> {
       // Final fallback: assign by join order (backward compatibility for direct joins)
       const playerCount = this.state.players.size;
       if (playerCount === 0) {
-        role = "paran";
+        role = 'paran';
       } else if (playerCount === 1) {
-        role = "faran";
+        role = 'faran';
       } else {
-        role = "baran";
+        role = 'baran';
       }
     }
 
@@ -224,9 +226,11 @@ export class GameRoom extends Room<GameState> {
     if (roleTaken) {
       // Assign first available role
       const takenRoles = new Set<string>();
-      this.state.players.forEach((p) => { takenRoles.add(p.role); });
-      const availableRoles = ["paran", "faran", "baran"].filter(r => !takenRoles.has(r));
-      role = availableRoles[0] || "baran";
+      this.state.players.forEach((p) => {
+        takenRoles.add(p.role);
+      });
+      const availableRoles = ['paran', 'faran', 'baran'].filter((r) => !takenRoles.has(r));
+      role = availableRoles[0] || 'baran';
     }
 
     // Set spawn position based on role
@@ -249,7 +253,9 @@ export class GameRoom extends Room<GameState> {
 
     this.state.players.set(client.sessionId, player);
 
-    console.log(`Player joined: ${client.sessionId} (${player.name}) as ${role} with ${stats.maxHealth} health`);
+    console.log(
+      `Player joined: ${client.sessionId} (${player.name}) as ${role} with ${stats.maxHealth} health`,
+    );
 
     // Start match when all players have joined
     if (this.state.players.size === this.maxClients) {
@@ -261,15 +267,80 @@ export class GameRoom extends Room<GameState> {
    * Set spawn position for a player based on their role and current map metadata.
    */
   private setSpawnPosition(player: Player, role: string): void {
-    if (role === "paran") {
+    if (role === 'paran') {
       player.x = this.mapMetadata.spawnPoints.paran.x;
       player.y = this.mapMetadata.spawnPoints.paran.y;
-    } else if (role === "faran") {
+    } else if (role === 'faran') {
       player.x = this.mapMetadata.spawnPoints.guardians[0].x;
       player.y = this.mapMetadata.spawnPoints.guardians[0].y;
     } else {
       player.x = this.mapMetadata.spawnPoints.guardians[1].x;
       player.y = this.mapMetadata.spawnPoints.guardians[1].y;
+    }
+
+    // Validate spawn position against collision grid (only available after loadMap)
+    if (this.collisionGrid) {
+      const radius = 12; // Player collision radius (half of 24px hitbox)
+      const tileSize = this.collisionGrid.tileSize;
+
+      // Check all tiles the player's AABB overlaps
+      const left = Math.floor((player.x - radius) / tileSize);
+      const right = Math.floor((player.x + radius) / tileSize);
+      const top = Math.floor((player.y - radius) / tileSize);
+      const bottom = Math.floor((player.y + radius) / tileSize);
+
+      let isBlocked = false;
+      for (let ty = top; ty <= bottom; ty++) {
+        for (let tx = left; tx <= right; tx++) {
+          if (this.collisionGrid.isSolid(tx, ty)) {
+            isBlocked = true;
+            break;
+          }
+        }
+        if (isBlocked) break;
+      }
+
+      if (isBlocked) {
+        console.warn(
+          `Spawn position (${player.x}, ${player.y}) for ${role} is inside a wall! Nudging to safe position.`,
+        );
+        // Nudge by one tile in each direction until clear
+        const offsets = [
+          [0, 0],
+          [32, 0],
+          [-32, 0],
+          [0, 32],
+          [0, -32],
+          [32, 32],
+          [-32, -32],
+          [32, -32],
+          [-32, 32],
+        ];
+        for (const [dx, dy] of offsets) {
+          const testX = player.x + dx;
+          const testY = player.y + dy;
+          const tl = Math.floor((testX - radius) / tileSize);
+          const tr = Math.floor((testX + radius) / tileSize);
+          const tt = Math.floor((testY - radius) / tileSize);
+          const tb = Math.floor((testY + radius) / tileSize);
+          let clear = true;
+          for (let ty = tt; ty <= tb; ty++) {
+            for (let tx = tl; tx <= tr; tx++) {
+              if (this.collisionGrid.isSolid(tx, ty)) {
+                clear = false;
+                break;
+              }
+            }
+            if (!clear) break;
+          }
+          if (clear) {
+            player.x = testX;
+            player.y = testY;
+            console.log(`  Nudged to (${testX}, ${testY})`);
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -286,9 +357,10 @@ export class GameRoom extends Room<GameState> {
     player.connected = false;
 
     // Check if match is in an active state (PLAYING, STAGE_END, or STAGE_TRANSITION)
-    const isActiveMatch = this.state.matchState === MatchState.PLAYING
-      || this.state.matchState === MatchState.STAGE_END
-      || this.state.matchState === MatchState.STAGE_TRANSITION;
+    const isActiveMatch =
+      this.state.matchState === MatchState.PLAYING ||
+      this.state.matchState === MatchState.STAGE_END ||
+      this.state.matchState === MatchState.STAGE_TRANSITION;
 
     // If consented (intentional leave), handle based on match state
     if (consented) {
@@ -314,7 +386,9 @@ export class GameRoom extends Room<GameState> {
     // Non-consented leave: handle reconnection based on match state
     if (isActiveMatch) {
       // Active match (including between stages): allow reconnection with grace period
-      console.log(`Player disconnected during match: ${client.sessionId}, grace period: ${LOBBY_CONFIG.MATCH_RECONNECT_GRACE}s`);
+      console.log(
+        `Player disconnected during match: ${client.sessionId}, grace period: ${LOBBY_CONFIG.MATCH_RECONNECT_GRACE}s`,
+      );
 
       try {
         await this.allowReconnection(client, LOBBY_CONFIG.MATCH_RECONNECT_GRACE);
@@ -403,7 +477,7 @@ export class GameRoom extends Room<GameState> {
     // Match timer: guardians win if time runs out (forces aggressive Paran play)
     // Timer resets per stage via matchStartTime reset in startStage()
     if (this.state.serverTime - this.state.matchStartTime >= MATCH_DURATION_MS) {
-      this.endStage("guardians");
+      this.endStage('guardians');
       return;
     }
 
@@ -497,7 +571,10 @@ export class GameRoom extends Room<GameState> {
     let paranPlayer: Player | null = null;
     let paranId: string = '';
     this.state.players.forEach((p, id) => {
-      if (p.role === 'paran' && p.health > 0) { paranPlayer = p; paranId = id; }
+      if (p.role === 'paran' && p.health > 0) {
+        paranPlayer = p;
+        paranId = id;
+      }
     });
 
     if (paranPlayer) {
@@ -521,7 +598,7 @@ export class GameRoom extends Room<GameState> {
           if (targetStats) targetStats.deaths++;
 
           // Broadcast kill event for HUD kill feed
-          this.broadcast("kill", {
+          this.broadcast('kill', {
             killer: paran.name,
             victim: target.name,
             killerRole: paran.role,
@@ -565,7 +642,12 @@ export class GameRoom extends Room<GameState> {
       }
 
       // Safety bounds check (in case projectile escapes tile grid)
-      if (proj.x < 0 || proj.x > this.mapMetadata.width || proj.y < 0 || proj.y > this.mapMetadata.height) {
+      if (
+        proj.x < 0 ||
+        proj.x > this.mapMetadata.width ||
+        proj.y < 0 ||
+        proj.y > this.mapMetadata.height
+      ) {
         this.state.projectiles.splice(i, 1);
         continue;
       }
@@ -599,10 +681,10 @@ export class GameRoom extends Room<GameState> {
 
               // Broadcast kill event for HUD kill feed
               const shooter = this.state.players.get(proj.ownerId);
-              this.broadcast("kill", {
-                killer: shooter?.name || "Unknown",
+              this.broadcast('kill', {
+                killer: shooter?.name || 'Unknown',
                 victim: target.name,
-                killerRole: shooter?.role || "unknown",
+                killerRole: shooter?.role || 'unknown',
                 victimRole: target.role,
               });
             }
@@ -626,19 +708,19 @@ export class GameRoom extends Room<GameState> {
     this.state.matchStartTime = this.state.serverTime;
     this.matchStartEpoch = this.state.serverTime; // Track overall match start
     this.lock(); // Prevent additional joins
-    this.broadcast("matchStart", { startTime: this.state.matchStartTime });
-    console.log("Match started!");
+    this.broadcast('matchStart', { startTime: this.state.matchStartTime });
+    console.log('Match started!');
   }
 
   private checkWinConditions() {
     const players = Array.from(this.state.players.values());
-    const aliveParan = players.find(p => p.role === "paran" && p.health > 0);
-    const aliveGuardians = players.filter(p => p.role !== "paran" && p.health > 0);
+    const aliveParan = players.find((p) => p.role === 'paran' && p.health > 0);
+    const aliveGuardians = players.filter((p) => p.role !== 'paran' && p.health > 0);
 
     if (!aliveParan) {
-      this.endStage("guardians");
+      this.endStage('guardians');
     } else if (aliveGuardians.length === 0) {
-      this.endStage("paran");
+      this.endStage('paran');
     }
   }
 
@@ -648,7 +730,9 @@ export class GameRoom extends Room<GameState> {
    */
   private endStage(stageWinner: string) {
     // Drain all input queues
-    this.state.players.forEach(p => { p.inputQueue = []; });
+    this.state.players.forEach((p) => {
+      p.inputQueue = [];
+    });
 
     // Take a StageSnapshot: capture cumulative stats at this point
     const stageDuration = this.state.serverTime - this.state.matchStartTime;
@@ -672,13 +756,15 @@ export class GameRoom extends Room<GameState> {
     });
 
     // Increment stage win count
-    if (stageWinner === "paran") {
+    if (stageWinner === 'paran') {
       this.state.paranStageWins++;
     } else {
       this.state.guardianStageWins++;
     }
 
-    console.log(`Stage ${this.state.currentStage} ended! Winner: ${stageWinner} (Paran ${this.state.paranStageWins} - ${this.state.guardianStageWins} Guardians)`);
+    console.log(
+      `Stage ${this.state.currentStage} ended! Winner: ${stageWinner} (Paran ${this.state.paranStageWins} - ${this.state.guardianStageWins} Guardians)`,
+    );
 
     // Check for match winner (best of 3: first to 2 wins)
     if (this.state.paranStageWins >= 2 || this.state.guardianStageWins >= 2) {
@@ -690,7 +776,7 @@ export class GameRoom extends Room<GameState> {
     this.state.matchState = MatchState.STAGE_END;
 
     // Broadcast stage result
-    this.broadcast("stageEnd", {
+    this.broadcast('stageEnd', {
       stageWinner,
       stageNumber: this.state.currentStage,
       paranWins: this.state.paranStageWins,
@@ -705,6 +791,9 @@ export class GameRoom extends Room<GameState> {
 
   /**
    * Begin transition to the next stage: reset state, load new map, notify clients.
+   * Broadcasts stageTransition FIRST so clients start iris wipe immediately,
+   * then delays resetStage by 600ms so player positions don't update until
+   * the client screen is fully obscured.
    */
   private beginStageTransition() {
     this.state.matchState = MatchState.STAGE_TRANSITION;
@@ -713,11 +802,8 @@ export class GameRoom extends Room<GameState> {
     // Get next arena from pre-selected list
     const nextMap = this.stageArenas[this.state.currentStage - 1];
 
-    // Reset all game entities and load new map
-    this.resetStage(nextMap);
-
-    // Broadcast transition info for client overlay
-    this.broadcast("stageTransition", {
+    // Broadcast transition info FIRST -- client starts iris wipe immediately
+    this.broadcast('stageTransition', {
       stageNumber: this.state.currentStage,
       arenaName: nextMap.displayName,
       mapName: nextMap.name,
@@ -725,12 +811,21 @@ export class GameRoom extends Room<GameState> {
       guardianWins: this.state.guardianStageWins,
     });
 
-    console.log(`Stage transition: loading ${nextMap.displayName} for stage ${this.state.currentStage}`);
+    console.log(
+      `Stage transition: loading ${nextMap.displayName} for stage ${this.state.currentStage}`,
+    );
 
-    // After 4s (client loads new map + shows intro), start next stage
+    // Delay resetStage by 600ms so client iris wipe fully closes before
+    // position updates are sent (iris close animation is ~500ms + buffer)
     this.clock.setTimeout(() => {
-      this.startStage();
-    }, 4000);
+      this.resetStage(nextMap);
+
+      // After map is loaded and positions set, wait for client to show intro + open iris
+      // 3400ms so total transition ~4s from client perspective (600ms + 3400ms = 4s)
+      this.clock.setTimeout(() => {
+        this.startStage();
+      }, 3400);
+    }, 600);
   }
 
   /**
@@ -751,7 +846,11 @@ export class GameRoom extends Room<GameState> {
       this.state.obstacles.delete(key);
     }
 
-    // 3. Reset players IN-PLACE (do NOT delete/re-add -- preserves client listeners)
+    // 3. Load new map FIRST (collision grid + obstacles + mapName)
+    // Must be before player reset so collision grid is available for spawn validation
+    this.loadMap(newMap);
+
+    // 4. Reset players IN-PLACE (do NOT delete/re-add -- preserves client listeners)
     this.state.players.forEach((player) => {
       const stats = CHARACTERS[player.role];
       player.health = stats.maxHealth;
@@ -761,7 +860,7 @@ export class GameRoom extends Room<GameState> {
       player.lastFireTime = 0;
       player.lastProcessedSeq = 0;
       player.connected = true; // Re-confirm connection status
-      // Set spawn position for new map
+      // Set spawn position for new map (validated against collision grid)
       this.setSpawnPosition(player, player.role);
     });
 
@@ -769,11 +868,8 @@ export class GameRoom extends Room<GameState> {
     // StageSnapshot already captured cumulative stats at stage end.
     // Victory screen can diff consecutive snapshots to show per-stage deltas.
 
-    // 4. Load new map (collision grid + obstacles + mapName)
-    this.loadMap(newMap);
-
     // 5. Reset winner field (stage winner is in stageSnapshots, not schema)
-    this.state.winner = "";
+    this.state.winner = '';
   }
 
   /**
@@ -784,7 +880,7 @@ export class GameRoom extends Room<GameState> {
     // Each stage gets a fresh 5-minute timer
     this.state.matchStartTime = this.state.serverTime;
 
-    this.broadcast("stageStart", {
+    this.broadcast('stageStart', {
       stageNumber: this.state.currentStage,
       startTime: this.state.serverTime,
     });
@@ -805,16 +901,17 @@ export class GameRoom extends Room<GameState> {
     this.state.matchStats.forEach((playerStats, sessionId) => {
       const player = this.state.players.get(sessionId);
       stats[sessionId] = {
-        name: player?.name || "Unknown",
-        role: player?.role || "unknown",
+        name: player?.name || 'Unknown',
+        role: player?.role || 'unknown',
         kills: playerStats.kills,
         deaths: playerStats.deaths,
         damageDealt: playerStats.damageDealt,
         shotsFired: playerStats.shotsFired,
         shotsHit: playerStats.shotsHit,
-        accuracy: playerStats.shotsFired > 0
-          ? Math.round(playerStats.shotsHit / playerStats.shotsFired * 1000) / 10
-          : 0
+        accuracy:
+          playerStats.shotsFired > 0
+            ? Math.round((playerStats.shotsHit / playerStats.shotsFired) * 1000) / 10
+            : 0,
       };
     });
 
@@ -822,7 +919,7 @@ export class GameRoom extends Room<GameState> {
     const totalDuration = this.stageSnapshots.reduce((sum, s) => sum + s.duration, 0);
 
     // Broadcast final match results with per-stage breakdown
-    this.broadcast("matchEnd", {
+    this.broadcast('matchEnd', {
       winner: matchWinner,
       stats,
       stageResults: this.stageSnapshots,
@@ -833,7 +930,9 @@ export class GameRoom extends Room<GameState> {
     this.state.matchState = MatchState.MATCH_END;
     this.state.matchEndTime = this.state.serverTime;
 
-    console.log(`Match ended! Winner: ${matchWinner} (Paran ${this.state.paranStageWins} - ${this.state.guardianStageWins} Guardians, ${this.stageSnapshots.length} stages played)`);
+    console.log(
+      `Match ended! Winner: ${matchWinner} (Paran ${this.state.paranStageWins} - ${this.state.guardianStageWins} Guardians, ${this.stageSnapshots.length} stages played)`,
+    );
 
     // Auto-disconnect after 15 seconds (gives time to view stats)
     this.clock.setTimeout(() => {
