@@ -7,11 +7,20 @@
 /** Small offset to prevent exact tile-boundary positions from mapping back into solid tiles via Math.floor */
 const COLLISION_EPSILON = 0.001;
 
+/** Sub-tile collision rectangle: defines the collision-active region within a tile */
+export interface CollisionRect {
+  x: number; // Horizontal offset within tile (pixels, 0-31)
+  y: number; // Vertical offset within tile (pixels, 0-31)
+  w: number; // Width of collision rect (pixels, 1-32)
+  h: number; // Height of collision rect (pixels, 1-32)
+}
+
 /** Information about a single tile in the collision grid */
 export interface TileInfo {
   solid: boolean;
   destructible: boolean;
   tileId: number;
+  collisionRect: CollisionRect;
 }
 
 /** Minimal entity interface for collision resolution */
@@ -47,11 +56,14 @@ export class CollisionGrid {
     mapHeight: number,
     tileSize: number,
     destructibleTileIds: Set<number>,
-    indestructibleTileIds: Set<number>
+    indestructibleTileIds: Set<number>,
+    collisionShapes?: Record<string, { x: number; y: number; w: number; h: number }>,
   ) {
     this.width = mapWidth;
     this.height = mapHeight;
     this.tileSize = tileSize;
+
+    const fullTile: CollisionRect = { x: 0, y: 0, w: tileSize, h: tileSize };
 
     // Build 2D grid from flat wall layer data
     this.grid = [];
@@ -61,10 +73,22 @@ export class CollisionGrid {
         const tileId = wallLayerData[row * mapWidth + col];
         const isDestructible = destructibleTileIds.has(tileId);
         const isIndestructible = indestructibleTileIds.has(tileId);
+        const isSolid = isDestructible || isIndestructible;
+
+        // Determine collision sub-rect: use shapes data if available, else full tile
+        let collisionRect: CollisionRect = fullTile;
+        if (isSolid && collisionShapes) {
+          const shape = collisionShapes[String(tileId)];
+          if (shape) {
+            collisionRect = { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
+          }
+        }
+
         this.grid[row][col] = {
-          solid: isDestructible || isIndestructible,
+          solid: isSolid,
           destructible: isDestructible,
           tileId,
+          collisionRect,
         };
       }
     }
@@ -95,6 +119,7 @@ export class CollisionGrid {
       solid: false,
       destructible: false,
       tileId: 0,
+      collisionRect: { x: 0, y: 0, w: this.tileSize, h: this.tileSize },
     };
   }
 
@@ -104,6 +129,28 @@ export class CollisionGrid {
       tileX: Math.floor(worldX / this.tileSize),
       tileY: Math.floor(worldY / this.tileSize),
     };
+  }
+
+  /** Returns true if a world-space point falls inside a solid tile's collision sub-rect */
+  isPointInSolidRect(worldX: number, worldY: number): boolean {
+    const tileX = Math.floor(worldX / this.tileSize);
+    const tileY = Math.floor(worldY / this.tileSize);
+
+    // Out of bounds = solid (full tile, point is always "inside")
+    if (tileX < 0 || tileX >= this.width || tileY < 0 || tileY >= this.height) {
+      return true;
+    }
+
+    const info = this.grid[tileY][tileX];
+    if (!info.solid) return false;
+
+    const rect = info.collisionRect;
+    const localX = worldX - tileX * this.tileSize;
+    const localY = worldY - tileY * this.tileSize;
+
+    return (
+      localX >= rect.x && localX < rect.x + rect.w && localY >= rect.y && localY < rect.y + rect.h
+    );
   }
 }
 
@@ -125,7 +172,7 @@ export function resolveCollisions(
   radius: number,
   grid: CollisionGrid,
   prevX: number,
-  prevY: number
+  prevY: number,
 ): CollisionResult {
   let hitX = false;
   let hitY = false;
@@ -147,16 +194,32 @@ export function resolveCollisions(
     for (let ty = tileTop; ty <= tileBottom; ty++) {
       for (let tx = tileLeft; tx <= tileRight; tx++) {
         if (grid.isSolid(tx, ty)) {
-          hitX = true;
-          hitTiles.push({ tileX: tx, tileY: ty });
+          // Get sub-rect collision bounds (OOB tiles get full-tile rect)
+          const info = grid.getTileInfo(tx, ty);
+          const rect = info?.collisionRect || { x: 0, y: 0, w: tileSize, h: tileSize };
 
-          // Push entity out based on movement direction
-          if (entity.x > prevX) {
-            // Moving right: push to left edge of solid tile, minus epsilon to avoid boundary re-collision
-            entity.x = tx * tileSize - radius - COLLISION_EPSILON;
-          } else if (entity.x < prevX) {
-            // Moving left: push to right edge of tile
-            entity.x = (tx + 1) * tileSize + radius;
+          // Sub-rect world bounds
+          const rectLeft = tx * tileSize + rect.x;
+          const rectRight = tx * tileSize + rect.x + rect.w;
+          const rectTop = ty * tileSize + rect.y;
+          const rectBottom = ty * tileSize + rect.y + rect.h;
+
+          // Narrow phase: entity AABB vs sub-rect AABB
+          // For X pass, use prevY for vertical extent (axis separation)
+          const eLeft = entity.x - radius;
+          const eRight = entity.x + radius;
+          const eTop = prevY - radius;
+          const eBottom = prevY + radius;
+
+          if (eRight > rectLeft && eLeft < rectRight && eBottom > rectTop && eTop < rectBottom) {
+            hitX = true;
+            hitTiles.push({ tileX: tx, tileY: ty });
+
+            if (entity.x > prevX) {
+              entity.x = rectLeft - radius - COLLISION_EPSILON;
+            } else if (entity.x < prevX) {
+              entity.x = rectRight + radius;
+            }
           }
         }
       }
@@ -178,16 +241,31 @@ export function resolveCollisions(
     for (let ty = tileTop; ty <= tileBottom; ty++) {
       for (let tx = tileLeft; tx <= tileRight; tx++) {
         if (grid.isSolid(tx, ty)) {
-          hitY = true;
-          hitTiles.push({ tileX: tx, tileY: ty });
+          // Get sub-rect collision bounds (OOB tiles get full-tile rect)
+          const info = grid.getTileInfo(tx, ty);
+          const rect = info?.collisionRect || { x: 0, y: 0, w: tileSize, h: tileSize };
 
-          // Push entity out based on movement direction
-          if (entity.y > prevY) {
-            // Moving down: push to top edge of solid tile, minus epsilon to avoid boundary re-collision
-            entity.y = ty * tileSize - radius - COLLISION_EPSILON;
-          } else if (entity.y < prevY) {
-            // Moving up: push to bottom edge of tile
-            entity.y = (ty + 1) * tileSize + radius;
+          // Sub-rect world bounds
+          const rectLeft = tx * tileSize + rect.x;
+          const rectRight = tx * tileSize + rect.x + rect.w;
+          const rectTop = ty * tileSize + rect.y;
+          const rectBottom = ty * tileSize + rect.y + rect.h;
+
+          // For Y pass, use resolved entity.x for horizontal extent
+          const eLeft = entity.x - radius;
+          const eRight = entity.x + radius;
+          const eTop = entity.y - radius;
+          const eBottom = entity.y + radius;
+
+          if (eRight > rectLeft && eLeft < rectRight && eBottom > rectTop && eTop < rectBottom) {
+            hitY = true;
+            hitTiles.push({ tileX: tx, tileY: ty });
+
+            if (entity.y > prevY) {
+              entity.y = rectTop - radius - COLLISION_EPSILON;
+            } else if (entity.y < prevY) {
+              entity.y = rectBottom + radius;
+            }
           }
         }
       }
