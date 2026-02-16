@@ -437,8 +437,46 @@ export class GameScene extends Phaser.Scene {
           });
         }
 
+        // Reset spectator state for new stage (safety net -- cleanupStageVisuals already resets,
+        // but the update() loop can re-set isSpectating during the 600ms health reset delay)
+        this.isSpectating = false;
+        this.spectatorTarget = null;
+
         // Allow position updates again (new positions are already set)
         this.inStageTransition = false;
+
+        // Backfill positions from server state -- blocked updates during transition are permanently lost
+        // (Colyseus 0.15 delta patches are sent once, the inStageTransition guard discarded them)
+        if (this.room) {
+          this.room.state.players.forEach((player: any, sessionId: string) => {
+            const sprite = this.playerSprites.get(sessionId);
+            if (!sprite) return;
+
+            const isLocal = sessionId === this.room!.sessionId;
+
+            if (isLocal) {
+              // Snap prediction system to server's current position
+              if (this.prediction) {
+                this.prediction.reset({
+                  x: player.x,
+                  y: player.y,
+                  vx: 0,
+                  vy: 0,
+                  angle: player.angle || 0,
+                });
+              }
+              // Snap sprite directly
+              sprite.setPosition(player.x, player.y);
+            } else {
+              // Snap interpolation system to server's current position (no lerp from old position)
+              if (this.interpolation) {
+                this.interpolation.snapTo(sessionId, player.x, player.y, player.angle || 0);
+              }
+              // Snap sprite directly
+              sprite.setPosition(player.x, player.y);
+            }
+          });
+        }
 
         // Iris OPEN: expand circle from 0 to full size
         if (this.irisShape && this.irisMask) {
@@ -569,7 +607,7 @@ export class GameScene extends Phaser.Scene {
     const isDead = localPlayer && localPlayer.health <= 0;
 
     // Handle spectator mode when dead
-    if (isDead && !this.isSpectating && !this.matchEnded) {
+    if (isDead && !this.isSpectating && !this.matchEnded && !this.inStageTransition) {
       this.isSpectating = true;
 
       // Find closest alive player as initial spectator target
@@ -1466,8 +1504,46 @@ export class GameScene extends Phaser.Scene {
         });
       }
 
+      // Reset spectator state for new stage (safety net -- cleanupStageVisuals already resets,
+      // but the update() loop can re-set isSpectating during the 600ms health reset delay)
+      this.isSpectating = false;
+      this.spectatorTarget = null;
+
       // Allow position updates again
       this.inStageTransition = false;
+
+      // Backfill positions from server state -- blocked updates during transition are permanently lost
+      // (Colyseus 0.15 delta patches are sent once, the inStageTransition guard discarded them)
+      if (this.room) {
+        this.room.state.players.forEach((player: any, sessionId: string) => {
+          const sprite = this.playerSprites.get(sessionId);
+          if (!sprite) return;
+
+          const isLocal = sessionId === this.room!.sessionId;
+
+          if (isLocal) {
+            // Snap prediction system to server's current position
+            if (this.prediction) {
+              this.prediction.reset({
+                x: player.x,
+                y: player.y,
+                vx: 0,
+                vy: 0,
+                angle: player.angle || 0,
+              });
+            }
+            // Snap sprite directly
+            sprite.setPosition(player.x, player.y);
+          } else {
+            // Snap interpolation system to server's current position (no lerp from old position)
+            if (this.interpolation) {
+              this.interpolation.snapTo(sessionId, player.x, player.y, player.angle || 0);
+            }
+            // Snap sprite directly
+            sprite.setPosition(player.x, player.y);
+          }
+        });
+      }
 
       // Iris OPEN: expand circle from 0 to full size
       if (this.irisShape && this.irisMask) {
