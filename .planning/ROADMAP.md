@@ -105,7 +105,7 @@ Plans:
 **Goal:** Replace full-tile AABB collision with sub-tile rectangle collision shapes so players and projectiles collide with the visual edges of walls and obstacles, not invisible tile boundaries
 **Depends on:** Phase 9
 **Requirements:** COLL-MASK-01, COLL-MASK-02, COLL-MASK-03, COLL-MASK-04, COLL-MASK-05
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 09.1-01-PLAN.md -- Auto-derive collision rects from tilesets + embed in map JSONs
