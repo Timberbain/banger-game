@@ -100,6 +100,18 @@ Plans:
 - [x] 09-04-PLAN.md -- Gap closure: iris wipe transition, teleport fix, spawn collision validation
 - [ ] 09-05-PLAN.md -- Gap closure: iris wipe fill color fix, position backfill, isSpectating race condition
 
+### Phase 09.1: Tilemap collision masks for precise wall/obstacle collisions (INSERTED)
+
+**Goal:** Replace full-tile AABB collision with sub-tile rectangle collision shapes so players and projectiles collide with the visual edges of walls and obstacles, not invisible tile boundaries
+**Depends on:** Phase 9
+**Requirements:** COLL-MASK-01, COLL-MASK-02, COLL-MASK-03, COLL-MASK-04, COLL-MASK-05
+**Plans:** 3 plans
+
+Plans:
+- [ ] 09.1-01-PLAN.md -- Auto-derive collision rects from tilesets + embed in map JSONs
+- [ ] 09.1-02-PLAN.md -- CollisionGrid sub-rect resolution algorithm + isPointInSolidRect
+- [ ] 09.1-03-PLAN.md -- Server/client integration + F3 debug visualization overlay
+
 ### Phase 10: Powerup System
 **Goal**: Powerups spawn during gameplay, players collect them on contact, and temporary buffs (speed, invincibility, larger projectiles) add tactical depth to arena combat
 **Depends on**: Phase 9 (powerups integrate with stage lifecycle -- cleared between stages, spawn timers reset)
