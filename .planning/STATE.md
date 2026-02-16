@@ -111,6 +111,7 @@ None.
 
 - v1.0: Phase 05.1 inserted for arena collisions + contact kill
 - v2.0: DISP-05 (zoom transition) assigned to Phase 9 (Multi-Stage Rounds) rather than Phase 7 -- only observable during stage transitions
+- Phase 09.1 inserted after Phase 9: Tilemap collision masks for precise wall/obstacle collisions (URGENT)
 
 ### Blockers/Concerns
 
@@ -121,8 +122,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09-05-PLAN.md (Iris Wipe, Position Backfill, isSpectating Fix)
-Next step: Phase 9 fully complete (all gap closures done). Proceed to Phase 10.
+Stopped at: Phase 09.1 context gathered
+Resume file: .planning/phases/09.1-tilemap-collision-masks-for-precise-wall-obstacle-collisions/09.1-CONTEXT.md
+Next step: Plan and execute Phase 09.1 (Tilemap Collision Masks)
 
 ---
-*Updated: 2026-02-16 after 09-05 execution*
+*Updated: 2026-02-16 after 09.1 context gathering*
