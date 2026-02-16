@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 9 of 12 (Multi-Stage Rounds)
-Plan: 4 of 4 in current phase (gap closure)
-Status: Phase 09 Complete (incl. gap closure)
-Last activity: 2026-02-16 -- Completed 09-04 (Iris Wipe Transition & Spawn Validation)
+Plan: 5 of 5 in current phase (gap closure round 2)
+Status: Phase 09 Complete (incl. all gap closures)
+Last activity: 2026-02-16 -- Completed 09-05 (Iris Wipe, Position Backfill, isSpectating Fix)
 
-Progress: [#################...] 75% (55/~56 plans est. across v1.0+v2.0)
+Progress: [##################..] 76% (56/~56 plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -35,7 +35,7 @@ Progress: [#################...] 75% (55/~56 plans est. across v1.0+v2.0)
 | 6. UX Polish | 11 | Complete |
 | 7. HD Viewport & Camera | 9 | Complete |
 | 8. Arena Overhaul | 5 | Complete |
-| 9. Multi-Stage Rounds | 4 | Complete (incl. gap closure) |
+| 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 
 ## Accumulated Context
 
@@ -98,6 +98,10 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - inStageTransition flag guards handlePlayerChange to prevent visible teleportation
 - loadMap reordered before player reset in resetStage for spawn collision validation
 - Spawn collision validation with 9-offset nudge pattern in setSpawnPosition()
+- Fill color 0xffffff on geometry mask circle triggers isFilled for stencil buffer rendering
+- InterpolationSystem.snapTo() injects two identical snapshots for instant teleport (bypasses lerp)
+- Position backfill in stageStart reads room.state.players directly after dropping inStageTransition guard
+- isSpectating race condition: update() spectator entry guarded with !inStageTransition + safety net reset in stageStart
 
 ### Pending Todos
 
@@ -117,8 +121,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09-04-PLAN.md (Iris Wipe Transition & Spawn Validation)
-Next step: Phase 9 fully complete (incl. gap closure). Proceed to Phase 10.
+Stopped at: Completed 09-05-PLAN.md (Iris Wipe, Position Backfill, isSpectating Fix)
+Next step: Phase 9 fully complete (all gap closures done). Proceed to Phase 10.
 
 ---
-*Updated: 2026-02-16 after 09-04 execution*
+*Updated: 2026-02-16 after 09-05 execution*
