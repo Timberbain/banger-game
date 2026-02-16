@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 09.1 (Tilemap Collision Masks)
-Plan: 2 of N in current phase
-Status: Executing Phase 09.1
-Last activity: 2026-02-16 -- Completed 09.1-02 (CollisionGrid Sub-Rect Collision Support)
+Plan: 3 of 3 in current phase
+Status: Phase 09.1 Complete
+Last activity: 2026-02-16 -- Completed 09.1-03 (Server/Client Collision Shape Integration)
 
 Progress: [##################..] 78% (58/~56+ plans est. across v1.0+v2.0)
 
@@ -36,7 +36,7 @@ Progress: [##################..] 78% (58/~56+ plans est. across v1.0+v2.0)
 | 7. HD Viewport & Camera | 9 | Complete |
 | 8. Arena Overhaul | 5 | Complete |
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
-| 9.1 Tilemap Collision Masks | 2+ | In Progress |
+| 9.1 Tilemap Collision Masks | 3 | Complete |
 
 ## Accumulated Context
 
@@ -108,6 +108,9 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Full-tile fallback when collisionShapes not provided preserves identical behavior at all existing call sites
 - OOB tiles get full-tile rect in resolveCollisions via null-coalescing fallback
 - Broad-phase tile scan range unchanged -- only per-tile overlap test and push-out positions use sub-rects
+- PredictionSystem needs no changes for sub-rect collision -- receives CollisionGrid by reference via setCollisionGrid
+- Debug overlay destroyed on stage transitions and scene reuse to prevent stale visuals
+- F3 debug overlay color coding: red=indestructible, orange=heavy(101), yellow=medium(102), green=light(other)
 
 ### Pending Todos
 
@@ -128,9 +131,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09.1-02-PLAN.md (CollisionGrid Sub-Rect Collision Support)
-Resume file: .planning/phases/09.1-tilemap-collision-masks-for-precise-wall-obstacle-collisions/09.1-02-SUMMARY.md
-Next step: Execute 09.1-03 (wire collision shapes through GameRoom/GameScene)
+Stopped at: Completed 09.1-03-PLAN.md (Server/Client Collision Shape Integration)
+Resume file: .planning/phases/09.1-tilemap-collision-masks-for-precise-wall-obstacle-collisions/09.1-03-SUMMARY.md
+Next step: Phase 09.1 complete -- ready for UAT verification or next phase
 
 ---
-*Updated: 2026-02-16 after completing 09.1-02*
+*Updated: 2026-02-16 after completing 09.1-03*
