@@ -362,7 +362,10 @@ export class GameScene extends Phaser.Scene {
         const maxRadius = Math.sqrt(cx * cx + cy * cy) + 50; // Cover full screen diagonal + margin
 
         // Create circle shape for geometry mask (invisible -- only geometry matters)
-        const irisShape = this.add.circle(cx, cy, maxRadius).setScrollFactor(0).setVisible(false);
+        const irisShape = this.add
+          .circle(cx, cy, maxRadius, 0xffffff)
+          .setScrollFactor(0)
+          .setVisible(false);
         irisShape.setDepth(1000);
         const mask = irisShape.createGeometryMask();
         cam.setMask(mask);
@@ -1391,7 +1394,10 @@ export class GameScene extends Phaser.Scene {
       const cy = cam.height / 2;
       const maxRadius = Math.sqrt(cx * cx + cy * cy) + 50;
 
-      const irisShape = this.add.circle(cx, cy, maxRadius).setScrollFactor(0).setVisible(false);
+      const irisShape = this.add
+        .circle(cx, cy, maxRadius, 0xffffff)
+        .setScrollFactor(0)
+        .setVisible(false);
       irisShape.setDepth(1000);
       const mask = irisShape.createGeometryMask();
       cam.setMask(mask);

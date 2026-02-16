@@ -32,10 +32,20 @@ export class InterpolationSystem {
     this.buffers.delete(sessionId);
   }
 
-  getInterpolatedState(
-    sessionId: string,
-    currentTime: number
-  ): Snapshot | null {
+  /**
+   * Snap a player's interpolation buffer to a specific position.
+   * Used during stage transitions to prevent lerping from old positions.
+   * Clears the buffer and injects a single snapshot at the given position.
+   */
+  snapTo(sessionId: string, x: number, y: number, angle: number): void {
+    const now = Date.now();
+    this.buffers.set(sessionId, [
+      { timestamp: now - 1, x, y, angle },
+      { timestamp: now, x, y, angle },
+    ]);
+  }
+
+  getInterpolatedState(sessionId: string, currentTime: number): Snapshot | null {
     const buffer = this.buffers.get(sessionId);
 
     // Need at least 2 snapshots to interpolate
@@ -51,10 +61,7 @@ export class InterpolationSystem {
     let to: Snapshot | null = null;
 
     for (let i = 0; i < buffer.length - 1; i++) {
-      if (
-        buffer[i].timestamp <= targetTime &&
-        targetTime <= buffer[i + 1].timestamp
-      ) {
+      if (buffer[i].timestamp <= targetTime && targetTime <= buffer[i + 1].timestamp) {
         from = buffer[i];
         to = buffer[i + 1];
         break;
