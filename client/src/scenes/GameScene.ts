@@ -21,9 +21,9 @@ const PROJECTILE_FRAME: Record<string, number> = {
 
 /** Map of map name to tileset key and image path (composite tilesets: 8x14 grid, 112 tiles each) */
 const MAP_TILESET_INFO: Record<string, { key: string; image: string; name: string }> = {
-  hedge_garden:    { key: 'tileset_hedge', image: 'tilesets/arena_hedge.png', name: 'arena_hedge' },
-  brick_fortress:  { key: 'tileset_brick', image: 'tilesets/arena_brick.png', name: 'arena_brick' },
-  timber_yard:     { key: 'tileset_wood',  image: 'tilesets/arena_wood.png',  name: 'arena_wood' },
+  hedge_garden: { key: 'tileset_hedge', image: 'tilesets/arena_hedge.png', name: 'arena_hedge' },
+  brick_fortress: { key: 'tileset_brick', image: 'tilesets/arena_brick.png', name: 'arena_brick' },
+  timber_yard: { key: 'tileset_wood', image: 'tilesets/arena_wood.png', name: 'arena_wood' },
 };
 
 export class GameScene extends Phaser.Scene {
@@ -50,7 +50,12 @@ export class GameScene extends Phaser.Scene {
 
   // Paran cardinal input: track key press order so last-pressed wins
   private directionPressOrder: ('left' | 'right' | 'up' | 'down')[] = [];
-  private prevKeyState: Record<string, boolean> = { left: false, right: false, up: false, down: false };
+  private prevKeyState: Record<string, boolean> = {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+  };
   private localRole: string = '';
 
   // Combat rendering
@@ -72,7 +77,7 @@ export class GameScene extends Phaser.Scene {
   private isSpectating: boolean = false;
   private matchEnded: boolean = false;
   private finalStats: any = null;
-  private matchWinner: string = "";
+  private matchWinner: string = '';
 
   // Audio
   private audioManager: AudioManager | null = null;
@@ -99,6 +104,11 @@ export class GameScene extends Phaser.Scene {
   private overviewActive: boolean = false;
   private mapMetadata: MapMetadata | null = null;
   private pendingOverview: boolean = false;
+
+  // Stage transition iris wipe
+  private inStageTransition: boolean = false;
+  private irisShape: Phaser.GameObjects.Arc | null = null;
+  private irisMask: Phaser.Display.Masks.GeometryMask | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -134,13 +144,15 @@ export class GameScene extends Phaser.Scene {
     this.isSpectating = false;
     this.matchEnded = false;
     this.finalStats = null;
-    this.matchWinner = "";
+    this.matchWinner = '';
     this.playerHealthCache = new Map();
     this.remotePrevPos = new Map();
     this.currentTilesetKey = '';
     this.hudLaunched = false;
     this.lastLocalFireTime = 0;
-    if (this.particleFactory) { this.particleFactory.destroy(); }
+    if (this.particleFactory) {
+      this.particleFactory.destroy();
+    }
     this.particleFactory = null;
     this.prevHealth = new Map();
     this.projectileTrails = new Map();
@@ -149,6 +161,12 @@ export class GameScene extends Phaser.Scene {
     this.overviewActive = false;
     this.mapMetadata = null;
     this.pendingOverview = false;
+    this.inStageTransition = false;
+    if (this.irisShape) {
+      this.irisShape.destroy();
+    }
+    this.irisShape = null;
+    this.irisMask = null;
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -160,7 +178,7 @@ export class GameScene extends Phaser.Scene {
     cam.setRoundPixels(true);
 
     // Get AudioManager from registry (initialized in BootScene)
-    this.audioManager = this.registry.get('audioManager') as AudioManager || null;
+    this.audioManager = (this.registry.get('audioManager') as AudioManager) || null;
 
     // Check if room was provided from LobbyScene
     const providedRoom = data?.room;
@@ -205,16 +223,19 @@ export class GameScene extends Phaser.Scene {
 
       // Store reconnection token
       if (this.room.reconnectionToken) {
-        sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
-          token: this.room.reconnectionToken,
-          timestamp: Date.now()
-        }));
+        sessionStorage.setItem(
+          'bangerActiveRoom',
+          JSON.stringify({
+            token: this.room.reconnectionToken,
+            timestamp: Date.now(),
+          }),
+        );
       }
 
       // Load initial map based on server's mapName (assets preloaded in BootScene)
       this.room.onStateChange.once((state: any) => {
-        const mapName = state.mapName || "hedge_garden";
-        const mapData = MAPS.find(m => m.name === mapName);
+        const mapName = state.mapName || 'hedge_garden';
+        const mapData = MAPS.find((m) => m.name === mapName);
 
         if (!mapData) {
           console.error(`Unknown map: ${mapName}, falling back to hedge_garden`);
@@ -223,7 +244,7 @@ export class GameScene extends Phaser.Scene {
         // Store map metadata for camera bounds and other systems
         this.mapMetadata = mapData || MAPS[0];
 
-        const mapKey = mapData?.name || "hedge_garden";
+        const mapKey = mapData?.name || 'hedge_garden';
 
         console.log(`Loading map: ${mapName}`);
 
@@ -247,7 +268,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Schema-based matchState listener -- sole source of truth for status text
-      this.room.state.listen("matchState", (value: string) => {
+      this.room.state.listen('matchState', (value: string) => {
         if (this.matchEnded) return;
         if (value === 'playing') {
           this.statusText.setText('Match started!');
@@ -276,12 +297,12 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Keep matchStart handler for backward compatibility (Schema listener handles display)
-      this.room.onMessage("matchStart", () => {
+      this.room.onMessage('matchStart', () => {
         console.log('matchStart received (handled by Schema listener)');
       });
 
       // Listen for match end broadcast (includes final stats)
-      this.room.onMessage("matchEnd", (data: any) => {
+      this.room.onMessage('matchEnd', (data: any) => {
         this.finalStats = data.stats;
         this.matchWinner = data.winner;
         this.matchEnded = true;
@@ -303,8 +324,9 @@ export class GameScene extends Phaser.Scene {
         if (this.particleFactory && this.room) {
           const localStats = data.stats[this.room.sessionId];
           const localRole = localStats?.role || '';
-          const didWin = (data.winner === 'paran' && localRole === 'paran') ||
-                         (data.winner === 'guardians' && localRole !== 'paran');
+          const didWin =
+            (data.winner === 'paran' && localRole === 'paran') ||
+            (data.winner === 'guardians' && localRole !== 'paran');
           const burstColor = didWin ? 0x00ff00 : 0xff0000;
           const burstX = this.mapMetadata ? this.mapMetadata.width / 2 : 400;
           const burstY = this.mapMetadata ? this.mapMetadata.height / 2 : 300;
@@ -312,7 +334,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         // Launch victory scene as overlay
-        this.scene.launch("VictoryScene", {
+        this.scene.launch('VictoryScene', {
           winner: data.winner,
           stats: data.stats,
           duration: data.duration,
@@ -325,59 +347,82 @@ export class GameScene extends Phaser.Scene {
         this.scene.pause();
       });
 
-      // Stage End: lock controls, zoom out camera
-      this.room.onMessage("stageEnd", (data: any) => {
+      // Stage End: lock controls, start iris wipe CLOSE
+      this.room.onMessage('stageEnd', (data: any) => {
         this.controlsLocked = true;
-
-        // Camera zoom out for dramatic effect (DISP-05)
-        const cam = this.cameras.main;
-        cam.zoomTo(0.5, 1500, 'Sine.easeInOut');
+        this.inStageTransition = true; // Block position updates
 
         // Audio: stage end fanfare
         if (this.audioManager) this.audioManager.playSFX('match_end_fanfare');
-      });
 
-      // Stage Transition: fade to black, swap tilemap, show intro overlay
-      this.room.onMessage("stageTransition", (data: any) => {
+        // Create iris wipe circle (starts at full size, shrinks to 0)
         const cam = this.cameras.main;
-        cam.fade(500, 0, 0, 0, false, (_cam: any, progress: number) => {
-          if (progress >= 1) {
-            // Clean up old stage visuals
-            this.cleanupStageVisuals();
+        const cx = cam.width / 2;
+        const cy = cam.height / 2;
+        const maxRadius = Math.sqrt(cx * cx + cy * cy) + 50; // Cover full screen diagonal + margin
 
-            // Destroy old tilemap
-            this.destroyTilemap();
+        // Create circle shape for geometry mask (invisible -- only geometry matters)
+        const irisShape = this.add.circle(cx, cy, maxRadius).setScrollFactor(0).setVisible(false);
+        irisShape.setDepth(1000);
+        const mask = irisShape.createGeometryMask();
+        cam.setMask(mask);
 
-            // Update map metadata reference
-            const mapData = MAPS.find(m => m.name === data.mapName);
-            this.mapMetadata = mapData || MAPS[0];
+        // Store iris objects for stageTransition/stageStart to use
+        this.irisShape = irisShape;
+        this.irisMask = mask;
 
-            // Create new tilemap (assets already preloaded in BootScene)
-            this.createTilemap(data.mapName);
-
-            // Update prediction arena bounds for new map
-            if (this.prediction && this.mapMetadata) {
-              this.prediction.setArenaBounds({
-                width: this.mapMetadata.width,
-                height: this.mapMetadata.height,
-              });
-            }
-
-            // Launch StageIntroScene overlay
-            this.scene.launch("StageIntroScene", {
-              stageNumber: data.stageNumber,
-              arenaName: data.arenaName,
-              paranWins: data.paranWins,
-              guardianWins: data.guardianWins,
-            });
-          }
+        // Tween: shrink circle to zero over 1500ms (iris closes)
+        this.tweens.add({
+          targets: irisShape,
+          scaleX: 0,
+          scaleY: 0,
+          duration: 1500,
+          ease: 'Sine.easeInOut',
         });
       });
 
-      // Stage Start: dismiss intro, fade in, start overview animation
-      this.room.onMessage("stageStart", (data: any) => {
+      // Stage Transition: swap tilemap (screen already obscured by iris), show intro overlay
+      this.room.onMessage('stageTransition', (data: any) => {
+        // Screen should already be fully obscured by iris mask from stageEnd
+        // If iris hasn't finished closing yet, force it
+        if (this.irisShape) {
+          this.irisShape.setScale(0);
+        }
+
+        // Clean up old stage visuals
+        this.cleanupStageVisuals();
+
+        // Destroy old tilemap
+        this.destroyTilemap();
+
+        // Update map metadata reference
+        const mapData = MAPS.find((m) => m.name === data.mapName);
+        this.mapMetadata = mapData || MAPS[0];
+
+        // Create new tilemap (assets already preloaded in BootScene)
+        this.createTilemap(data.mapName);
+
+        // Update prediction arena bounds for new map
+        if (this.prediction && this.mapMetadata) {
+          this.prediction.setArenaBounds({
+            width: this.mapMetadata.width,
+            height: this.mapMetadata.height,
+          });
+        }
+
+        // Launch StageIntroScene overlay
+        this.scene.launch('StageIntroScene', {
+          stageNumber: data.stageNumber,
+          arenaName: data.arenaName,
+          paranWins: data.paranWins,
+          guardianWins: data.guardianWins,
+        });
+      });
+
+      // Stage Start: dismiss intro, expand iris to reveal new arena + overview
+      this.room.onMessage('stageStart', (data: any) => {
         // Stop stage intro overlay
-        this.scene.stop("StageIntroScene");
+        this.scene.stop('StageIntroScene');
 
         // Re-launch HUD if needed (it persists across stages, but re-ensure)
         if (!this.scene.isActive('HUDScene') && this.room) {
@@ -389,12 +434,64 @@ export class GameScene extends Phaser.Scene {
           });
         }
 
-        // Fade in from black
-        this.cameras.main.fadeIn(500, 0, 0, 0);
+        // Allow position updates again (new positions are already set)
+        this.inStageTransition = false;
 
-        // Overview zoom animation (same as match start)
-        this.matchEnded = false;  // Reset for new stage
-        this.startMatchOverview();
+        // Iris OPEN: expand circle from 0 to full size
+        if (this.irisShape && this.irisMask) {
+          // Set up overview camera BEFORE revealing (so reveal shows overview)
+          this.matchEnded = false;
+          this.overviewActive = true;
+          this.controlsLocked = true;
+          const cam = this.cameras.main;
+          cam.stopFollow();
+          if (this.mapMetadata) {
+            const overviewZoom = Math.min(
+              cam.width / this.mapMetadata.width,
+              cam.height / this.mapMetadata.height,
+            );
+            cam.setZoom(overviewZoom);
+            cam.centerOn(this.mapMetadata.width / 2, this.mapMetadata.height / 2);
+          }
+
+          // Expand iris circle to reveal new arena
+          this.tweens.add({
+            targets: this.irisShape,
+            scaleX: 1,
+            scaleY: 1,
+            duration: 800,
+            ease: 'Sine.easeInOut',
+            onComplete: () => {
+              // Remove mask (no longer needed)
+              cam.clearMask(false);
+              if (this.irisShape) {
+                this.irisShape.destroy();
+                this.irisShape = null;
+              }
+              this.irisMask = null;
+
+              // Now do the zoom-in to player (second half of overview)
+              this.time.delayedCall(700, () => {
+                if (this.room) {
+                  const localSprite = this.playerSprites.get(this.room.sessionId);
+                  if (localSprite) {
+                    cam.startFollow(localSprite, true, 0.12, 0.12);
+                    cam.setDeadzone(20, 15);
+                  }
+                }
+                cam.zoomTo(2, 800, 'Sine.easeInOut');
+                this.time.delayedCall(800, () => {
+                  this.controlsLocked = false;
+                  this.overviewActive = false;
+                });
+              });
+            },
+          });
+        } else {
+          // Fallback: no iris (e.g., reconnect mid-transition) -- just do overview
+          this.matchEnded = false;
+          this.startMatchOverview();
+        }
       });
 
       // Handle unexpected disconnection
@@ -553,112 +650,113 @@ export class GameScene extends Phaser.Scene {
     // Skip input processing if dead, spectating, or controls locked (overview animation)
     if (!isDead && !this.isSpectating && !this.controlsLocked) {
       // Read current keyboard state
-    const rawInput = {
-      left: this.cursors.left.isDown || this.wasd.A.isDown,
-      right: this.cursors.right.isDown || this.wasd.D.isDown,
-      up: this.cursors.up.isDown || this.wasd.W.isDown,
-      down: this.cursors.down.isDown || this.wasd.S.isDown,
-    };
-
-    // Track key press order for Paran's last-key-wins cardinal movement
-    const dirs = ['left', 'right', 'up', 'down'] as const;
-    for (const dir of dirs) {
-      if (rawInput[dir] && !this.prevKeyState[dir]) {
-        // Key just pressed -- push to end (most recent)
-        this.directionPressOrder = this.directionPressOrder.filter(d => d !== dir);
-        this.directionPressOrder.push(dir);
-      } else if (!rawInput[dir] && this.prevKeyState[dir]) {
-        // Key released -- remove from order
-        this.directionPressOrder = this.directionPressOrder.filter(d => d !== dir);
-      }
-      this.prevKeyState[dir] = rawInput[dir];
-    }
-
-    // For Paran: only send the last-pressed direction (cardinal only)
-    let input: InputState;
-    if (this.localRole === 'paran') {
-      const lastDir = this.directionPressOrder.length > 0
-        ? this.directionPressOrder[this.directionPressOrder.length - 1]
-        : null;
-      input = {
-        left: lastDir === 'left',
-        right: lastDir === 'right',
-        up: lastDir === 'up',
-        down: lastDir === 'down',
-        fire: this.fireKey.isDown,
+      const rawInput = {
+        left: this.cursors.left.isDown || this.wasd.A.isDown,
+        right: this.cursors.right.isDown || this.wasd.D.isDown,
+        up: this.cursors.up.isDown || this.wasd.W.isDown,
+        down: this.cursors.down.isDown || this.wasd.S.isDown,
       };
-    } else {
-      // Guardians: send all pressed directions (allows diagonal)
-      input = { ...rawInput, fire: this.fireKey.isDown };
-    }
 
-    // Send input every frame -- acceleration physics needs one input per tick
-    // to match server simulation. Only skip if truly idle (no keys, no velocity).
-    const hasInput = input.left || input.right || input.up || input.down;
-    const hasVelocity = (() => {
-      const s = this.prediction!.getState();
-      return Math.abs(s.vx) > 0.01 || Math.abs(s.vy) > 0.01;
-    })();
+      // Track key press order for Paran's last-key-wins cardinal movement
+      const dirs = ['left', 'right', 'up', 'down'] as const;
+      for (const dir of dirs) {
+        if (rawInput[dir] && !this.prevKeyState[dir]) {
+          // Key just pressed -- push to end (most recent)
+          this.directionPressOrder = this.directionPressOrder.filter((d) => d !== dir);
+          this.directionPressOrder.push(dir);
+        } else if (!rawInput[dir] && this.prevKeyState[dir]) {
+          // Key released -- remove from order
+          this.directionPressOrder = this.directionPressOrder.filter((d) => d !== dir);
+        }
+        this.prevKeyState[dir] = rawInput[dir];
+      }
 
-    if (hasInput || hasVelocity || input.fire) {
-      // Audio + HUD cooldown: only trigger when cooldown has elapsed (matches server fire rate)
-      if (input.fire && this.localRole) {
-        const cooldownMs = CHARACTERS[this.localRole]?.fireRate || 200;
-        const now = Date.now();
-        if (now - this.lastLocalFireTime >= cooldownMs) {
-          this.lastLocalFireTime = now;
-          // Play role-specific shoot sound only when a projectile would actually be created
-          if (this.audioManager) {
-            this.audioManager.playSFX(`${this.localRole}_shoot`);
+      // For Paran: only send the last-pressed direction (cardinal only)
+      let input: InputState;
+      if (this.localRole === 'paran') {
+        const lastDir =
+          this.directionPressOrder.length > 0
+            ? this.directionPressOrder[this.directionPressOrder.length - 1]
+            : null;
+        input = {
+          left: lastDir === 'left',
+          right: lastDir === 'right',
+          up: lastDir === 'up',
+          down: lastDir === 'down',
+          fire: this.fireKey.isDown,
+        };
+      } else {
+        // Guardians: send all pressed directions (allows diagonal)
+        input = { ...rawInput, fire: this.fireKey.isDown };
+      }
+
+      // Send input every frame -- acceleration physics needs one input per tick
+      // to match server simulation. Only skip if truly idle (no keys, no velocity).
+      const hasInput = input.left || input.right || input.up || input.down;
+      const hasVelocity = (() => {
+        const s = this.prediction!.getState();
+        return Math.abs(s.vx) > 0.01 || Math.abs(s.vy) > 0.01;
+      })();
+
+      if (hasInput || hasVelocity || input.fire) {
+        // Audio + HUD cooldown: only trigger when cooldown has elapsed (matches server fire rate)
+        if (input.fire && this.localRole) {
+          const cooldownMs = CHARACTERS[this.localRole]?.fireRate || 200;
+          const now = Date.now();
+          if (now - this.lastLocalFireTime >= cooldownMs) {
+            this.lastLocalFireTime = now;
+            // Play role-specific shoot sound only when a projectile would actually be created
+            if (this.audioManager) {
+              this.audioManager.playSFX(`${this.localRole}_shoot`);
+            }
+            this.events.emit('localFired', { fireTime: now, cooldownMs });
           }
-          this.events.emit('localFired', { fireTime: now, cooldownMs });
+        }
+
+        this.prediction.sendInput(input, this.room);
+      }
+
+      // Paran wall impact + speed effects
+      if (this.localRole === 'paran' && this.prediction) {
+        const pState = this.prediction.getState();
+        const curSpeed = Math.abs(pState.vx) + Math.abs(pState.vy);
+
+        // Wall impact: only trigger on actual tile collision (not direction changes or stops)
+        if (this.prediction.getHadCollision()) {
+          // Audio: wall impact sound
+          if (this.audioManager) this.audioManager.playSFX('wall_impact');
+          // Visual: wall impact dust particles
+          const wallSprite = this.playerSprites.get(this.room.sessionId);
+          if (wallSprite && this.particleFactory) {
+            this.particleFactory.wallImpact(wallSprite.x, wallSprite.y);
+          }
+          // Camera shake on wall impact (subtle tactile feedback)
+          this.cameras.main.shake(80, 0.003);
+        }
+        // Speed lines: emit every 3 frames when Paran is fast
+        this.speedLineFrameCounter++;
+        if (curSpeed > 200 && this.particleFactory && this.speedLineFrameCounter % 3 === 0) {
+          const speedSprite = this.playerSprites.get(this.room.sessionId);
+          if (speedSprite) {
+            const angle = Math.atan2(pState.vy, pState.vx);
+            this.particleFactory.speedLines(speedSprite.x, speedSprite.y, angle);
+          }
         }
       }
 
-      this.prediction.sendInput(input, this.room);
-    }
-
-    // Paran wall impact + speed effects
-    if (this.localRole === 'paran' && this.prediction) {
-      const pState = this.prediction.getState();
-      const curSpeed = Math.abs(pState.vx) + Math.abs(pState.vy);
-
-      // Wall impact: only trigger on actual tile collision (not direction changes or stops)
-      if (this.prediction.getHadCollision()) {
-        // Audio: wall impact sound
-        if (this.audioManager) this.audioManager.playSFX('wall_impact');
-        // Visual: wall impact dust particles
-        const wallSprite = this.playerSprites.get(this.room.sessionId);
-        if (wallSprite && this.particleFactory) {
-          this.particleFactory.wallImpact(wallSprite.x, wallSprite.y);
-        }
-        // Camera shake on wall impact (subtle tactile feedback)
-        this.cameras.main.shake(80, 0.003);
+      // Update local player sprite from prediction state
+      const localSessionId = this.room.sessionId;
+      const state = this.prediction.getState();
+      const localSprite = this.playerSprites.get(localSessionId);
+      if (localSprite) {
+        localSprite.x = state.x;
+        localSprite.y = state.y;
       }
-      // Speed lines: emit every 3 frames when Paran is fast
-      this.speedLineFrameCounter++;
-      if (curSpeed > 200 && this.particleFactory && this.speedLineFrameCounter % 3 === 0) {
-        const speedSprite = this.playerSprites.get(this.room.sessionId);
-        if (speedSprite) {
-          const angle = Math.atan2(pState.vy, pState.vx);
-          this.particleFactory.speedLines(speedSprite.x, speedSprite.y, angle);
-        }
+
+      // Animate local player based on velocity
+      if (localSprite && this.localRole) {
+        this.updatePlayerAnimation(localSessionId, this.localRole, state.vx, state.vy);
       }
-    }
-
-    // Update local player sprite from prediction state
-    const localSessionId = this.room.sessionId;
-    const state = this.prediction.getState();
-    const localSprite = this.playerSprites.get(localSessionId);
-    if (localSprite) {
-      localSprite.x = state.x;
-      localSprite.y = state.y;
-    }
-
-    // Animate local player based on velocity
-    if (localSprite && this.localRole) {
-      this.updatePlayerAnimation(localSessionId, this.localRole, state.vx, state.vy);
-    }
     }
 
     // Camera look-ahead: shift camera in movement direction
@@ -668,8 +766,8 @@ export class GameScene extends Phaser.Scene {
       const vx = predState.vx;
       const vy = predState.vy;
 
-      const LOOK_AHEAD_PARAN = 60;    // pixels ahead for Paran
-      const LOOK_AHEAD_GUARDIAN = 30;  // pixels ahead for Guardians
+      const LOOK_AHEAD_PARAN = 60; // pixels ahead for Paran
+      const LOOK_AHEAD_GUARDIAN = 30; // pixels ahead for Guardians
       const maxLookAhead = this.localRole === 'paran' ? LOOK_AHEAD_PARAN : LOOK_AHEAD_GUARDIAN;
 
       const speed = Math.sqrt(vx * vx + vy * vy);
@@ -687,7 +785,12 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Speed zoom-out for Paran at high velocity
-    if (!this.overviewActive && this.localRole === 'paran' && localPlayer && localPlayer.health > 0) {
+    if (
+      !this.overviewActive &&
+      this.localRole === 'paran' &&
+      localPlayer &&
+      localPlayer.health > 0
+    ) {
       const predState = this.prediction.getState();
       const speed = Math.sqrt(predState.vx ** 2 + predState.vy ** 2);
       const maxSpeed = CHARACTERS.paran.maxVelocity;
@@ -705,10 +808,7 @@ export class GameScene extends Phaser.Scene {
     // Update remote player sprites via interpolation
     const currentTime = Date.now();
     for (const sessionId of this.remotePlayers) {
-      const interpolated = this.interpolation.getInterpolatedState(
-        sessionId,
-        currentTime
-      );
+      const interpolated = this.interpolation.getInterpolatedState(sessionId, currentTime);
       if (interpolated) {
         const sprite = this.playerSprites.get(sessionId);
         if (sprite) {
@@ -823,13 +923,17 @@ export class GameScene extends Phaser.Scene {
       const arenaBounds = this.mapMetadata
         ? { width: this.mapMetadata.width, height: this.mapMetadata.height }
         : undefined;
-      this.prediction = new PredictionSystem({
-        x: player.x,
-        y: player.y,
-        vx: player.vx || 0,
-        vy: player.vy || 0,
-        angle: player.angle || 0,
-      }, role, arenaBounds);
+      this.prediction = new PredictionSystem(
+        {
+          x: player.x,
+          y: player.y,
+          vx: player.vx || 0,
+          vy: player.vy || 0,
+          angle: player.angle || 0,
+        },
+        role,
+        arenaBounds,
+      );
 
       // Pass collision grid if tilemap already loaded (race condition handling)
       if (this.collisionGrid) {
@@ -1017,10 +1121,13 @@ export class GameScene extends Phaser.Scene {
 
       // Update stored token with new one
       if (room.reconnectionToken) {
-        sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
-          token: room.reconnectionToken,
-          timestamp: Date.now()
-        }));
+        sessionStorage.setItem(
+          'bangerActiveRoom',
+          JSON.stringify({
+            token: room.reconnectionToken,
+            timestamp: Date.now(),
+          }),
+        );
       }
 
       // Re-attach state listeners
@@ -1038,7 +1145,6 @@ export class GameScene extends Phaser.Scene {
 
       // Update status
       this.statusText.setText(`Reconnected: ${room.sessionId}`);
-
     } catch (e) {
       console.error('Reconnection failed:', e);
       this.returnToLobby('Connection lost. Returning to lobby...');
@@ -1109,8 +1215,11 @@ export class GameScene extends Phaser.Scene {
       if (sprite) sprite.setAlpha(0.3);
       if (!this.dcLabels.has(sessionId)) {
         const dcText = this.add.text(player.x, player.y + 30, 'DC', {
-          fontSize: '12px', color: '#ffaa00', fontStyle: 'bold',
-          backgroundColor: '#000000', padding: { x: 4, y: 2 }
+          fontSize: '12px',
+          color: '#ffaa00',
+          fontStyle: 'bold',
+          backgroundColor: '#000000',
+          padding: { x: 4, y: 2 },
         });
         dcText.setOrigin(0.5);
         dcText.setDepth(12);
@@ -1132,10 +1241,15 @@ export class GameScene extends Phaser.Scene {
         }
       }
       const dcLabel = this.dcLabels.get(sessionId);
-      if (dcLabel) { dcLabel.destroy(); this.dcLabels.delete(sessionId); }
+      if (dcLabel) {
+        dcLabel.destroy();
+        this.dcLabels.delete(sessionId);
+      }
       if (!this.eliminatedTexts.has(sessionId)) {
         const eliminatedText = this.add.text(player.x, player.y - 40, 'ELIMINATED', {
-          fontSize: '14px', color: '#ff0000', fontStyle: 'bold',
+          fontSize: '14px',
+          color: '#ff0000',
+          fontStyle: 'bold',
         });
         eliminatedText.setOrigin(0.5);
         eliminatedText.setDepth(12);
@@ -1145,28 +1259,43 @@ export class GameScene extends Phaser.Scene {
       const sprite = this.playerSprites.get(sessionId);
       if (sprite) sprite.setAlpha(1.0);
       const dcLabel = this.dcLabels.get(sessionId);
-      if (dcLabel) { dcLabel.destroy(); this.dcLabels.delete(sessionId); }
+      if (dcLabel) {
+        dcLabel.destroy();
+        this.dcLabels.delete(sessionId);
+      }
       const eliminatedText = this.eliminatedTexts.get(sessionId);
-      if (eliminatedText) { eliminatedText.destroy(); this.eliminatedTexts.delete(sessionId); }
+      if (eliminatedText) {
+        eliminatedText.destroy();
+        this.eliminatedTexts.delete(sessionId);
+      }
     }
+
+    // Skip position updates during stage transition to prevent visible teleportation
+    if (this.inStageTransition) return;
 
     // Role-specific handling
     if (isLocal) {
       if (this.prediction) {
         this.prediction.reconcile({
-          x: player.x, y: player.y,
-          vx: player.vx || 0, vy: player.vy || 0,
+          x: player.x,
+          y: player.y,
+          vx: player.vx || 0,
+          vy: player.vy || 0,
           angle: player.angle || 0,
           lastProcessedSeq: player.lastProcessedSeq || 0,
         });
         const state = this.prediction.getState();
         const sprite = this.playerSprites.get(sessionId);
-        if (sprite) { sprite.x = state.x; sprite.y = state.y; }
+        if (sprite) {
+          sprite.x = state.x;
+          sprite.y = state.y;
+        }
       }
     } else {
       this.interpolation.addSnapshot(sessionId, {
         timestamp: Date.now(),
-        x: player.x, y: player.y,
+        x: player.x,
+        y: player.y,
         angle: player.angle || 0,
       });
     }
@@ -1176,7 +1305,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.room) return;
 
     // Schema-based matchState listener -- sole source of truth for status text
-    this.room.state.listen("matchState", (value: string) => {
+    this.room.state.listen('matchState', (value: string) => {
       if (this.matchEnded) return;
       if (value === 'playing') {
         this.statusText.setText('Match started!');
@@ -1202,11 +1331,11 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Keep matchStart handler for backward compatibility (Schema listener handles display)
-    this.room.onMessage("matchStart", () => {
+    this.room.onMessage('matchStart', () => {
       console.log('matchStart received (handled by Schema listener)');
     });
 
-    this.room.onMessage("matchEnd", (data: any) => {
+    this.room.onMessage('matchEnd', (data: any) => {
       this.finalStats = data.stats;
       this.matchWinner = data.winner;
       this.matchEnded = true;
@@ -1227,15 +1356,16 @@ export class GameScene extends Phaser.Scene {
       if (this.particleFactory && this.room) {
         const localStats = data.stats[this.room.sessionId];
         const localRole = localStats?.role || '';
-        const didWin = (data.winner === 'paran' && localRole === 'paran') ||
-                       (data.winner === 'guardians' && localRole !== 'paran');
+        const didWin =
+          (data.winner === 'paran' && localRole === 'paran') ||
+          (data.winner === 'guardians' && localRole !== 'paran');
         const burstColor = didWin ? 0x00ff00 : 0xff0000;
         const burstX = this.mapMetadata ? this.mapMetadata.width / 2 : 400;
         const burstY = this.mapMetadata ? this.mapMetadata.height / 2 : 300;
         this.particleFactory.victoryBurst(burstX, burstY, burstColor);
       }
 
-      this.scene.launch("VictoryScene", {
+      this.scene.launch('VictoryScene', {
         winner: data.winner,
         stats: data.stats,
         duration: data.duration,
@@ -1247,59 +1377,78 @@ export class GameScene extends Phaser.Scene {
       this.scene.pause();
     });
 
-    // Stage End: lock controls, zoom out camera (reconnect path)
-    this.room.onMessage("stageEnd", (data: any) => {
+    // Stage End: lock controls, start iris wipe CLOSE (reconnect path)
+    this.room.onMessage('stageEnd', (data: any) => {
       this.controlsLocked = true;
-
-      // Camera zoom out for dramatic effect (DISP-05)
-      const cam = this.cameras.main;
-      cam.zoomTo(0.5, 1500, 'Sine.easeInOut');
+      this.inStageTransition = true; // Block position updates
 
       // Audio: stage end fanfare
       if (this.audioManager) this.audioManager.playSFX('match_end_fanfare');
-    });
 
-    // Stage Transition: fade to black, swap tilemap, show intro overlay (reconnect path)
-    this.room.onMessage("stageTransition", (data: any) => {
+      // Create iris wipe circle (starts at full size, shrinks to 0)
       const cam = this.cameras.main;
-      cam.fade(500, 0, 0, 0, false, (_cam: any, progress: number) => {
-        if (progress >= 1) {
-          // Clean up old stage visuals
-          this.cleanupStageVisuals();
+      const cx = cam.width / 2;
+      const cy = cam.height / 2;
+      const maxRadius = Math.sqrt(cx * cx + cy * cy) + 50;
 
-          // Destroy old tilemap
-          this.destroyTilemap();
+      const irisShape = this.add.circle(cx, cy, maxRadius).setScrollFactor(0).setVisible(false);
+      irisShape.setDepth(1000);
+      const mask = irisShape.createGeometryMask();
+      cam.setMask(mask);
 
-          // Update map metadata reference
-          const mapData = MAPS.find(m => m.name === data.mapName);
-          this.mapMetadata = mapData || MAPS[0];
+      this.irisShape = irisShape;
+      this.irisMask = mask;
 
-          // Create new tilemap (assets already preloaded in BootScene)
-          this.createTilemap(data.mapName);
-
-          // Update prediction arena bounds for new map
-          if (this.prediction && this.mapMetadata) {
-            this.prediction.setArenaBounds({
-              width: this.mapMetadata.width,
-              height: this.mapMetadata.height,
-            });
-          }
-
-          // Launch StageIntroScene overlay
-          this.scene.launch("StageIntroScene", {
-            stageNumber: data.stageNumber,
-            arenaName: data.arenaName,
-            paranWins: data.paranWins,
-            guardianWins: data.guardianWins,
-          });
-        }
+      this.tweens.add({
+        targets: irisShape,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 1500,
+        ease: 'Sine.easeInOut',
       });
     });
 
-    // Stage Start: dismiss intro, fade in, start overview animation (reconnect path)
-    this.room.onMessage("stageStart", (data: any) => {
+    // Stage Transition: swap tilemap (screen already obscured by iris), show intro overlay (reconnect path)
+    this.room.onMessage('stageTransition', (data: any) => {
+      // Screen should already be fully obscured by iris mask from stageEnd
+      if (this.irisShape) {
+        this.irisShape.setScale(0);
+      }
+
+      // Clean up old stage visuals
+      this.cleanupStageVisuals();
+
+      // Destroy old tilemap
+      this.destroyTilemap();
+
+      // Update map metadata reference
+      const mapData = MAPS.find((m) => m.name === data.mapName);
+      this.mapMetadata = mapData || MAPS[0];
+
+      // Create new tilemap (assets already preloaded in BootScene)
+      this.createTilemap(data.mapName);
+
+      // Update prediction arena bounds for new map
+      if (this.prediction && this.mapMetadata) {
+        this.prediction.setArenaBounds({
+          width: this.mapMetadata.width,
+          height: this.mapMetadata.height,
+        });
+      }
+
+      // Launch StageIntroScene overlay
+      this.scene.launch('StageIntroScene', {
+        stageNumber: data.stageNumber,
+        arenaName: data.arenaName,
+        paranWins: data.paranWins,
+        guardianWins: data.guardianWins,
+      });
+    });
+
+    // Stage Start: dismiss intro, expand iris to reveal new arena + overview (reconnect path)
+    this.room.onMessage('stageStart', (data: any) => {
       // Stop stage intro overlay
-      this.scene.stop("StageIntroScene");
+      this.scene.stop('StageIntroScene');
 
       // Re-launch HUD if needed
       if (!this.scene.isActive('HUDScene') && this.room) {
@@ -1311,12 +1460,61 @@ export class GameScene extends Phaser.Scene {
         });
       }
 
-      // Fade in from black
-      this.cameras.main.fadeIn(500, 0, 0, 0);
+      // Allow position updates again
+      this.inStageTransition = false;
 
-      // Overview zoom animation (same as match start)
-      this.matchEnded = false;  // Reset for new stage
-      this.startMatchOverview();
+      // Iris OPEN: expand circle from 0 to full size
+      if (this.irisShape && this.irisMask) {
+        this.matchEnded = false;
+        this.overviewActive = true;
+        this.controlsLocked = true;
+        const cam = this.cameras.main;
+        cam.stopFollow();
+        if (this.mapMetadata) {
+          const overviewZoom = Math.min(
+            cam.width / this.mapMetadata.width,
+            cam.height / this.mapMetadata.height,
+          );
+          cam.setZoom(overviewZoom);
+          cam.centerOn(this.mapMetadata.width / 2, this.mapMetadata.height / 2);
+        }
+
+        this.tweens.add({
+          targets: this.irisShape,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 800,
+          ease: 'Sine.easeInOut',
+          onComplete: () => {
+            const cam = this.cameras.main;
+            cam.clearMask(false);
+            if (this.irisShape) {
+              this.irisShape.destroy();
+              this.irisShape = null;
+            }
+            this.irisMask = null;
+
+            this.time.delayedCall(700, () => {
+              if (this.room) {
+                const localSprite = this.playerSprites.get(this.room.sessionId);
+                if (localSprite) {
+                  cam.startFollow(localSprite, true, 0.12, 0.12);
+                  cam.setDeadzone(20, 15);
+                }
+              }
+              cam.zoomTo(2, 800, 'Sine.easeInOut');
+              this.time.delayedCall(800, () => {
+                this.controlsLocked = false;
+                this.overviewActive = false;
+              });
+            });
+          },
+        });
+      } else {
+        // Fallback: no iris (e.g., reconnect mid-transition) -- just do overview
+        this.matchEnded = false;
+        this.startMatchOverview();
+      }
     });
 
     this.room.onLeave((code: number) => {
@@ -1443,11 +1641,23 @@ export class GameScene extends Phaser.Scene {
    */
   private destroyTilemap(): void {
     // Destroy layers (must destroy before tilemap)
-    if (this.wallsLayer) { this.wallsLayer.destroy(); this.wallsLayer = null; }
-    if (this.wallFrontsLayer) { this.wallFrontsLayer.destroy(); this.wallFrontsLayer = null; }
-    if (this.groundLayer) { this.groundLayer.destroy(); this.groundLayer = null; }
+    if (this.wallsLayer) {
+      this.wallsLayer.destroy();
+      this.wallsLayer = null;
+    }
+    if (this.wallFrontsLayer) {
+      this.wallFrontsLayer.destroy();
+      this.wallFrontsLayer = null;
+    }
+    if (this.groundLayer) {
+      this.groundLayer.destroy();
+      this.groundLayer = null;
+    }
     // Destroy tilemap itself (cleans up layer cache)
-    if (this.currentTilemap) { this.currentTilemap.destroy(); this.currentTilemap = null; }
+    if (this.currentTilemap) {
+      this.currentTilemap.destroy();
+      this.currentTilemap = null;
+    }
     // Clear collision grid
     this.collisionGrid = null;
     if (this.prediction) {
@@ -1476,7 +1686,7 @@ export class GameScene extends Phaser.Scene {
     cam.stopFollow();
     const overviewZoom = Math.min(
       cam.width / this.mapMetadata.width,
-      cam.height / this.mapMetadata.height
+      cam.height / this.mapMetadata.height,
     );
     cam.setZoom(overviewZoom);
     cam.centerOn(this.mapMetadata.width / 2, this.mapMetadata.height / 2);
@@ -1526,7 +1736,9 @@ export class GameScene extends Phaser.Scene {
     const tileset = map.addTilesetImage(tilesetInfo.name, tilesetInfo.key);
 
     if (!tileset) {
-      console.error(`Failed to load tileset for map ${mapKey} (name=${tilesetInfo.name}, key=${tilesetInfo.key})`);
+      console.error(
+        `Failed to load tileset for map ${mapKey} (name=${tilesetInfo.name}, key=${tilesetInfo.key})`,
+      );
       return;
     }
 
@@ -1557,7 +1769,7 @@ export class GameScene extends Phaser.Scene {
           mapData.data.height,
           mapData.data.tilewidth,
           OBSTACLE_TILE_IDS.destructible,
-          OBSTACLE_TILE_IDS.indestructible
+          OBSTACLE_TILE_IDS.indestructible,
         );
 
         // Pass collision grid to prediction system
