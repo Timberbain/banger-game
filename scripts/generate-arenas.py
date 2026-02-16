@@ -944,4 +944,28 @@ if __name__ == "__main__":
     validate_spawns()
 
     print()
+    print("  --- Embedding collision shapes ---")
+    collision_map = {
+        "hedge_garden": "arena_hedge_collision.json",
+        "brick_fortress": "arena_brick_collision.json",
+        "timber_yard": "arena_wood_collision.json",
+    }
+    for map_name, coll_file in collision_map.items():
+        coll_path = os.path.join(TILESETS_DIR, coll_file)
+        map_path = os.path.join(MAPS_DIR, f"{map_name}.json")
+        if os.path.exists(coll_path):
+            with open(coll_path) as f:
+                coll_data = json.load(f)
+            with open(map_path) as f:
+                map_json = json.load(f)
+            if "properties" not in map_json["tilesets"][0]:
+                map_json["tilesets"][0]["properties"] = {}
+            map_json["tilesets"][0]["properties"]["collisionShapes"] = coll_data
+            with open(map_path, "w") as f:
+                json.dump(map_json, f, indent=2)
+            print(f"  {map_name}: embedded {len(coll_data)} collision shapes")
+        else:
+            print(f"  {map_name}: collision file not found ({coll_file}), skipping")
+
+    print()
     print("All arena assets generated successfully!")
