@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 9 -- Multi-Stage Rounds (In Progress)
+**Current focus:** Phase 9 -- Multi-Stage Rounds (Gap Closure Complete)
 
 ## Current Position
 
 Phase: 9 of 12 (Multi-Stage Rounds)
-Plan: 3 of 3 in current phase
-Status: Phase 09 Complete
-Last activity: 2026-02-14 -- Completed 09-03 (HUD Round Score & Victory Breakdown)
+Plan: 4 of 4 in current phase (gap closure)
+Status: Phase 09 Complete (incl. gap closure)
+Last activity: 2026-02-16 -- Completed 09-04 (Iris Wipe Transition & Spawn Validation)
 
 Progress: [#################...] 75% (55/~56 plans est. across v1.0+v2.0)
 
@@ -35,7 +35,7 @@ Progress: [#################...] 75% (55/~56 plans est. across v1.0+v2.0)
 | 6. UX Polish | 11 | Complete |
 | 7. HD Viewport & Camera | 9 | Complete |
 | 8. Arena Overhaul | 5 | Complete |
-| 9. Multi-Stage Rounds | 3 | Complete |
+| 9. Multi-Stage Rounds | 4 | Complete (incl. gap closure) |
 
 ## Accumulated Context
 
@@ -86,13 +86,18 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - onLeave allows reconnection during STAGE_END and STAGE_TRANSITION (active match states)
 - Colyseus 0.15 safe reset: pop() for ArraySchema, iterate+delete for MapSchema, in-place for players
 - Preload all 3 tilesets and tilemaps in BootScene for zero-delay stage transitions
-- Camera fade callback with progress >= 1 for safe tilemap swap during black screen
+- ~~Camera fade callback with progress >= 1 for safe tilemap swap during black screen~~ -- REPLACED in 09-04 (geometry mask iris wipe)
 - Reuse startMatchOverview() for stage starts (consistent cinematic experience)
 - Controls locked from stageEnd through overview completion (prevents ghost inputs)
 - PredictionSystem.setCollisionGrid accepts null for clean stage reset
 - Consolidated matchState listener in HUDScene for countdown + stage_end + stage_transition
 - Stage breakdown only rendered when stageResults non-empty (backward compatible)
 - VictoryScene falls back to simple winner label when no stageResults available
+- Geometry mask iris wipe replaces camera fade for unified stage transition effect
+- 600ms server delay before resetStage ensures client iris fully closes before position updates
+- inStageTransition flag guards handlePlayerChange to prevent visible teleportation
+- loadMap reordered before player reset in resetStage for spawn collision validation
+- Spawn collision validation with 9-offset nudge pattern in setSpawnPosition()
 
 ### Pending Todos
 
@@ -111,9 +116,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14
-Stopped at: Completed 09-02-PLAN.md (Client Stage Transitions)
-Next step: Phase 9 complete. Proceed to Phase 10.
+Last session: 2026-02-16
+Stopped at: Completed 09-04-PLAN.md (Iris Wipe Transition & Spawn Validation)
+Next step: Phase 9 fully complete (incl. gap closure). Proceed to Phase 10.
 
 ---
-*Updated: 2026-02-14 after 09-02 execution*
+*Updated: 2026-02-16 after 09-04 execution*
