@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 9 -- Multi-Stage Rounds (Gap Closure Complete)
+**Current focus:** Phase 09.1 -- Tilemap Collision Masks (In Progress)
 
 ## Current Position
 
-Phase: 9 of 12 (Multi-Stage Rounds)
-Plan: 5 of 5 in current phase (gap closure round 2)
-Status: Phase 09 Complete (incl. all gap closures)
-Last activity: 2026-02-16 -- Completed 09-05 (Iris Wipe, Position Backfill, isSpectating Fix)
+Phase: 09.1 (Tilemap Collision Masks)
+Plan: 2 of N in current phase
+Status: Executing Phase 09.1
+Last activity: 2026-02-16 -- Completed 09.1-02 (CollisionGrid Sub-Rect Collision Support)
 
-Progress: [##################..] 76% (56/~56 plans est. across v1.0+v2.0)
+Progress: [##################..] 78% (58/~56+ plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -36,6 +36,7 @@ Progress: [##################..] 76% (56/~56 plans est. across v1.0+v2.0)
 | 7. HD Viewport & Camera | 9 | Complete |
 | 8. Arena Overhaul | 5 | Complete |
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
+| 9.1 Tilemap Collision Masks | 2+ | In Progress |
 
 ## Accumulated Context
 
@@ -103,6 +104,11 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Position backfill in stageStart reads room.state.players directly after dropping inStageTransition guard
 - isSpectating race condition: update() spectator entry guarded with !inStageTransition + safety net reset in stageStart
 
+**Phase 09.1 decisions:**
+- Full-tile fallback when collisionShapes not provided preserves identical behavior at all existing call sites
+- OOB tiles get full-tile rect in resolveCollisions via null-coalescing fallback
+- Broad-phase tile scan range unchanged -- only per-tile overlap test and push-out positions use sub-rects
+
 ### Pending Todos
 
 None.
@@ -122,9 +128,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 09.1 context gathered
-Resume file: .planning/phases/09.1-tilemap-collision-masks-for-precise-wall-obstacle-collisions/09.1-CONTEXT.md
-Next step: Plan and execute Phase 09.1 (Tilemap Collision Masks)
+Stopped at: Completed 09.1-02-PLAN.md (CollisionGrid Sub-Rect Collision Support)
+Resume file: .planning/phases/09.1-tilemap-collision-masks-for-precise-wall-obstacle-collisions/09.1-02-SUMMARY.md
+Next step: Execute 09.1-03 (wire collision shapes through GameRoom/GameScene)
 
 ---
-*Updated: 2026-02-16 after 09.1 context gathering*
+*Updated: 2026-02-16 after completing 09.1-02*
