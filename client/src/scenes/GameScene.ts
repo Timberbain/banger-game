@@ -110,6 +110,10 @@ export class GameScene extends Phaser.Scene {
   private irisShape: Phaser.GameObjects.Arc | null = null;
   private irisMask: Phaser.Display.Masks.GeometryMask | null = null;
 
+  // F3 debug collision overlay
+  private debugCollisionOverlay: Phaser.GameObjects.Graphics | null = null;
+  private f3Key: Phaser.Input.Keyboard.Key | null = null;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -167,6 +171,10 @@ export class GameScene extends Phaser.Scene {
     }
     this.irisShape = null;
     this.irisMask = null;
+    if (this.debugCollisionOverlay) {
+      this.debugCollisionOverlay.destroy();
+    }
+    this.debugCollisionOverlay = null;
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -195,6 +203,7 @@ export class GameScene extends Phaser.Scene {
     };
     this.fireKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.tabKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
+    this.f3Key = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F3) || null;
 
     // Add status text at top-left
     this.statusText = this.add.text(10, 10, 'Connecting to server...', {
@@ -600,6 +609,11 @@ export class GameScene extends Phaser.Scene {
     // If not connected or no room, return early
     if (!this.connected || !this.room || !this.prediction) {
       return;
+    }
+
+    // F3 debug collision overlay toggle
+    if (this.f3Key && Phaser.Input.Keyboard.JustDown(this.f3Key)) {
+      this.toggleDebugCollisionOverlay();
     }
 
     // Check if local player is dead
@@ -1745,6 +1759,11 @@ export class GameScene extends Phaser.Scene {
     if (this.prediction) {
       this.prediction.setCollisionGrid(null);
     }
+    // Clear debug collision overlay
+    if (this.debugCollisionOverlay) {
+      this.debugCollisionOverlay.destroy();
+      this.debugCollisionOverlay = null;
+    }
   }
 
   /**
@@ -1792,6 +1811,52 @@ export class GameScene extends Phaser.Scene {
         this.overviewActive = false;
       });
     });
+  }
+
+  /**
+   * Toggle F3 debug collision overlay: renders colored rectangles showing
+   * per-tile collision sub-rects. Red = indestructible walls, orange/yellow/green = obstacle tiers.
+   */
+  private toggleDebugCollisionOverlay(): void {
+    if (this.debugCollisionOverlay) {
+      this.debugCollisionOverlay.destroy();
+      this.debugCollisionOverlay = null;
+      return;
+    }
+
+    if (!this.collisionGrid) return;
+
+    this.debugCollisionOverlay = this.add.graphics();
+    this.debugCollisionOverlay.setDepth(999);
+
+    const grid = this.collisionGrid;
+    const ts = grid.tileSize;
+
+    for (let ty = 0; ty < grid.height; ty++) {
+      for (let tx = 0; tx < grid.width; tx++) {
+        const info = grid.getTileInfo(tx, ty);
+        if (!info || !info.solid) continue;
+
+        const rect = info.collisionRect;
+        const worldX = tx * ts + rect.x;
+        const worldY = ty * ts + rect.y;
+
+        // Color by type: red for indestructible walls, orange/yellow/green for obstacle tiers
+        let color = 0xff0000; // indestructible walls
+        if (info.destructible) {
+          if (info.tileId === 101)
+            color = 0xff8800; // heavy
+          else if (info.tileId === 102)
+            color = 0xffff00; // medium
+          else color = 0x00ff00; // light
+        }
+
+        this.debugCollisionOverlay.lineStyle(1, color, 0.6);
+        this.debugCollisionOverlay.fillStyle(color, 0.15);
+        this.debugCollisionOverlay.fillRect(worldX, worldY, rect.w, rect.h);
+        this.debugCollisionOverlay.strokeRect(worldX, worldY, rect.w, rect.h);
+      }
+    }
   }
 
   private returnToLobby(message: string) {
@@ -1845,6 +1910,8 @@ export class GameScene extends Phaser.Scene {
     if (mapData) {
       const wallLayerData = mapData.data.layers.find((l: any) => l.name === 'Walls');
       if (wallLayerData) {
+        const collisionShapes = mapData.data.tilesets?.[0]?.properties?.collisionShapes || {};
+
         this.collisionGrid = new CollisionGrid(
           wallLayerData.data,
           mapData.data.width,
@@ -1852,6 +1919,7 @@ export class GameScene extends Phaser.Scene {
           mapData.data.tilewidth,
           OBSTACLE_TILE_IDS.destructible,
           OBSTACLE_TILE_IDS.indestructible,
+          collisionShapes,
         );
 
         // Pass collision grid to prediction system
