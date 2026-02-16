@@ -1,9 +1,9 @@
 ---
-status: complete
+status: resolved
 phase: 09-multi-stage-rounds
 source: 09-01-SUMMARY.md, 09-02-SUMMARY.md, 09-03-SUMMARY.md
 started: 2026-02-14T11:00:00Z
-updated: 2026-02-14T11:15:00Z
+updated: 2026-02-16T21:30:00Z
 ---
 
 ## Current Test
@@ -67,21 +67,34 @@ skipped: 0
 ## Gaps
 
 - truth: "Camera zooms out smoothly on stage end before transitioning"
-  status: failed
+  status: resolved
   reason: "User reported: The zooming and transition is a bit janky. Consider using a masked transition mentioning in this repo https://github.com/devshareacademy/phaser-3-typescript-games-and-examples/tree/main/examples/3.80/scene-transition-geometry-mask"
   severity: minor
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "4 discrete camera animation phases (zoom, fade, swap, fade-in) with timing gaps and hard resets between them. Server uses fixed timeouts (2s+4s) uncoordinated with client animation state, creating dead zones where nothing animates."
+  artifacts:
+    - path: "client/src/scenes/GameScene.ts"
+      issue: "stageEnd/stageTransition/stageStart handlers run 4 separate camera animations with gaps"
+    - path: "server/src/rooms/GameRoom.ts"
+      issue: "Fixed 2s+4s timeouts uncoordinated with client animation"
+  missing:
+    - "Replace multi-phase camera transitions with single continuous geometry mask animation (iris wipe)"
+    - "Circle mask shrinks to black, tilemap swaps while fully obscured, mask expands to reveal new arena"
+  debug_session: ".planning/debug/stage-zoom-janky.md"
 
 - truth: "Screen fades to black between stages with no visual glitches - characters should not be visible moving to new positions before fade"
-  status: failed
+  status: resolved
   reason: "User reported: Before transitioning to the new arena, the characters are teleported to the next page starting location - making it look buggy. Also players can end up inside a wall, is the starting location being respected?"
   severity: major
   test: 5
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Timing race: server beginStageTransition() sets matchState then immediately calls resetStage() which updates player x/y in-place. Client receives Schema position changes BEFORE the stageTransition message, so sprites teleport visibly before fade starts. Secondary: setSpawnPosition() has no collision validation."
+  artifacts:
+    - path: "server/src/rooms/GameRoom.ts"
+      issue: "beginStageTransition() calls resetStage() synchronously — position updates propagate before client fade (lines 709-733)"
+    - path: "client/src/scenes/GameScene.ts"
+      issue: "player.onChange() updates sprite positions immediately, no guard for STAGE_TRANSITION state (line 815)"
+  missing:
+    - "Delay resetStage() call until after client has had time to start fade (~600ms after stageTransition broadcast)"
+    - "Or: client-side guard in handlePlayerChange() to skip position updates during STAGE_TRANSITION"
+    - "Add spawn collision validation in setSpawnPosition() to prevent spawning inside walls"
+  debug_session: ".planning/debug/stage-teleport-spawn.md"
