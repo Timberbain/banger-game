@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 10 -- Powerup System (In Progress)
+**Current focus:** Phase 10 -- Powerup System (Complete)
 
 ## Current Position
 
 Phase: 10 (Powerup System)
-Plan: 3 of 4 in current phase
-Status: Executing Phase 10
-Last activity: 2026-02-17 -- Completed 10-03 (Buff Effects Integration)
+Plan: 4 of 4 in current phase
+Status: Phase 10 Complete
+Last activity: 2026-02-17 -- Completed 10-04 (Client Powerup Rendering)
 
-Progress: [##################..] 80% (60/~56+ plans est. across v1.0+v2.0)
+Progress: [####################] 100% (all v2.0 Phase 10 plans complete)
 
 ## Performance Metrics
 
@@ -37,7 +37,7 @@ Progress: [##################..] 80% (60/~56+ plans est. across v1.0+v2.0)
 | 8. Arena Overhaul | 5 | Complete |
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 | 9.1 Tilemap Collision Masks | 3 | Complete |
-| 10. Powerup System | 4 | In Progress (2/4) |
+| 10. Powerup System | 4 | Complete |
 
 ## Accumulated Context
 
@@ -120,6 +120,10 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - PowerupType enum uses numeric values (0,1,2) for uint8 Schema efficiency
 - Aura emitters tracked in activeTrails Set for automatic cleanup on scene destroy
 - Aura particle depth 9 (below player sprites at 10, above projectile trails at 4)
+- Beam trail uses direct scene.add.particles for custom gold particles instead of ParticleFactory.createTrail
+- Buff indicators at H*0.87 with dynamic centering for variable indicator count
+- clearAllBuffAuras before particleFactory.destroy() in cleanupStageVisuals to prevent orphaned emitters
+- Dual-map aura tracking: Map<sessionId, Map<buffType, Emitter>> for per-player per-buff lifecycle
 
 ### Pending Todos
 
@@ -140,9 +144,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 10-03-PLAN.md (Buff Effects Integration)
-Resume file: .planning/phases/10-powerup-system/10-03-SUMMARY.md
-Next step: Continue with 10-04 (client rendering integration)
+Stopped at: Completed 10-04-PLAN.md (Client Powerup Rendering)
+Resume file: .planning/phases/10-powerup-system/10-04-SUMMARY.md
+Next step: Phase 10 complete -- proceed to next phase or UAT
 
 ---
-*Updated: 2026-02-17 after re-executing 10-01*
+*Updated: 2026-02-17 after completing 10-04*
