@@ -37,6 +37,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image('victory-guardian', 'images/victory-guardian-splash.png');
     this.load.image('victory-paran', 'images/victory-paran-splash.png');
 
+    // Powerup potion sprites (16x16 pixel art icons)
+    this.load.image('potion_speed', 'icons/potion-blue.png');
+    this.load.image('potion_invincibility', 'icons/potion-orange.png');
+    this.load.image('potion_projectile', 'icons/potion-red.png');
+
     // Preload all arena tilesets and tilemaps for instant stage transitions
     this.load.image('tileset_hedge', 'tilesets/arena_hedge.png');
     this.load.image('tileset_brick', 'tilesets/arena_brick.png');
@@ -120,14 +125,7 @@ export class BootScene extends Phaser.Scene {
     splashBg.setDisplaySize(1280, 720);
 
     // Dark overlay so text is readable
-    this.add.rectangle(
-      640,
-      360,
-      1280,
-      720,
-      Colors.bg.deepNum,
-      Colors.bg.overlayAlpha,
-    );
+    this.add.rectangle(640, 360, 1280, 720, Colors.bg.deepNum, Colors.bg.overlayAlpha);
 
     // Decorative golden sparkles
     // const sparkleGfx = this.add.graphics();
@@ -165,47 +163,32 @@ export class BootScene extends Phaser.Scene {
 
     // BANGER title -- large, golden, with green stroke
     this.add
-      .text(
-        this.cameras.main.centerX,
-        this.cameras.main.centerY - 60,
-        'BANGER',
-        {
-          ...TextStyle.hero,
-          fontFamily: 'monospace',
-        },
-      )
+      .text(this.cameras.main.centerX, this.cameras.main.centerY - 60, 'BANGER', {
+        ...TextStyle.hero,
+        fontFamily: 'monospace',
+      })
       .setOrigin(0.5);
 
     // Subtitle
     this.add
-      .text(
-        this.cameras.main.centerX,
-        this.cameras.main.centerY,
-        'Asymmetric Arena Combat',
-        {
-          fontSize: '18px',
-          color: Colors.text.primary,
-          fontFamily: 'monospace',
-          stroke: '#000000',
-          strokeThickness: 3,
-        },
-      )
+      .text(this.cameras.main.centerX, this.cameras.main.centerY, 'Asymmetric Arena Combat', {
+        fontSize: '18px',
+        color: Colors.text.primary,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
       .setOrigin(0.5);
 
     // Click to Start text (ensures audio context unlock via user interaction)
     const clickText = this.add
-      .text(
-        this.cameras.main.centerX,
-        this.cameras.main.centerY + 80,
-        'Click to Start',
-        {
-          fontSize: '22px',
-          color: Colors.accent.vine,
-          fontFamily: 'monospace',
-          stroke: '#000000',
-          strokeThickness: 2,
-        },
-      )
+      .text(this.cameras.main.centerX, this.cameras.main.centerY + 80, 'Click to Start', {
+        fontSize: '22px',
+        color: Colors.accent.vine,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
       .setOrigin(0.5);
 
     // Pulsing alpha animation on click text
