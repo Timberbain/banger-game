@@ -1330,6 +1330,11 @@ export class GameScene extends Phaser.Scene {
 
     // Role-specific handling
     if (isLocal) {
+      // Sync speed multiplier for prediction accuracy (prevents rubber-banding during speed buff)
+      if (this.prediction) {
+        this.prediction.setSpeedMultiplier(player.speedMultiplier ?? 1);
+      }
+
       if (this.prediction) {
         this.prediction.reconcile({
           x: player.x,

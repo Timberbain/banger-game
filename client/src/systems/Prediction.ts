@@ -30,12 +30,17 @@ export class PredictionSystem {
   private role: string;
   private collisionGrid: CollisionGrid | null = null;
   private arenaBounds: { width: number; height: number };
+  private speedMultiplier: number = 1;
   /** True only on the first frame of a new wall contact (rising edge). */
   private hadCollision: boolean = false;
   /** Tracks whether the player was already against a wall last frame. */
   private wasAgainstWall: boolean = false;
 
-  constructor(initialState: PlayerState, role: string, arenaBounds?: { width: number; height: number }) {
+  constructor(
+    initialState: PlayerState,
+    role: string,
+    arenaBounds?: { width: number; height: number },
+  ) {
     this.localState = { ...initialState, role };
     this.role = role;
     this.arenaBounds = arenaBounds || ARENA;
@@ -47,6 +52,10 @@ export class PredictionSystem {
 
   setArenaBounds(bounds: { width: number; height: number }): void {
     this.arenaBounds = bounds;
+  }
+
+  setSpeedMultiplier(multiplier: number): void {
+    this.speedMultiplier = multiplier;
   }
 
   clearCollisionTile(tileX: number, tileY: number): void {
@@ -78,14 +87,18 @@ export class PredictionSystem {
     applyMovementPhysics(this.localState, input, 1 / 60, {
       acceleration: stats.acceleration,
       drag: stats.drag,
-      maxVelocity: stats.maxVelocity,
+      maxVelocity: stats.maxVelocity * this.speedMultiplier,
     });
     updateFacingDirection(this.localState);
 
     // Apply tile collision (must match server)
     if (this.collisionGrid) {
       const result = resolveCollisions(
-        this.localState, COMBAT.playerRadius, this.collisionGrid, prevX, prevY
+        this.localState,
+        COMBAT.playerRadius,
+        this.collisionGrid,
+        prevX,
+        prevY,
       );
       const hitWall = result.hitX || result.hitY;
       if (hitWall) {
@@ -128,9 +141,7 @@ export class PredictionSystem {
     lastProcessedSeq: number;
   }): void {
     // Discard acknowledged inputs
-    this.pendingInputs = this.pendingInputs.filter(
-      (p) => p.seq > serverState.lastProcessedSeq
-    );
+    this.pendingInputs = this.pendingInputs.filter((p) => p.seq > serverState.lastProcessedSeq);
 
     // Reset local state to server authoritative state
     this.localState.x = serverState.x;
@@ -150,7 +161,7 @@ export class PredictionSystem {
       applyMovementPhysics(this.localState, pending.input, 1 / 60, {
         acceleration: stats.acceleration,
         drag: stats.drag,
-        maxVelocity: stats.maxVelocity,
+        maxVelocity: stats.maxVelocity * this.speedMultiplier,
       });
       updateFacingDirection(this.localState);
 
@@ -158,7 +169,11 @@ export class PredictionSystem {
       // because replay is historical, not a new collision event for effects)
       if (this.collisionGrid) {
         const result = resolveCollisions(
-          this.localState, COMBAT.playerRadius, this.collisionGrid, prevX, prevY
+          this.localState,
+          COMBAT.playerRadius,
+          this.collisionGrid,
+          prevX,
+          prevY,
         );
         if (result.hitX || result.hitY) {
           if (this.role === 'paran') {
