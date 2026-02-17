@@ -9,6 +9,7 @@ import { CHARACTERS } from '../../../shared/characters';
 import { MAPS } from '../../../shared/maps';
 import { CollisionGrid } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS } from '../../../shared/obstacles';
+import { PowerupType, POWERUP_CONFIG, POWERUP_NAMES } from '../../../shared/powerups';
 import { charColorNum } from '../ui/designTokens';
 import { MapMetadata } from '../../../shared/maps';
 
@@ -24,6 +25,13 @@ const MAP_TILESET_INFO: Record<string, { key: string; image: string; name: strin
   hedge_garden: { key: 'tileset_hedge', image: 'tilesets/arena_hedge.png', name: 'arena_hedge' },
   brick_fortress: { key: 'tileset_brick', image: 'tilesets/arena_brick.png', name: 'arena_brick' },
   timber_yard: { key: 'tileset_wood', image: 'tilesets/arena_wood.png', name: 'arena_wood' },
+};
+
+/** Map powerup type to texture key for ground item sprites */
+const POWERUP_TEXTURE: Record<number, string> = {
+  [PowerupType.SPEED]: 'potion_speed',
+  [PowerupType.INVINCIBILITY]: 'potion_invincibility',
+  [PowerupType.PROJECTILE]: 'potion_projectile',
 };
 
 export class GameScene extends Phaser.Scene {
@@ -114,6 +122,13 @@ export class GameScene extends Phaser.Scene {
   private debugCollisionOverlay: Phaser.GameObjects.Graphics | null = null;
   private f3Key: Phaser.Input.Keyboard.Key | null = null;
 
+  // Powerup rendering
+  private powerupSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+  private powerupTweens: Map<string, Phaser.Tweens.Tween> = new Map();
+  // Buff aura emitters: Map<sessionId, Map<buffType, ParticleEmitter>>
+  private buffAuras: Map<string, Map<number, Phaser.GameObjects.Particles.ParticleEmitter>> =
+    new Map();
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -175,6 +190,9 @@ export class GameScene extends Phaser.Scene {
       this.debugCollisionOverlay.destroy();
     }
     this.debugCollisionOverlay = null;
+    this.powerupSprites = new Map();
+    this.powerupTweens = new Map();
+    this.buffAuras = new Map();
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -599,6 +617,87 @@ export class GameScene extends Phaser.Scene {
           });
         });
       }
+
+      // Powerup state listeners
+      this.room.state.powerups.onAdd((powerup: any, key: string) => {
+        const textureKey = POWERUP_TEXTURE[powerup.powerupType] || 'potion_speed';
+        const sprite = this.add.sprite(powerup.x, powerup.y, textureKey);
+        sprite.setDisplaySize(16, 16); // 16x16 pixel art
+        sprite.setDepth(8); // Above ground, below players (10)
+        this.powerupSprites.set(key, sprite);
+
+        // Bobbing animation: oscillate y +/- 4px, 1000ms period
+        const tween = this.tweens.add({
+          targets: sprite,
+          y: powerup.y - 4,
+          duration: 500,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+        this.powerupTweens.set(key, tween);
+
+        // Play spawn SFX
+        if (this.audioManager) this.audioManager.playSFX('powerup_spawn');
+      });
+
+      this.room.state.powerups.onRemove((_powerup: any, key: string) => {
+        const sprite = this.powerupSprites.get(key);
+        if (sprite) {
+          sprite.destroy();
+          this.powerupSprites.delete(key);
+        }
+        const tween = this.powerupTweens.get(key);
+        if (tween) {
+          tween.destroy();
+          this.powerupTweens.delete(key);
+        }
+      });
+
+      // Powerup collection feedback: SFX, floating text, buff aura
+      this.room.onMessage('powerupCollect', (data: any) => {
+        // Play pickup SFX
+        if (this.audioManager) this.audioManager.playSFX('powerup_pickup');
+
+        // Floating text at player position showing powerup name
+        const playerSprite = this.playerSprites.get(data.playerId);
+        if (playerSprite) {
+          const floatText = this.add
+            .text(playerSprite.x, playerSprite.y - 30, data.typeName, {
+              fontSize: '12px',
+              fontFamily: 'monospace',
+              color: '#FFFFFF',
+              stroke: '#000000',
+              strokeThickness: 3,
+              fontStyle: 'bold',
+            })
+            .setOrigin(0.5)
+            .setDepth(25);
+
+          this.tweens.add({
+            targets: floatText,
+            y: floatText.y - 30,
+            alpha: 0,
+            duration: 1200,
+            ease: 'Cubic.easeOut',
+            onComplete: () => floatText.destroy(),
+          });
+        }
+
+        // Start buff aura on the collecting player
+        const sprite = this.playerSprites.get(data.playerId);
+        if (sprite && this.particleFactory) {
+          this.startBuffAura(data.playerId, data.type, sprite);
+        }
+      });
+
+      this.room.onMessage('powerupDespawn', (_data: any) => {
+        if (this.audioManager) this.audioManager.playSFX('powerup_despawn');
+      });
+
+      this.room.onMessage('buffExpired', (data: any) => {
+        this.stopBuffAura(data.playerId, data.type);
+      });
     } catch (e) {
       console.error('Connection failed:', e);
       this.statusText.setText('Connection failed - is server running?');
@@ -912,6 +1011,21 @@ export class GameScene extends Phaser.Scene {
         sprite.y += velocity.vy * dt;
       }
     });
+
+    // Powerup despawn blink (client-side calculation)
+    if (this.room) {
+      this.room.state.powerups.forEach((powerup: any, key: string) => {
+        const sprite = this.powerupSprites.get(key);
+        if (!sprite) return;
+        const elapsed = this.room!.state.serverTime - powerup.spawnTime;
+        const remaining = POWERUP_CONFIG.despawnTime - elapsed;
+        if (remaining <= POWERUP_CONFIG.despawnWarningTime && remaining > 0) {
+          // Blink: toggle visibility every 200ms
+          const blinkPhase = Math.floor(elapsed / 200) % 2;
+          sprite.setAlpha(blinkPhase === 0 ? 1 : 0.2);
+        }
+      });
+    }
   }
 
   /**
@@ -1069,8 +1183,27 @@ export class GameScene extends Phaser.Scene {
     }
 
     const sprite = this.add.sprite(projectile.x, projectile.y, 'projectiles', frameIndex);
-    sprite.setDisplaySize(8, 8); // 16x16 texture displayed at 8x8 world size
     sprite.setDepth(5);
+
+    // Beam projectile: large glowing display; buffed projectile: scaled up; normal: 8x8
+    if (projectile.isBeam) {
+      sprite.setDisplaySize(40, 40); // 5x normal size
+      sprite.setTint(0xffdd00); // Gold-white beam color
+      this.tweens.add({
+        targets: sprite,
+        alpha: { from: 1.0, to: 0.6 },
+        duration: 100,
+        yoyo: true,
+        repeat: -1,
+      });
+    } else if (projectile.hitboxScale > 1) {
+      // Guardian buffed projectile: display at scaled size
+      const buffedSize = 8 * projectile.hitboxScale;
+      sprite.setDisplaySize(buffedSize, buffedSize);
+    } else {
+      sprite.setDisplaySize(8, 8); // 16x16 texture displayed at 8x8 world size
+    }
+
     this.projectileSprites.set(index, sprite);
 
     // Store velocity for client-side interpolation
@@ -1081,15 +1214,31 @@ export class GameScene extends Phaser.Scene {
 
     // Create projectile trail particle effect
     if (this.particleFactory) {
-      let trailColor = 0xff4444; // default red (faran)
-      if (this.room) {
-        const ownerPlayer = this.room.state.players.get(projectile.ownerId);
-        if (ownerPlayer && ownerPlayer.role) {
-          trailColor = charColorNum(ownerPlayer.role);
+      if (projectile.isBeam) {
+        // Beam trail: larger, gold particles
+        const beamTrail = this.add.particles(0, 0, 'particle', {
+          frequency: 20,
+          lifespan: 300,
+          speed: 0,
+          scale: { start: 2.0, end: 0 },
+          alpha: { start: 0.7, end: 0 },
+          tint: 0xffdd00,
+          follow: sprite,
+          emitting: true,
+        });
+        beamTrail.setDepth(4);
+        this.projectileTrails.set(index, beamTrail);
+      } else {
+        let trailColor = 0xff4444; // default red (faran)
+        if (this.room) {
+          const ownerPlayer = this.room.state.players.get(projectile.ownerId);
+          if (ownerPlayer && ownerPlayer.role) {
+            trailColor = charColorNum(ownerPlayer.role);
+          }
         }
+        const trail = this.particleFactory.createTrail(sprite, trailColor);
+        this.projectileTrails.set(index, trail);
       }
-      const trail = this.particleFactory.createTrail(sprite, trailColor);
-      this.projectileTrails.set(index, trail);
     }
 
     projectile.onChange(() => {
@@ -1151,6 +1300,81 @@ export class GameScene extends Phaser.Scene {
     const currentIndex = alivePlayers.indexOf(currentTarget);
     const nextIndex = (currentIndex + 1) % alivePlayers.length;
     return alivePlayers[nextIndex];
+  }
+
+  private startBuffAura(
+    playerId: string,
+    buffType: number,
+    sprite: Phaser.GameObjects.Sprite,
+  ): void {
+    if (!this.particleFactory) return;
+
+    // Get or create aura map for this player
+    if (!this.buffAuras.has(playerId)) {
+      this.buffAuras.set(playerId, new Map());
+    }
+    const playerAuras = this.buffAuras.get(playerId)!;
+
+    // If aura already exists for this buff type, destroy old one first (timer refresh)
+    const existing = playerAuras.get(buffType);
+    if (existing) {
+      this.particleFactory.destroyTrail(existing);
+    }
+
+    // Create new aura emitter
+    let emitter: Phaser.GameObjects.Particles.ParticleEmitter;
+    switch (buffType) {
+      case PowerupType.SPEED:
+        emitter = this.particleFactory.speedAura(sprite);
+        break;
+      case PowerupType.INVINCIBILITY:
+        emitter = this.particleFactory.invincibilityAura(sprite);
+        break;
+      case PowerupType.PROJECTILE:
+        emitter = this.particleFactory.projectileAura(sprite);
+        break;
+      default:
+        return;
+    }
+    playerAuras.set(buffType, emitter);
+  }
+
+  private stopBuffAura(playerId: string, buffType: number): void {
+    const playerAuras = this.buffAuras.get(playerId);
+    if (!playerAuras) return;
+    const emitter = playerAuras.get(buffType);
+    if (emitter && this.particleFactory) {
+      this.particleFactory.destroyTrail(emitter);
+      playerAuras.delete(buffType);
+    }
+  }
+
+  private clearAllBuffAuras(): void {
+    this.buffAuras.forEach((playerAuras) => {
+      playerAuras.forEach((emitter) => {
+        if (this.particleFactory) {
+          this.particleFactory.destroyTrail(emitter);
+        } else {
+          emitter.destroy();
+        }
+      });
+      playerAuras.clear();
+    });
+    this.buffAuras.clear();
+  }
+
+  private clearPlayerAuras(playerId: string): void {
+    const playerAuras = this.buffAuras.get(playerId);
+    if (!playerAuras) return;
+    playerAuras.forEach((emitter) => {
+      if (this.particleFactory) {
+        this.particleFactory.destroyTrail(emitter);
+      } else {
+        emitter.destroy();
+      }
+    });
+    playerAuras.clear();
+    this.buffAuras.delete(playerId);
   }
 
   private async handleReconnection() {
@@ -1220,6 +1444,8 @@ export class GameScene extends Phaser.Scene {
           if (sprite && this.particleFactory) {
             this.particleFactory.deathExplosion(sprite.x, sprite.y, roleColor);
           }
+          // Clear buff auras on death
+          this.clearPlayerAuras(sessionId);
           // Camera shake on death (stronger than damage)
           if (isLocal) {
             this.cameras.main.shake(100, 0.005);
@@ -1688,6 +1914,82 @@ export class GameScene extends Phaser.Scene {
         });
       });
     }
+
+    // Re-attach powerup Schema listeners (reconnection)
+    this.room.state.powerups.onAdd((powerup: any, key: string) => {
+      const textureKey = POWERUP_TEXTURE[powerup.powerupType] || 'potion_speed';
+      const sprite = this.add.sprite(powerup.x, powerup.y, textureKey);
+      sprite.setDisplaySize(16, 16);
+      sprite.setDepth(8);
+      this.powerupSprites.set(key, sprite);
+
+      const tween = this.tweens.add({
+        targets: sprite,
+        y: powerup.y - 4,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+      this.powerupTweens.set(key, tween);
+
+      if (this.audioManager) this.audioManager.playSFX('powerup_spawn');
+    });
+
+    this.room.state.powerups.onRemove((_powerup: any, key: string) => {
+      const sprite = this.powerupSprites.get(key);
+      if (sprite) {
+        sprite.destroy();
+        this.powerupSprites.delete(key);
+      }
+      const tween = this.powerupTweens.get(key);
+      if (tween) {
+        tween.destroy();
+        this.powerupTweens.delete(key);
+      }
+    });
+
+    // Re-attach powerup broadcast listeners (reconnection)
+    this.room.onMessage('powerupCollect', (data: any) => {
+      if (this.audioManager) this.audioManager.playSFX('powerup_pickup');
+
+      const playerSprite = this.playerSprites.get(data.playerId);
+      if (playerSprite) {
+        const floatText = this.add
+          .text(playerSprite.x, playerSprite.y - 30, data.typeName, {
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 3,
+            fontStyle: 'bold',
+          })
+          .setOrigin(0.5)
+          .setDepth(25);
+
+        this.tweens.add({
+          targets: floatText,
+          y: floatText.y - 30,
+          alpha: 0,
+          duration: 1200,
+          ease: 'Cubic.easeOut',
+          onComplete: () => floatText.destroy(),
+        });
+      }
+
+      const sprite = this.playerSprites.get(data.playerId);
+      if (sprite && this.particleFactory) {
+        this.startBuffAura(data.playerId, data.type, sprite);
+      }
+    });
+
+    this.room.onMessage('powerupDespawn', (_data: any) => {
+      if (this.audioManager) this.audioManager.playSFX('powerup_despawn');
+    });
+
+    this.room.onMessage('buffExpired', (data: any) => {
+      this.stopBuffAura(data.playerId, data.type);
+    });
   }
 
   /**
@@ -1724,6 +2026,15 @@ export class GameScene extends Phaser.Scene {
     // Reset health cache
     this.playerHealthCache.clear();
     this.prevHealth.clear();
+
+    // Destroy powerup sprites and tweens
+    this.powerupSprites.forEach((sprite) => sprite.destroy());
+    this.powerupSprites.clear();
+    this.powerupTweens.forEach((tween) => tween.destroy());
+    this.powerupTweens.clear();
+
+    // Destroy all buff auras (must be before particleFactory.destroy())
+    this.clearAllBuffAuras();
 
     // Destroy particle factory (recreated after new tilemap)
     if (this.particleFactory) {
