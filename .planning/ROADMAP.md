@@ -33,7 +33,7 @@
 - [x] **Phase 7: HD Viewport & Camera** - 1280x720 resolution with camera follow and viewport-relative UI -- completed 2026-02-13
 - [x] **Phase 8: Arena Overhaul** - Tileset art and larger scrollable arenas (50x38 tiles) -- completed 2026-02-14
 - [ ] **Phase 9: Multi-Stage Rounds** - Best-of-3 match structure with stage transitions -- gap closure in progress
-- [ ] **Phase 10: Powerup System** - Server-authoritative powerup spawning, collection, and temporary buffs
+- [x] **Phase 10: Powerup System** - Server-authoritative powerup spawning, collection, and temporary buffs (completed 2026-02-17)
 - [ ] **Phase 11: Minimap & Music** - Minimap overlay and music system with crossfade transitions
 - [ ] **Phase 12: HUD Icon Overhaul** - Icon-based HUD replacing text-only elements
 
@@ -122,7 +122,7 @@ Plans:
   3. Speed boost, invincibility, and larger projectile hitbox each produce a distinct, observable gameplay effect
   4. The HUD shows which powerup is active on the player with a visible countdown indicator for remaining duration
   5. Powerups are cleared between stages and spawn fresh each stage
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 10-01-PLAN.md -- Shared powerup constants, Schema definitions, server spawn/collection/buff/stage-cleanup
@@ -174,7 +174,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 7. HD Viewport & Camera | v2.0 | 9/9 | Complete | 2026-02-13 |
 | 8. Arena Overhaul | v2.0 | 5/5 | Complete | 2026-02-14 |
 | 9. Multi-Stage Rounds | v2.0 | 4/5 | Gap closure | - |
-| 10. Powerup System | v2.0 | 0/4 | Planned | - |
+| 10. Powerup System | v2.0 | Complete    | 2026-02-17 | - |
 | 11. Minimap & Music | v2.0 | 0/TBD | Not started | - |
 | 12. HUD Icon Overhaul | v2.0 | 0/TBD | Not started | - |
 
