@@ -1,7 +1,16 @@
 import Phaser from 'phaser';
 import { Room } from 'colyseus.js';
 import { CHARACTERS } from '../../../shared/characters';
-import { Colors, TextStyle, HealthBar, CooldownBar, Layout, charColor, charColorNum } from '../ui/designTokens';
+import { PowerupType } from '../../../shared/powerups';
+import {
+  Colors,
+  TextStyle,
+  HealthBar,
+  CooldownBar,
+  Layout,
+  charColor,
+  charColorNum,
+} from '../ui/designTokens';
 
 const MATCH_DURATION_MS = 300000; // 5 minutes
 
@@ -78,6 +87,19 @@ export class HUDScene extends Phaser.Scene {
   private roundScoreText: Phaser.GameObjects.Text | null = null;
   private stageLabel: Phaser.GameObjects.Text | null = null;
 
+  // Buff indicators
+  private buffIndicators: Map<
+    number,
+    {
+      bg: Phaser.GameObjects.Rectangle;
+      fill: Phaser.GameObjects.Rectangle;
+      icon: Phaser.GameObjects.Sprite;
+      startTime: number;
+      duration: number;
+      flashTimer?: Phaser.Time.TimerEvent;
+    }
+  > = new Map();
+
   // GameScene reference for cross-scene events
   private gameScene: Phaser.Scene | null = null;
 
@@ -116,6 +138,7 @@ export class HUDScene extends Phaser.Scene {
     this.countdownText = null;
     this.roundScoreText = null;
     this.stageLabel = null;
+    this.buffIndicators = new Map();
     this.gameScene = null;
 
     // Transparent background so GameScene shows through
@@ -187,6 +210,9 @@ export class HUDScene extends Phaser.Scene {
 
     // Update ping display color
     this.updatePingDisplay();
+
+    // Update buff indicator fill bars (shrinking over time)
+    this.updateBuffIndicators();
   }
 
   // =====================
@@ -225,7 +251,13 @@ export class HUDScene extends Phaser.Scene {
     if (!this.room) return;
 
     // Collect all players
-    const players: { sessionId: string; name: string; role: string; health: number; maxHealth: number }[] = [];
+    const players: {
+      sessionId: string;
+      name: string;
+      role: string;
+      health: number;
+      maxHealth: number;
+    }[] = [];
     this.room.state.players.forEach((player: any, sessionId: string) => {
       const role = player.role || 'faran';
       const maxHealth = CHARACTERS[role]?.maxHealth || 100;
@@ -239,7 +271,7 @@ export class HUDScene extends Phaser.Scene {
     });
 
     // Sort so local player is in the center
-    const localIdx = players.findIndex(p => p.sessionId === this.localSessionId);
+    const localIdx = players.findIndex((p) => p.sessionId === this.localSessionId);
     if (localIdx > -1) {
       const local = players.splice(localIdx, 1)[0];
       // Insert at center
@@ -394,12 +426,51 @@ export class HUDScene extends Phaser.Scene {
   private setupKillFeed(): void {
     if (!this.room) return;
 
-    this.room.onMessage('kill', (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
-      this.addKillFeedEntry(data);
+    this.room.onMessage(
+      'kill',
+      (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
+        this.addKillFeedEntry(data);
+      },
+    );
+
+    // Powerup collection: show buff indicator for local player + kill feed announcement
+    this.room.onMessage('powerupCollect', (data: any) => {
+      if (data.playerId === this.localSessionId) {
+        this.addBuffIndicator(data.type, data.duration);
+      }
+
+      this.addKillFeedEntry({
+        killer: data.playerName,
+        victim: `collected ${data.typeName}`,
+        killerRole: data.playerRole,
+        victimRole: '',
+      });
+    });
+
+    // Powerup spawn: kill feed announcement
+    this.room.onMessage('powerupSpawn', (data: any) => {
+      this.addKillFeedEntry({
+        killer: data.typeName,
+        victim: 'appeared!',
+        killerRole: '',
+        victimRole: '',
+      });
+    });
+
+    // Buff expired: remove indicator for local player
+    this.room.onMessage('buffExpired', (data: any) => {
+      if (data.playerId === this.localSessionId) {
+        this.removeBuffIndicator(data.type);
+      }
     });
   }
 
-  private addKillFeedEntry(data: { killer: string; victim: string; killerRole: string; victimRole: string }): void {
+  private addKillFeedEntry(data: {
+    killer: string;
+    victim: string;
+    killerRole: string;
+    victimRole: string;
+  }): void {
     const killFeedX = this.W * 0.98;
     const baseY = this.H * 0.08;
     const feedSpacing = this.H * 0.04;
@@ -590,14 +661,19 @@ export class HUDScene extends Phaser.Scene {
     });
 
     // Subtle permanent role reminder in top-left
-    this.roleReminder = this.add.text(this.W * 0.01, this.H * 0.02, roleName.charAt(0) + roleName.slice(1).toLowerCase(), {
-      fontSize: '14px',
-      color: roleColor,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 2,
-    });
+    this.roleReminder = this.add.text(
+      this.W * 0.01,
+      this.H * 0.02,
+      roleName.charAt(0) + roleName.slice(1).toLowerCase(),
+      {
+        fontSize: '14px',
+        color: roleColor,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      },
+    );
     this.roleReminder.setDepth(200);
   }
 
@@ -617,7 +693,7 @@ export class HUDScene extends Phaser.Scene {
     this.spectatorBar.setDepth(250);
     this.spectatorBar.setVisible(false);
 
-    this.spectatorInstruction = this.add.text(this.W * 0.5, this.H * 0.10, 'Press TAB to cycle', {
+    this.spectatorInstruction = this.add.text(this.W * 0.5, this.H * 0.1, 'Press TAB to cycle', {
       fontSize: '12px',
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -636,7 +712,9 @@ export class HUDScene extends Phaser.Scene {
 
     if (this.spectatorBar) {
       const roleColor = charColor(targetRole);
-      this.spectatorBar.setText(`SPECTATING: ${targetName} (${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)})`);
+      this.spectatorBar.setText(
+        `SPECTATING: ${targetName} (${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)})`,
+      );
       this.spectatorBar.setColor(roleColor);
       this.spectatorBar.setVisible(true);
     }
@@ -676,6 +754,8 @@ export class HUDScene extends Phaser.Scene {
         this.hideSpectatorHUD();
       } else if (value === 'stage_end') {
         // Stage ended -- keep HUD visible but show stage result briefly
+        // Clear buff indicators (buffs expire at stage end)
+        this.clearBuffIndicators();
       } else if (value === 'stage_transition') {
         // Rebuild health bars (players reset to full health)
         this.time.delayedCall(200, () => this.rebuildHealthBars());
@@ -684,6 +764,8 @@ export class HUDScene extends Phaser.Scene {
           timer.destroy();
         }
         this.lowHealthFlashTimers.clear();
+        // Clear any remaining buff indicators
+        this.clearBuffIndicators();
       }
     });
   }
@@ -744,13 +826,13 @@ export class HUDScene extends Phaser.Scene {
     this.roundScoreText.setDepth(200);
 
     // Listen for schema changes on stage wins
-    this.room.state.listen("paranStageWins", (value: number) => {
+    this.room.state.listen('paranStageWins', (value: number) => {
       this.updateRoundScore();
     });
-    this.room.state.listen("guardianStageWins", (value: number) => {
+    this.room.state.listen('guardianStageWins', (value: number) => {
       this.updateRoundScore();
     });
-    this.room.state.listen("currentStage", (value: number) => {
+    this.room.state.listen('currentStage', (value: number) => {
       if (this.stageLabel) {
         this.stageLabel.setText(`Stage ${value}`);
       }
@@ -765,6 +847,129 @@ export class HUDScene extends Phaser.Scene {
   }
 
   // =====================
+  // 10. BUFF INDICATORS
+  // =====================
+
+  private addBuffIndicator(buffType: number, duration: number): void {
+    // If indicator already exists for this type, refresh it
+    this.removeBuffIndicator(buffType);
+
+    const indicatorWidth = 50;
+    const indicatorHeight = 8;
+    const iconSize = 16;
+
+    // Position: centered at screen middle, offset by active indicator count
+    const x = 0; // will be repositioned
+    const y = this.H * 0.87; // Above cooldown bar
+
+    // Background bar (dark)
+    const bg = this.add.rectangle(x, y, indicatorWidth, indicatorHeight, 0x222222, 0.8);
+    bg.setOrigin(0.5, 0.5);
+    bg.setDepth(100);
+
+    // Fill bar (colored by type)
+    const fillColor =
+      buffType === PowerupType.SPEED
+        ? 0x4488ff
+        : buffType === PowerupType.INVINCIBILITY
+          ? 0xffcc00
+          : 0xff4422;
+    const fill = this.add.rectangle(x, y, indicatorWidth, indicatorHeight, fillColor, 0.9);
+    fill.setOrigin(0.5, 0.5);
+    fill.setDepth(101);
+
+    // Icon sprite above bar
+    const textureKey =
+      buffType === PowerupType.SPEED
+        ? 'potion_speed'
+        : buffType === PowerupType.INVINCIBILITY
+          ? 'potion_invincibility'
+          : 'potion_projectile';
+    const icon = this.add.sprite(x, y - iconSize, textureKey);
+    icon.setDisplaySize(iconSize, iconSize);
+    icon.setDepth(101);
+
+    this.buffIndicators.set(buffType, {
+      bg,
+      fill,
+      icon,
+      startTime: Date.now(),
+      duration,
+    });
+
+    this.repositionBuffIndicators();
+  }
+
+  private removeBuffIndicator(buffType: number): void {
+    const indicator = this.buffIndicators.get(buffType);
+    if (!indicator) return;
+    indicator.bg.destroy();
+    indicator.fill.destroy();
+    indicator.icon.destroy();
+    if (indicator.flashTimer) indicator.flashTimer.destroy();
+    this.buffIndicators.delete(buffType);
+    this.repositionBuffIndicators();
+  }
+
+  private repositionBuffIndicators(): void {
+    const indicatorWidth = 50;
+    const gap = 8;
+    const count = this.buffIndicators.size;
+    if (count === 0) return;
+
+    const totalWidth = count * (indicatorWidth + gap) - gap;
+    const startX = this.W / 2 - totalWidth / 2;
+    const y = this.H * 0.87;
+    const iconSize = 16;
+
+    let i = 0;
+    this.buffIndicators.forEach((indicator) => {
+      const x = startX + i * (indicatorWidth + gap) + indicatorWidth / 2;
+      indicator.bg.setPosition(x, y);
+      indicator.fill.setPosition(x, y);
+      indicator.icon.setPosition(x, y - iconSize);
+      i++;
+    });
+  }
+
+  private updateBuffIndicators(): void {
+    this.buffIndicators.forEach((indicator, buffType) => {
+      const elapsed = Date.now() - indicator.startTime;
+      const remaining = indicator.duration - elapsed;
+      const fraction = Math.max(0, remaining / indicator.duration);
+
+      // Shrink fill bar width
+      const indicatorWidth = 50;
+      indicator.fill.setSize(indicatorWidth * fraction, 8);
+      // Adjust position to keep left-aligned shrink
+      const baseX = indicator.bg.x - indicatorWidth / 2;
+      indicator.fill.setPosition(baseX + (indicatorWidth * fraction) / 2, indicator.fill.y);
+
+      // Flash when about to expire (last 1.5 seconds)
+      if (remaining < 1500 && remaining > 0 && !indicator.flashTimer) {
+        indicator.flashTimer = this.time.addEvent({
+          delay: 150,
+          callback: () => {
+            indicator.fill.setAlpha(indicator.fill.alpha === 1 ? 0.3 : 1);
+            indicator.icon.setAlpha(indicator.icon.alpha === 1 ? 0.3 : 1);
+          },
+          loop: true,
+        });
+      }
+    });
+  }
+
+  private clearBuffIndicators(): void {
+    this.buffIndicators.forEach((indicator) => {
+      indicator.bg.destroy();
+      indicator.fill.destroy();
+      indicator.icon.destroy();
+      if (indicator.flashTimer) indicator.flashTimer.destroy();
+    });
+    this.buffIndicators.clear();
+  }
+
+  // =====================
   // CROSS-SCENE EVENTS
   // =====================
 
@@ -772,20 +977,32 @@ export class HUDScene extends Phaser.Scene {
     if (!this.gameScene) return;
 
     // Listen for fire events from GameScene
-    this.gameScene.events.on('localFired', (data: { fireTime: number; cooldownMs: number }) => {
-      this.lastFireTime = data.fireTime;
-      this.cooldownMs = data.cooldownMs;
-    }, this);
+    this.gameScene.events.on(
+      'localFired',
+      (data: { fireTime: number; cooldownMs: number }) => {
+        this.lastFireTime = data.fireTime;
+        this.cooldownMs = data.cooldownMs;
+      },
+      this,
+    );
 
     // Listen for spectator target changes
-    this.gameScene.events.on('spectatorChanged', (data: { targetName: string; targetRole: string }) => {
-      this.showSpectatorHUD(data.targetName, data.targetRole);
-    }, this);
+    this.gameScene.events.on(
+      'spectatorChanged',
+      (data: { targetName: string; targetRole: string }) => {
+        this.showSpectatorHUD(data.targetName, data.targetRole);
+      },
+      this,
+    );
 
     // Listen for local player death
-    this.gameScene.events.on('localDied', () => {
-      // Spectator HUD will be shown by spectatorChanged event
-    }, this);
+    this.gameScene.events.on(
+      'localDied',
+      () => {
+        // Spectator HUD will be shown by spectatorChanged event
+      },
+      this,
+    );
   }
 
   // =====================
@@ -809,6 +1026,9 @@ export class HUDScene extends Phaser.Scene {
       timer.destroy();
     }
     this.lowHealthFlashTimers.clear();
+
+    // Clear buff indicators
+    this.clearBuffIndicators();
 
     // Remove GameScene event listeners
     if (this.gameScene) {
