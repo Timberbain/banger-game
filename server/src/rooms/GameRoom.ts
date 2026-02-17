@@ -9,6 +9,13 @@ import { MAPS, MapMetadata } from '../../../shared/maps';
 import { LOBBY_CONFIG } from '../../../shared/lobby';
 import { CollisionGrid, resolveCollisions } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS, OBSTACLE_TIER_HP } from '../../../shared/obstacles';
+import {
+  PowerupType,
+  POWERUP_CONFIG,
+  POWERUP_NAMES,
+  BUFF_DURATIONS,
+} from '../../../shared/powerups';
+import { PowerupState } from '../schema/Powerup';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -26,6 +33,11 @@ export class GameRoom extends Room<GameState> {
   private stageArenas: MapMetadata[] = [];
   private stageSnapshots: StageSnapshot[] = [];
   private matchStartEpoch: number = 0; // Tracks overall match start for total duration
+
+  // Powerup system state (server-only)
+  private nextSpawnTime: number = 0; // When next powerup can spawn
+  private powerupIdCounter: number = 0; // Unique ID generator for powerup keys
+  private originalObstacleTiles: Set<string> = new Set(); // Original obstacle positions for spawn exclusion
 
   /**
    * Validate input structure and types
@@ -100,6 +112,8 @@ export class GameRoom extends Room<GameState> {
     );
 
     // Initialize destructible obstacles in state for client sync
+    // Also track original obstacle positions for powerup spawn exclusion
+    this.originalObstacleTiles = new Set();
     let obstacleCount = 0;
     for (let y = 0; y < mapJson.height; y++) {
       for (let x = 0; x < mapJson.width; x++) {
@@ -111,6 +125,7 @@ export class GameRoom extends Room<GameState> {
           obs.maxHp = OBSTACLE_TIER_HP[tileId];
           obs.hp = obs.maxHp;
           this.state.obstacles.set(`${x},${y}`, obs);
+          this.originalObstacleTiles.add(`${x},${y}`);
           obstacleCount++;
         }
       }
@@ -462,6 +477,191 @@ export class GameRoom extends Room<GameState> {
     player.y = Math.max(0, Math.min(this.mapMetadata.height, player.y));
   }
 
+  /**
+   * Find a valid spawn tile for a powerup: walkable, not an original obstacle,
+   * and at minimum distance from alive players.
+   */
+  private findSpawnTile(): { x: number; y: number } | null {
+    const maxAttempts = 50;
+    const tileSize = this.collisionGrid.tileSize;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Random tile within map bounds (exclude border tiles)
+      const tileX = 1 + Math.floor(Math.random() * (this.collisionGrid.width - 2));
+      const tileY = 1 + Math.floor(Math.random() * (this.collisionGrid.height - 2));
+
+      // Skip solid tiles (walls, obstacles)
+      if (this.collisionGrid.isSolid(tileX, tileY)) continue;
+
+      // Skip original obstacle positions (even if destroyed)
+      if (this.originalObstacleTiles.has(`${tileX},${tileY}`)) continue;
+
+      // Convert to world coordinates (center of tile)
+      const worldX = tileX * tileSize + tileSize / 2;
+      const worldY = tileY * tileSize + tileSize / 2;
+
+      // Check minimum distance from all alive players
+      let tooClose = false;
+      this.state.players.forEach((player) => {
+        if (player.health <= 0) return;
+        const dx = worldX - player.x;
+        const dy = worldY - player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < POWERUP_CONFIG.minSpawnDistance) {
+          tooClose = true;
+        }
+      });
+      if (tooClose) continue;
+
+      return { x: worldX, y: worldY };
+    }
+
+    return null; // No valid tile found after max attempts
+  }
+
+  /**
+   * Check if it's time to spawn a new powerup and spawn one if conditions are met.
+   */
+  private checkPowerupSpawns(): void {
+    // Don't exceed max powerups on map
+    if (this.state.powerups.size >= POWERUP_CONFIG.maxOnMap) return;
+
+    // Not time yet
+    if (this.state.serverTime < this.nextSpawnTime) return;
+
+    // Find a valid spawn tile
+    const tile = this.findSpawnTile();
+    if (!tile) return; // No valid tile found
+
+    // Create powerup
+    const powerup = new PowerupState();
+    powerup.x = tile.x;
+    powerup.y = tile.y;
+    powerup.powerupType = Math.floor(Math.random() * 3);
+    powerup.spawnTime = this.state.serverTime;
+
+    const key = `pwr_${this.powerupIdCounter++}`;
+    this.state.powerups.set(key, powerup);
+
+    // Broadcast spawn event
+    this.broadcast('powerupSpawn', {
+      id: key,
+      type: powerup.powerupType,
+      typeName: POWERUP_NAMES[powerup.powerupType],
+    });
+
+    // Schedule next spawn
+    this.nextSpawnTime =
+      this.state.serverTime +
+      POWERUP_CONFIG.spawnIntervalMin +
+      Math.random() * (POWERUP_CONFIG.spawnIntervalMax - POWERUP_CONFIG.spawnIntervalMin);
+  }
+
+  /**
+   * Check powerup despawning and collection by players.
+   */
+  private checkPowerupCollections(): void {
+    const toRemove: string[] = [];
+
+    this.state.powerups.forEach((powerup, id) => {
+      // Despawn check: remove powerups that have been on the map too long
+      if (this.state.serverTime - powerup.spawnTime > POWERUP_CONFIG.despawnTime) {
+        toRemove.push(id);
+        this.broadcast('powerupDespawn', { id, type: powerup.powerupType });
+        return;
+      }
+
+      // Collection check: for each alive player, check distance
+      let collected = false;
+      this.state.players.forEach((player, sessionId) => {
+        if (collected) return;
+        if (player.health <= 0) return;
+
+        const dx = powerup.x - player.x;
+        const dy = powerup.y - player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < COMBAT.playerRadius + POWERUP_CONFIG.collectionRadius) {
+          this.collectPowerup(sessionId, player, powerup, id);
+          toRemove.push(id);
+          collected = true;
+        }
+      });
+    });
+
+    // Remove collected/despawned powerups after iteration (don't mutate during forEach)
+    for (const id of toRemove) {
+      this.state.powerups.delete(id);
+    }
+  }
+
+  /**
+   * Apply a powerup buff to a player. Same buff type refreshes timer;
+   * different buff types stack.
+   */
+  private collectPowerup(
+    sessionId: string,
+    player: Player,
+    powerup: PowerupState,
+    id: string,
+  ): void {
+    const buffType = powerup.powerupType;
+    const duration = BUFF_DURATIONS[buffType];
+    const expiresAt = this.state.serverTime + duration;
+
+    // Check if player already has this buff type
+    const existingBuff = player.activeBuffs.find((b) => b.type === buffType);
+    if (existingBuff) {
+      // Same type: refresh timer only (do NOT stack same type)
+      existingBuff.expiresAt = expiresAt;
+      existingBuff.duration = duration;
+    } else {
+      // New buff type: add to active buffs
+      player.activeBuffs.push({ type: buffType, expiresAt, duration });
+    }
+
+    // Apply immediate effects
+    if (buffType === PowerupType.SPEED) {
+      player.speedMultiplier = POWERUP_CONFIG.speedMultiplier;
+    }
+
+    // Broadcast collection event
+    this.broadcast('powerupCollect', {
+      id,
+      playerId: sessionId,
+      playerName: player.name,
+      playerRole: player.role,
+      type: buffType,
+      typeName: POWERUP_NAMES[buffType],
+      duration,
+    });
+  }
+
+  /**
+   * Update buff timers and expire buffs that have run out.
+   */
+  private updateBuffTimers(): void {
+    this.state.players.forEach((player, sessionId) => {
+      // Iterate backwards for safe splice
+      for (let i = player.activeBuffs.length - 1; i >= 0; i--) {
+        const buff = player.activeBuffs[i];
+        if (this.state.serverTime >= buff.expiresAt) {
+          // Broadcast expiry
+          this.broadcast('buffExpired', { playerId: sessionId, type: buff.type });
+
+          // Remove expired buff
+          player.activeBuffs.splice(i, 1);
+        }
+      }
+
+      // Ensure speedMultiplier is correct: reset to 1 if no speed buff active
+      const hasSpeedBuff = player.activeBuffs.some((b) => b.type === PowerupType.SPEED);
+      if (!hasSpeedBuff && player.speedMultiplier !== 1) {
+        player.speedMultiplier = 1;
+      }
+    });
+  }
+
   fixedTick(deltaTime: number) {
     // Guard: only run game logic during PLAYING state
     if (this.state.matchState !== MatchState.PLAYING) {
@@ -594,6 +794,9 @@ export class GameRoom extends Room<GameState> {
         if (dist < COMBAT.playerRadius * 2) {
           // Contact kill: instant death regardless of HP
           target.health = 0;
+          // Clear buffs on death
+          target.activeBuffs = [];
+          target.speedMultiplier = 1;
           // Track stats
           const paranStats = this.state.matchStats.get(paranId);
           if (paranStats) paranStats.kills++;
@@ -678,6 +881,10 @@ export class GameRoom extends Room<GameState> {
             shooterStats.shotsHit++;
             shooterStats.damageDealt += proj.damage;
             if (wasAlive && isDead) {
+              // Clear buffs on death
+              target.activeBuffs = [];
+              target.speedMultiplier = 1;
+
               shooterStats.kills++;
               const targetStats = this.state.matchStats.get(targetId);
               if (targetStats) targetStats.deaths++;
@@ -704,12 +911,18 @@ export class GameRoom extends Room<GameState> {
 
     // Check win conditions after combat processing
     this.checkWinConditions();
+
+    // Powerup system: spawn, collect, and update buff timers
+    this.checkPowerupSpawns();
+    this.checkPowerupCollections();
+    this.updateBuffTimers();
   }
 
   private startMatch() {
     this.state.matchState = MatchState.PLAYING;
     this.state.matchStartTime = this.state.serverTime;
     this.matchStartEpoch = this.state.serverTime; // Track overall match start
+    this.nextSpawnTime = this.state.serverTime + POWERUP_CONFIG.firstSpawnDelay;
     this.lock(); // Prevent additional joins
     this.broadcast('matchStart', { startTime: this.state.matchStartTime });
     console.log('Match started!');
@@ -849,6 +1062,13 @@ export class GameRoom extends Room<GameState> {
       this.state.obstacles.delete(key);
     }
 
+    // 2.5 Clear powerups: collect keys first, then delete (NOT .clear())
+    const powerupKeys: string[] = [];
+    this.state.powerups.forEach((_, key) => powerupKeys.push(key));
+    for (const key of powerupKeys) {
+      this.state.powerups.delete(key);
+    }
+
     // 3. Load new map FIRST (collision grid + obstacles + mapName)
     // Must be before player reset so collision grid is available for spawn validation
     this.loadMap(newMap);
@@ -863,6 +1083,8 @@ export class GameRoom extends Room<GameState> {
       player.lastFireTime = 0;
       player.lastProcessedSeq = 0;
       player.connected = true; // Re-confirm connection status
+      player.activeBuffs = [];
+      player.speedMultiplier = 1;
       // Set spawn position for new map (validated against collision grid)
       this.setSpawnPosition(player, player.role);
     });
@@ -882,6 +1104,10 @@ export class GameRoom extends Room<GameState> {
     this.state.matchState = MatchState.PLAYING;
     // Each stage gets a fresh 5-minute timer
     this.state.matchStartTime = this.state.serverTime;
+
+    // Initialize powerup spawn timer with first-spawn delay
+    this.nextSpawnTime = this.state.serverTime + POWERUP_CONFIG.firstSpawnDelay;
+    this.powerupIdCounter = 0;
 
     this.broadcast('stageStart', {
       stageNumber: this.state.currentStage,
