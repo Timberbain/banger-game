@@ -114,6 +114,10 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - F3 debug overlay color coding: red=indestructible, orange=heavy(101), yellow=medium(102), green=light(other)
 
 **Phase 10 decisions:**
+- Buff state tracked server-only (activeBuffs array) with broadcast events for client feedback
+- speedMultiplier synced via Schema for client-side prediction accuracy
+- originalObstacleTiles set prevents powerup spawns on destroyed obstacle locations
+- PowerupType enum uses numeric values (0,1,2) for uint8 Schema efficiency
 - Aura emitters tracked in activeTrails Set for automatic cleanup on scene destroy
 - Aura particle depth 9 (below player sprites at 10, above projectile trails at 4)
 
@@ -136,9 +140,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 10-02-PLAN.md (Client Asset Preparation)
-Resume file: .planning/phases/10-powerup-system/10-02-SUMMARY.md
+Stopped at: Re-executed 10-01-PLAN.md (Server Powerup System)
+Resume file: .planning/phases/10-powerup-system/10-01-SUMMARY.md
 Next step: Continue with 10-03 (client rendering integration)
 
 ---
-*Updated: 2026-02-17 after completing 10-02*
+*Updated: 2026-02-17 after re-executing 10-01*
