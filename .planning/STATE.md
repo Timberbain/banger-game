@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 09.1 -- Tilemap Collision Masks (In Progress)
+**Current focus:** Phase 10 -- Powerup System (In Progress)
 
 ## Current Position
 
-Phase: 09.1 (Tilemap Collision Masks)
-Plan: 3 of 3 in current phase
-Status: Phase 09.1 Complete
-Last activity: 2026-02-16 -- Completed 09.1-03 (Server/Client Collision Shape Integration)
+Phase: 10 (Powerup System)
+Plan: 2 of 4 in current phase
+Status: Executing Phase 10
+Last activity: 2026-02-17 -- Completed 10-02 (Client Asset Preparation)
 
-Progress: [##################..] 78% (58/~56+ plans est. across v1.0+v2.0)
+Progress: [##################..] 80% (60/~56+ plans est. across v1.0+v2.0)
 
 ## Performance Metrics
 
@@ -37,6 +37,7 @@ Progress: [##################..] 78% (58/~56+ plans est. across v1.0+v2.0)
 | 8. Arena Overhaul | 5 | Complete |
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 | 9.1 Tilemap Collision Masks | 3 | Complete |
+| 10. Powerup System | 4 | In Progress (2/4) |
 
 ## Accumulated Context
 
@@ -112,6 +113,10 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Debug overlay destroyed on stage transitions and scene reuse to prevent stale visuals
 - F3 debug overlay color coding: red=indestructible, orange=heavy(101), yellow=medium(102), green=light(other)
 
+**Phase 10 decisions:**
+- Aura emitters tracked in activeTrails Set for automatic cleanup on scene destroy
+- Aura particle depth 9 (below player sprites at 10, above projectile trails at 4)
+
 ### Pending Todos
 
 None.
@@ -130,10 +135,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-16
-Stopped at: Completed 09.1-03-PLAN.md (Server/Client Collision Shape Integration)
-Resume file: .planning/phases/09.1-tilemap-collision-masks-for-precise-wall-obstacle-collisions/09.1-03-SUMMARY.md
-Next step: Phase 09.1 complete -- ready for UAT verification or next phase
+Last session: 2026-02-17
+Stopped at: Completed 10-02-PLAN.md (Client Asset Preparation)
+Resume file: .planning/phases/10-powerup-system/10-02-SUMMARY.md
+Next step: Continue with 10-03 (client rendering integration)
 
 ---
-*Updated: 2026-02-16 after completing 09.1-03*
+*Updated: 2026-02-17 after completing 10-02*
