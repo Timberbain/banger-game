@@ -706,6 +706,9 @@ export class GameRoom extends Room<GameState> {
       // Get character stats
       const stats = CHARACTERS[player.role];
 
+      // Apply speed buff: use effective maxVelocity
+      const effectiveMaxVelocity = stats.maxVelocity * player.speedMultiplier;
+
       // Drain input queue
       let processedAny = false;
       while (player.inputQueue.length > 0) {
@@ -713,8 +716,19 @@ export class GameRoom extends Room<GameState> {
 
         // Handle fire input
         if (fire && player.health > 0) {
-          // Check cooldown
-          if (this.state.serverTime - player.lastFireTime >= stats.fireRate) {
+          // Check for projectile buff
+          const hasProjBuff = player.activeBuffs.some(
+            (b) => b.type === PowerupType.PROJECTILE && this.state.serverTime < b.expiresAt,
+          );
+
+          // Determine effective fire rate (Paran beam has 2x cooldown)
+          let effectiveFireRate = stats.fireRate;
+          if (hasProjBuff && player.role === 'paran') {
+            effectiveFireRate = stats.fireRate * POWERUP_CONFIG.paranBeamCooldownMultiplier;
+          }
+
+          // Check cooldown with effective fire rate
+          if (this.state.serverTime - player.lastFireTime >= effectiveFireRate) {
             // Spawn projectile
             const projectile = new Projectile();
             projectile.x = player.x;
@@ -724,6 +738,21 @@ export class GameRoom extends Room<GameState> {
             projectile.ownerId = sessionId;
             projectile.damage = stats.damage;
             projectile.spawnTime = this.state.serverTime;
+
+            // Apply projectile buff effects
+            if (hasProjBuff) {
+              if (player.role === 'paran') {
+                // Paran's Beam: 5x hitbox, wall-piercing
+                projectile.isBeam = true;
+                projectile.hitboxScale = POWERUP_CONFIG.paranBeamHitboxScale;
+              } else {
+                // Guardian: 2x hitbox + 2x speed
+                projectile.hitboxScale = POWERUP_CONFIG.guardianHitboxScale;
+                projectile.vx *= POWERUP_CONFIG.guardianSpeedScale;
+                projectile.vy *= POWERUP_CONFIG.guardianSpeedScale;
+              }
+            }
+
             this.state.projectiles.push(projectile);
 
             // Update cooldown
@@ -743,7 +772,7 @@ export class GameRoom extends Room<GameState> {
         applyMovementPhysics(player, input, FIXED_DT, {
           acceleration: stats.acceleration,
           drag: stats.drag,
-          maxVelocity: stats.maxVelocity,
+          maxVelocity: effectiveMaxVelocity,
         });
 
         // Resolve tile collisions after each physics step
@@ -792,6 +821,12 @@ export class GameRoom extends Room<GameState> {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < COMBAT.playerRadius * 2) {
+          // Check invincibility buff on guardian target
+          const guardianInvincible = target.activeBuffs.some(
+            (b) => b.type === PowerupType.INVINCIBILITY && this.state.serverTime < b.expiresAt,
+          );
+          if (guardianInvincible) return; // Skip kill -- guardian is invincible
+
           // Contact kill: instant death regardless of HP
           target.health = 0;
           // Clear buffs on death
@@ -832,19 +867,31 @@ export class GameRoom extends Room<GameState> {
       // Tile/obstacle collision check: use sub-rect precision for projectile-vs-wall
       const projTile = this.collisionGrid.worldToTile(proj.x, proj.y);
       if (this.collisionGrid.isPointInSolidRect(proj.x, proj.y)) {
-        // Check if destructible obstacle -- damage it
-        const obsKey = `${projTile.tileX},${projTile.tileY}`;
-        const obs = this.state.obstacles.get(obsKey);
-        if (obs && !obs.destroyed) {
-          obs.hp--;
-          if (obs.hp <= 0) {
+        if (proj.isBeam) {
+          // Beam passes through walls/obstacles -- destroy obstacle if destructible
+          const obsKey = `${projTile.tileX},${projTile.tileY}`;
+          const obs = this.state.obstacles.get(obsKey);
+          if (obs && !obs.destroyed) {
+            obs.hp = 0; // Beam instantly destroys any obstacle
             obs.destroyed = true;
             this.collisionGrid.clearTile(projTile.tileX, projTile.tileY);
           }
+          // Do NOT remove the beam projectile -- it passes through
+        } else {
+          // Normal projectile: damage obstacle, destroy projectile
+          const obsKey = `${projTile.tileX},${projTile.tileY}`;
+          const obs = this.state.obstacles.get(obsKey);
+          if (obs && !obs.destroyed) {
+            obs.hp--;
+            if (obs.hp <= 0) {
+              obs.destroyed = true;
+              this.collisionGrid.clearTile(projTile.tileX, projTile.tileY);
+            }
+          }
+          // Destroy projectile on any solid tile contact
+          this.state.projectiles.splice(i, 1);
+          continue;
         }
-        // Destroy projectile on any solid tile contact
-        this.state.projectiles.splice(i, 1);
-        continue;
       }
 
       // Safety bounds check (in case projectile escapes tile grid)
@@ -861,7 +908,7 @@ export class GameRoom extends Room<GameState> {
       // Collision with players
       let hit = false;
       this.state.players.forEach((target, targetId) => {
-        if (hit) return;
+        if (hit && !proj.isBeam) return; // Normal projectiles stop after first hit; beams continue
         if (targetId === proj.ownerId) return; // No self-hit
         if (target.health <= 0) return; // Skip dead
 
@@ -869,7 +916,19 @@ export class GameRoom extends Room<GameState> {
         const dy = proj.y - target.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < COMBAT.playerRadius + COMBAT.projectileRadius) {
+        // Use enhanced hitbox radius for buffed projectiles
+        const effectiveRadius = COMBAT.projectileRadius * (proj.hitboxScale || 1);
+        if (dist < COMBAT.playerRadius + effectiveRadius) {
+          // Check invincibility buff on target
+          const isInvincible = target.activeBuffs.some(
+            (b) => b.type === PowerupType.INVINCIBILITY && this.state.serverTime < b.expiresAt,
+          );
+          if (isInvincible) {
+            // Still consume the projectile (unless beam), but don't apply damage
+            hit = true;
+            return;
+          }
+
           // Apply damage
           const wasAlive = target.health > 0;
           target.health = Math.max(0, target.health - proj.damage);
@@ -904,7 +963,7 @@ export class GameRoom extends Room<GameState> {
         }
       });
 
-      if (hit) {
+      if (hit && !proj.isBeam) {
         this.state.projectiles.splice(i, 1);
       }
     }
