@@ -16,22 +16,22 @@ export interface SfxrParams {
   p_env_decay: number;
   p_base_freq: number;
   p_freq_limit: number;
-  p_freq_ramp: number;     // SIGNED
-  p_freq_dramp: number;    // SIGNED
+  p_freq_ramp: number; // SIGNED
+  p_freq_dramp: number; // SIGNED
   p_vib_strength: number;
   p_vib_speed: number;
-  p_arp_mod: number;       // SIGNED
+  p_arp_mod: number; // SIGNED
   p_arp_speed: number;
   p_duty: number;
-  p_duty_ramp: number;     // SIGNED
+  p_duty_ramp: number; // SIGNED
   p_repeat_speed: number;
-  p_pha_offset: number;    // SIGNED
-  p_pha_ramp: number;      // SIGNED
+  p_pha_offset: number; // SIGNED
+  p_pha_ramp: number; // SIGNED
   p_lpf_freq: number;
-  p_lpf_ramp: number;      // SIGNED
+  p_lpf_ramp: number; // SIGNED
   p_lpf_resonance: number;
   p_hpf_freq: number;
-  p_hpf_ramp: number;      // SIGNED
+  p_hpf_ramp: number; // SIGNED
   sound_vol: number;
   sample_rate: number;
   sample_size: number;
@@ -284,6 +284,48 @@ const ready_chime = defaults({
 });
 
 // ============================================================
+// POWERUP SOUNDS
+// ============================================================
+
+// Powerup pickup: Ascending chime -- sine wave, arpeggio, rewarding feel
+const powerup_pickup = defaults({
+  wave_type: 2, // sine
+  p_env_attack: 0,
+  p_env_sustain: 0.1,
+  p_env_punch: 0.3,
+  p_env_decay: 0.3,
+  p_base_freq: 0.45,
+  p_freq_ramp: 0.2,
+  p_arp_mod: 0.5,
+  p_arp_speed: 0.4,
+  sound_vol: 0.3,
+});
+
+// Powerup spawn: Soft ambient notification -- sine wave, slight reverb
+const powerup_spawn = defaults({
+  wave_type: 2, // sine
+  p_env_attack: 0.05,
+  p_env_sustain: 0.08,
+  p_env_punch: 0.1,
+  p_env_decay: 0.2,
+  p_base_freq: 0.55,
+  p_freq_ramp: -0.1,
+  sound_vol: 0.2,
+});
+
+// Powerup despawn: Short disappearance whoosh -- noise, downward frequency
+const powerup_despawn = defaults({
+  wave_type: 3, // noise
+  p_env_attack: 0,
+  p_env_sustain: 0.05,
+  p_env_punch: 0.2,
+  p_env_decay: 0.15,
+  p_base_freq: 0.3,
+  p_freq_ramp: -0.3,
+  sound_vol: 0.15,
+});
+
+// ============================================================
 // EXPORT
 // ============================================================
 
@@ -306,4 +348,8 @@ export const SOUND_DEFS: Record<string, SfxrParams> = {
   match_start_fanfare,
   match_end_fanfare,
   ready_chime,
+  // Powerups
+  powerup_pickup,
+  powerup_spawn,
+  powerup_despawn,
 };
