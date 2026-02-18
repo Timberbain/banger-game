@@ -514,6 +514,7 @@ export class GameScene extends Phaser.Scene {
           // Set up overview camera BEFORE revealing (so reveal shows overview)
           this.matchEnded = false;
           this.overviewActive = true;
+          this.events.emit('overviewStart');
           this.controlsLocked = true;
           const cam = this.cameras.main;
           cam.stopFollow();
@@ -555,6 +556,7 @@ export class GameScene extends Phaser.Scene {
                 this.time.delayedCall(800, () => {
                   this.controlsLocked = false;
                   this.overviewActive = false;
+                  this.events.emit('overviewEnd');
                 });
               });
             },
@@ -1817,6 +1819,7 @@ export class GameScene extends Phaser.Scene {
       if (this.irisShape && this.irisMask) {
         this.matchEnded = false;
         this.overviewActive = true;
+        this.events.emit('overviewStart');
         this.controlsLocked = true;
         const cam = this.cameras.main;
         cam.stopFollow();
@@ -1856,6 +1859,7 @@ export class GameScene extends Phaser.Scene {
               this.time.delayedCall(800, () => {
                 this.controlsLocked = false;
                 this.overviewActive = false;
+                this.events.emit('overviewEnd');
               });
             });
           },
@@ -2146,6 +2150,7 @@ export class GameScene extends Phaser.Scene {
     // Lock controls during overview
     this.controlsLocked = true;
     this.overviewActive = true;
+    this.events.emit('overviewStart');
 
     // Show full arena at overview zoom (dynamically calculated for arena size)
     cam.stopFollow();
@@ -2173,6 +2178,7 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(800, () => {
         this.controlsLocked = false;
         this.overviewActive = false;
+        this.events.emit('overviewEnd');
       });
     });
   }
@@ -2291,6 +2297,9 @@ export class GameScene extends Phaser.Scene {
           this.prediction.setCollisionGrid(this.collisionGrid);
         }
 
+        // Share collision grid via registry for HUDScene minimap
+        this.registry.set('collisionGrid', this.collisionGrid);
+
         // Update prediction arena bounds now that mapMetadata is confirmed
         if (this.prediction && this.mapMetadata) {
           this.prediction.setArenaBounds({
@@ -2299,6 +2308,11 @@ export class GameScene extends Phaser.Scene {
           });
         }
       }
+    }
+
+    // Share map metadata via registry for HUDScene minimap
+    if (this.mapMetadata) {
+      this.registry.set('mapMetadata', this.mapMetadata);
     }
 
     // Initialize particle effects after tilemap is ready
