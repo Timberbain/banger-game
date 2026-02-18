@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 11 (Minimap & Music)
-Plan: 1 of 3 in current phase
-Status: Plan 11-01 complete (Audio Infrastructure)
-Last activity: 2026-02-18 -- Completed 11-01 (Audio Infrastructure)
+Plan: 2 of 3 in current phase
+Status: Plan 11-02 complete (Minimap Overlay)
+Last activity: 2026-02-18 -- Completed 11-02 (Minimap Overlay)
 
-Progress: [#######.............] 33% (1 of 3 Phase 11 plans complete)
+Progress: [##############......] 67% (2 of 3 Phase 11 plans complete)
 
 ## Performance Metrics
 
@@ -38,7 +38,7 @@ Progress: [#######.............] 33% (1 of 3 Phase 11 plans complete)
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 | 9.1 Tilemap Collision Masks | 3 | Complete |
 | 10. Powerup System | 5 | Complete (incl. gap closure) |
-| 11. Minimap & Music | 3 | In Progress (1/3) |
+| 11. Minimap & Music | 3 | In Progress (2/3) |
 
 ## Accumulated Context
 
@@ -134,6 +134,11 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - volumeDipFactor field integrates with setMusicVolume to respect slider changes during dip
 - crossfadeTo respects active volumeDipFactor for target volume calculation
 - playMusicWithPause stale guard checks currentMusic identity before restarting
+- Minimap uses Graphics (clear+redraw at 10Hz) not RenderTexture -- simpler, no texture management
+- CollisionGrid and MapMetadata shared via Phaser registry from GameScene to HUDScene
+- Minimap toggle state persisted via registry across stages (survives scene re-launch)
+- Ping display (y=133) and kill feed (baseY=155) repositioned below minimap to avoid overlap
+- overviewStart/overviewEnd events emitted from GameScene in all 3 overview code paths
 
 ### Pending Todos
 
@@ -154,9 +159,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 11-01-PLAN.md (Audio Infrastructure)
-Resume file: .planning/phases/11-minimap-music/11-01-SUMMARY.md
-Next step: Execute 11-02-PLAN.md (Minimap) or 11-03-PLAN.md (Audio Integration)
+Stopped at: Completed 11-02-PLAN.md (Minimap Overlay)
+Resume file: .planning/phases/11-minimap-music/11-02-SUMMARY.md
+Next step: Execute 11-03-PLAN.md (Audio Integration)
 
 ---
-*Updated: 2026-02-18 after completing 11-01*
+*Updated: 2026-02-18 after completing 11-02*
