@@ -57,6 +57,37 @@ export class BootScene extends Phaser.Scene {
     const audioManager = new AudioManager();
     audioManager.init();
     audioManager.registerWAV('powerup_pickup', 'soundeffects/powerup_1.wav');
+
+    // Hurt variants (player damage + Paran wall collision)
+    audioManager.registerWAV('hurt_1', 'soundeffects/hurt_1.wav');
+    audioManager.registerWAV('hurt_2', 'soundeffects/hurt_2.wav');
+    audioManager.registerWAV('hurt_3', 'soundeffects/hurt_3.wav');
+    audioManager.registerWAV('hurt_4', 'soundeffects/hurt_4.wav');
+
+    // Guardian fire variants
+    audioManager.registerWAV('laser_1', 'soundeffects/laser_1.wav');
+    audioManager.registerWAV('laser_4', 'soundeffects/laser_4.wav');
+    audioManager.registerWAV('laser_5', 'soundeffects/laser_5.wav');
+
+    // Paran power shot (weapon powerup)
+    audioManager.registerWAV('earthquake', 'soundeffects/earthquake.wav');
+    audioManager.registerWAV('lightning', 'soundeffects/lightning.wav');
+
+    // Player killed
+    audioManager.registerWAV('disappear', 'soundeffects/disappear.wav');
+
+    // Menu navigation
+    audioManager.registerWAV('select_1', 'soundeffects/select_1.wav');
+    audioManager.registerWAV('select_2', 'soundeffects/select_2.wav');
+
+    // Defeat sting
+    audioManager.registerWAV('lose_1', 'soundeffects/lose_1.wav');
+
+    // Firework SFX (victory screen)
+    audioManager.registerWAV('fire_1', 'soundeffects/fire_1.wav');
+    audioManager.registerWAV('fire_2', 'soundeffects/fire_2.wav');
+    audioManager.registerWAV('fire_3', 'soundeffects/fire_3.wav');
+
     this.registry.set('audioManager', audioManager);
 
     // Create character animations for all 3 roles (36-frame layout per character)
