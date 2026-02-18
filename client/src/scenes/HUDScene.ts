@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Room } from 'colyseus.js';
 import { CHARACTERS } from '../../../shared/characters';
 import { PowerupType } from '../../../shared/powerups';
+import { CollisionGrid } from '../../../shared/collisionGrid';
 import {
   Colors,
   TextStyle,
@@ -100,6 +101,15 @@ export class HUDScene extends Phaser.Scene {
     }
   > = new Map();
 
+  // Minimap
+  private minimapGfx: Phaser.GameObjects.Graphics | null = null;
+  private minimapVisible: boolean = true;
+  private minimapUserToggled: boolean = true;
+  private minimapToggleKey: Phaser.Input.Keyboard.Key | null = null;
+  private minimapFrameCounter: number = 0;
+  private minimapDeathMarkers: Array<{ x: number; y: number; color: number; time: number }> = [];
+  private minimapToggleJustPressed: boolean = false;
+
   // GameScene reference for cross-scene events
   private gameScene: Phaser.Scene | null = null;
 
@@ -139,6 +149,13 @@ export class HUDScene extends Phaser.Scene {
     this.roundScoreText = null;
     this.stageLabel = null;
     this.buffIndicators = new Map();
+    this.minimapGfx = null;
+    this.minimapVisible = true;
+    this.minimapUserToggled = this.registry.get('minimapUserToggled') ?? true;
+    this.minimapToggleKey = null;
+    this.minimapFrameCounter = 0;
+    this.minimapDeathMarkers = [];
+    this.minimapToggleJustPressed = false;
     this.gameScene = null;
 
     // Transparent background so GameScene shows through
@@ -185,6 +202,9 @@ export class HUDScene extends Phaser.Scene {
     // 9. Create round score display (top center, below timer)
     this.createRoundScore();
 
+    // 10. Create minimap overlay (top-right)
+    this.createMinimap();
+
     // Cross-scene event listeners
     this.setupCrossSceneEvents();
 
@@ -213,6 +233,9 @@ export class HUDScene extends Phaser.Scene {
 
     // Update buff indicator fill bars (shrinking over time)
     this.updateBuffIndicators();
+
+    // Update minimap (toggle + throttled redraw at ~10Hz)
+    this.updateMinimap();
   }
 
   // =====================
@@ -430,6 +453,20 @@ export class HUDScene extends Phaser.Scene {
       'kill',
       (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
         this.addKillFeedEntry(data);
+
+        // Add minimap death marker at victim's last position
+        if (this.room) {
+          this.room.state.players.forEach((player: any) => {
+            if (player.name === data.victim || player.role === data.victimRole) {
+              this.minimapDeathMarkers.push({
+                x: player.x,
+                y: player.y,
+                color: 0xff0000,
+                time: Date.now(),
+              });
+            }
+          });
+        }
       },
     );
 
@@ -472,7 +509,7 @@ export class HUDScene extends Phaser.Scene {
     victimRole: string;
   }): void {
     const killFeedX = this.W * 0.98;
-    const baseY = this.H * 0.08;
+    const baseY = 155; // Below minimap (mmY=10 + mmH=115 + ping + gap)
     const feedSpacing = this.H * 0.04;
 
     // Push existing entries down
@@ -591,7 +628,8 @@ export class HUDScene extends Phaser.Scene {
   // =====================
 
   private createPingDisplay(): void {
-    this.pingText = this.add.text(this.W * 0.97, this.H * 0.03, '0ms', {
+    // Position below minimap (mmY=10, mmH=115, 8px gap)
+    this.pingText = this.add.text(this.W - 12, 133, '0ms', {
       fontSize: '12px',
       color: Colors.status.success,
       fontFamily: 'monospace',
@@ -752,10 +790,14 @@ export class HUDScene extends Phaser.Scene {
         }
         // Reset spectator HUD when new stage begins
         this.hideSpectatorHUD();
+        // Restore minimap to user preference when gameplay starts
+        this.minimapVisible = this.minimapUserToggled;
       } else if (value === 'stage_end') {
         // Stage ended -- keep HUD visible but show stage result briefly
         // Clear buff indicators (buffs expire at stage end)
         this.clearBuffIndicators();
+        // Hide minimap during stage end
+        this.minimapVisible = false;
       } else if (value === 'stage_transition') {
         // Rebuild health bars (players reset to full health)
         this.time.delayedCall(200, () => this.rebuildHealthBars());
@@ -766,6 +808,8 @@ export class HUDScene extends Phaser.Scene {
         this.lowHealthFlashTimers.clear();
         // Clear any remaining buff indicators
         this.clearBuffIndicators();
+        // Hide minimap during stage transition
+        this.minimapVisible = false;
       }
     });
   }
@@ -970,6 +1014,128 @@ export class HUDScene extends Phaser.Scene {
   }
 
   // =====================
+  // 11. MINIMAP
+  // =====================
+
+  private createMinimap(): void {
+    this.minimapGfx = this.add.graphics();
+    this.minimapGfx.setDepth(150);
+
+    // Register M key for toggle
+    this.minimapToggleKey = this.input.keyboard?.addKey('M') || null;
+
+    // Read persisted toggle state from registry
+    this.minimapUserToggled = this.registry.get('minimapUserToggled') ?? true;
+    this.minimapVisible = this.minimapUserToggled;
+  }
+
+  private updateMinimap(): void {
+    // Handle M key toggle (just-pressed detection to avoid rapid toggling)
+    if (this.minimapToggleKey?.isDown && !this.minimapToggleJustPressed) {
+      this.minimapToggleJustPressed = true;
+      this.minimapUserToggled = !this.minimapUserToggled;
+      this.registry.set('minimapUserToggled', this.minimapUserToggled);
+      this.minimapVisible = this.minimapUserToggled;
+
+      // Play toggle SFX
+      const am = this.registry.get('audioManager');
+      if (am) {
+        am.playWAVSFX(this.minimapVisible ? 'select_2' : 'select_1');
+      }
+    }
+    if (this.minimapToggleKey && !this.minimapToggleKey.isDown) {
+      this.minimapToggleJustPressed = false;
+    }
+
+    // Throttle minimap redraw to ~10Hz (every 6 frames at 60fps)
+    this.minimapFrameCounter++;
+    if (this.minimapFrameCounter % 6 === 0) {
+      this.redrawMinimap();
+    }
+  }
+
+  private redrawMinimap(): void {
+    // Minimap dimensions and position
+    const mmW = 150;
+    const mmH = 115;
+    const mmX = this.W - mmW - 10; // 10px margin from right
+    const mmY = 10; // 10px margin from top
+
+    const grid = this.registry.get('collisionGrid') as CollisionGrid | null;
+    const meta = this.registry.get('mapMetadata') as { width: number; height: number } | null;
+    if (!grid || !meta || !this.minimapGfx) return;
+    if (!this.minimapVisible) {
+      this.minimapGfx.clear();
+      return;
+    }
+
+    const scaleX = mmW / meta.width;
+    const scaleY = mmH / meta.height;
+    const tileSize = 32;
+
+    this.minimapGfx.clear();
+
+    // 1. Semi-transparent black background
+    this.minimapGfx.fillStyle(0x000000, 0.4);
+    this.minimapGfx.fillRect(mmX, mmY, mmW, mmH);
+
+    // 2. Wall blocks (dark gray)
+    this.minimapGfx.fillStyle(0x444444, 0.8);
+    for (let ty = 0; ty < grid.height; ty++) {
+      for (let tx = 0; tx < grid.width; tx++) {
+        if (grid.isSolid(tx, ty)) {
+          this.minimapGfx.fillRect(
+            mmX + tx * tileSize * scaleX,
+            mmY + ty * tileSize * scaleY,
+            Math.ceil(tileSize * scaleX),
+            Math.ceil(tileSize * scaleY),
+          );
+        }
+      }
+    }
+
+    // 3. Powerup dots
+    if (this.room && this.room.state.powerups) {
+      this.room.state.powerups.forEach((powerup: any) => {
+        const pType = Number(powerup.powerupType);
+        let dotColor = 0xffcc00; // gold default
+        if (pType === PowerupType.SPEED) dotColor = 0x50c8c8;
+        else if (pType === PowerupType.INVINCIBILITY) dotColor = 0xffcc00;
+        else if (pType === PowerupType.PROJECTILE) dotColor = 0xcc44cc;
+
+        this.minimapGfx!.fillStyle(dotColor, 1);
+        this.minimapGfx!.fillCircle(mmX + powerup.x * scaleX, mmY + powerup.y * scaleY, 2);
+      });
+    }
+
+    // 4. Player dots
+    if (this.room) {
+      this.room.state.players.forEach((player: any) => {
+        if (player.health <= 0) return; // Skip dead players
+        const color = charColorNum(player.role);
+        this.minimapGfx!.fillStyle(color, 1);
+        this.minimapGfx!.fillCircle(mmX + player.x * scaleX, mmY + player.y * scaleY, 3);
+      });
+    }
+
+    // 5. Death markers (red circles that fade over 2 seconds)
+    const now = Date.now();
+    const DEATH_MARKER_LIFETIME = 2000;
+    this.minimapDeathMarkers = this.minimapDeathMarkers.filter((marker) => {
+      const age = now - marker.time;
+      if (age > DEATH_MARKER_LIFETIME) return false;
+      const alpha = 1 - age / DEATH_MARKER_LIFETIME;
+      this.minimapGfx!.fillStyle(marker.color, alpha);
+      this.minimapGfx!.fillCircle(mmX + marker.x * scaleX, mmY + marker.y * scaleY, 4);
+      return true;
+    });
+
+    // 6. Border outline
+    this.minimapGfx.lineStyle(1, 0xffffff, 0.3);
+    this.minimapGfx.strokeRect(mmX, mmY, mmW, mmH);
+  }
+
+  // =====================
   // CROSS-SCENE EVENTS
   // =====================
 
@@ -1003,6 +1169,22 @@ export class HUDScene extends Phaser.Scene {
       },
       this,
     );
+
+    // Listen for overview camera events to hide/show minimap
+    this.gameScene.events.on(
+      'overviewStart',
+      () => {
+        this.minimapVisible = false;
+      },
+      this,
+    );
+    this.gameScene.events.on(
+      'overviewEnd',
+      () => {
+        this.minimapVisible = this.minimapUserToggled;
+      },
+      this,
+    );
   }
 
   // =====================
@@ -1030,11 +1212,20 @@ export class HUDScene extends Phaser.Scene {
     // Clear buff indicators
     this.clearBuffIndicators();
 
+    // Cleanup minimap
+    if (this.minimapGfx) {
+      this.minimapGfx.destroy();
+      this.minimapGfx = null;
+    }
+    this.minimapDeathMarkers = [];
+
     // Remove GameScene event listeners
     if (this.gameScene) {
       this.gameScene.events.off('localFired', undefined, this);
       this.gameScene.events.off('spectatorChanged', undefined, this);
       this.gameScene.events.off('localDied', undefined, this);
+      this.gameScene.events.off('overviewStart', undefined, this);
+      this.gameScene.events.off('overviewEnd', undefined, this);
     }
 
     this.room = null;
