@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 10 -- Powerup System (Complete)
+**Current focus:** Phase 10 -- Powerup System (Complete, including UAT gap closure)
 
 ## Current Position
 
 Phase: 10 (Powerup System)
-Plan: 4 of 4 in current phase
-Status: Phase 10 Complete
-Last activity: 2026-02-17 -- Completed 10-04 (Client Powerup Rendering)
+Plan: 5 of 5 in current phase
+Status: Phase 10 Complete (all plans + UAT gap closure)
+Last activity: 2026-02-18 -- Completed 10-05 (UAT Gap Closure)
 
-Progress: [####################] 100% (all v2.0 Phase 10 plans complete)
+Progress: [####################] 100% (all v2.0 Phase 10 plans complete, including gap closure)
 
 ## Performance Metrics
 
@@ -37,7 +37,7 @@ Progress: [####################] 100% (all v2.0 Phase 10 plans complete)
 | 8. Arena Overhaul | 5 | Complete |
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 | 9.1 Tilemap Collision Masks | 3 | Complete |
-| 10. Powerup System | 4 | Complete |
+| 10. Powerup System | 5 | Complete (incl. gap closure) |
 
 ## Accumulated Context
 
@@ -124,6 +124,9 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Buff indicators at H*0.87 with dynamic centering for variable indicator count
 - clearAllBuffAuras before particleFactory.destroy() in cleanupStageVisuals to prevent orphaned emitters
 - Dual-map aura tracking: Map<sessionId, Map<buffType, Emitter>> for per-player per-buff lifecycle
+- WAV sounds take priority over jsfxr in playSFX via wavSounds check-first pattern
+- Idle aura tracked in separate powerupIdleEmitters map for independent lifecycle from buff auras
+- Number() cast on Colyseus message data.type prevents string/number enum mismatch in switch
 
 ### Pending Todos
 
@@ -143,10 +146,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Completed 10-04-PLAN.md (Client Powerup Rendering)
-Resume file: .planning/phases/10-powerup-system/10-04-SUMMARY.md
-Next step: Phase 10 complete -- proceed to next phase or UAT
+Last session: 2026-02-18
+Stopped at: Completed 10-05-PLAN.md (UAT Gap Closure)
+Resume file: .planning/phases/10-powerup-system/10-05-SUMMARY.md
+Next step: Phase 10 fully complete with gap closure -- proceed to next phase or re-UAT
 
 ---
-*Updated: 2026-02-17 after completing 10-04*
+*Updated: 2026-02-18 after completing 10-05*
