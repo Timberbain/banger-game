@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 11 (Minimap & Music)
-Plan: 2 of 3 in current phase
-Status: Plan 11-02 complete (Minimap Overlay)
-Last activity: 2026-02-18 -- Completed 11-02 (Minimap Overlay)
+Plan: 3 of 3 in current phase
+Status: Phase 11 complete (all 3 plans)
+Last activity: 2026-02-18 -- Completed 11-03 (Audio Integration)
 
-Progress: [##############......] 67% (2 of 3 Phase 11 plans complete)
+Progress: [####################] 100% (3 of 3 Phase 11 plans complete)
 
 ## Performance Metrics
 
@@ -38,7 +38,7 @@ Progress: [##############......] 67% (2 of 3 Phase 11 plans complete)
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 | 9.1 Tilemap Collision Masks | 3 | Complete |
 | 10. Powerup System | 5 | Complete (incl. gap closure) |
-| 11. Minimap & Music | 3 | In Progress (2/3) |
+| 11. Minimap & Music | 3 | Complete |
 
 ## Accumulated Context
 
@@ -139,6 +139,11 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Minimap toggle state persisted via registry across stages (survives scene re-launch)
 - Ping display (y=133) and kill feed (baseY=155) repositioned below minimap to avoid overlap
 - overviewStart/overviewEnd events emitted from GameScene in all 3 overview code paths
+- isPlayingMusic() guard in LobbyScene prevents restarting lobby loop when VictoryScene already crossfaded to it
+- StageIntroScene needs no audio changes -- volume dip bracketed by GameScene stageEnd/stageStart handlers
+- hasProjectileBuff tracked client-side via powerupCollect/buffExpired for Paran beam fire SFX accuracy
+- Volume sliders use rectangle hit areas with drag support, replacing +/- buttons
+- Return-to-lobby: VictoryScene fadeOutMusic(500ms), LobbyScene detects silence and starts loop after 500ms delay
 
 ### Pending Todos
 
@@ -159,9 +164,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 11-02-PLAN.md (Minimap Overlay)
-Resume file: .planning/phases/11-minimap-music/11-02-SUMMARY.md
-Next step: Execute 11-03-PLAN.md (Audio Integration)
+Stopped at: Completed 11-03-PLAN.md (Audio Integration) -- Phase 11 complete
+Resume file: .planning/phases/11-minimap-music/11-03-SUMMARY.md
+Next step: Phase 11 UAT or next phase
 
 ---
-*Updated: 2026-02-18 after completing 11-02*
+*Updated: 2026-02-18 after completing 11-03 (Phase 11 complete)*
