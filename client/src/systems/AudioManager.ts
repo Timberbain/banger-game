@@ -173,6 +173,13 @@ export class AudioManager {
   }
 
   /**
+   * Check if music is currently playing.
+   */
+  isPlayingMusic(): boolean {
+    return this.currentMusic !== null && !this.currentMusic.paused;
+  }
+
+  /**
    * Crossfade from the current music track to a new one.
    * If no music is playing, fades in the new track from silence.
    */

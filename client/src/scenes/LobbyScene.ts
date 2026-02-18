@@ -3,7 +3,16 @@ import { Client, Room } from 'colyseus.js';
 import { LOBBY_CONFIG, VALID_ROLES } from '../../../shared/lobby';
 import { CHARACTERS } from '../../../shared/characters';
 import { AudioManager } from '../systems/AudioManager';
-import { Colors, TextStyle, Buttons, Panels, Decorative, Spacing, charColor, charColorNum } from '../ui/designTokens';
+import {
+  Colors,
+  TextStyle,
+  Buttons,
+  Panels,
+  Decorative,
+  Spacing,
+  charColor,
+  charColorNum,
+} from '../ui/designTokens';
 
 export class LobbyScene extends Phaser.Scene {
   private client!: Client;
@@ -29,13 +38,23 @@ export class LobbyScene extends Phaser.Scene {
     this.client = new Client('ws://localhost:2567');
 
     // Get AudioManager from registry (initialized in BootScene)
-    this.audioManager = this.registry.get('audioManager') as AudioManager || null;
+    this.audioManager = (this.registry.get('audioManager') as AudioManager) || null;
 
     // Set default player name (could be from localStorage later)
-    this.playerName = localStorage.getItem('playerName') || `Player${Math.floor(Math.random() * 1000)}`;
+    this.playerName =
+      localStorage.getItem('playerName') || `Player${Math.floor(Math.random() * 1000)}`;
 
     // Check for active session before showing menu
     await this.checkReconnection();
+
+    // Start lobby music after a short delay (skip if already playing from VictoryScene crossfade)
+    if (this.audioManager && !this.audioManager.isPlayingMusic()) {
+      this.time.delayedCall(500, () => {
+        if (this.audioManager && !this.audioManager.isPlayingMusic()) {
+          this.audioManager.playMusicWithPause('audio/lobby/Pixel Jitter Jive.mp3', 1000);
+        }
+      });
+    }
   }
 
   /** Helper: add a solarpunk background (deep green) to any sub-view */
@@ -50,14 +69,21 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   /** Helper: styled status text with stroke for readability */
-  private addStatusText(x: number, y: number, msg: string, color: string = Colors.text.primary): Phaser.GameObjects.Text {
-    const text = this.add.text(x, y, msg, {
-      fontSize: '22px',
-      color,
-      fontFamily: 'monospace',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
+  private addStatusText(
+    x: number,
+    y: number,
+    msg: string,
+    color: string = Colors.text.primary,
+  ): Phaser.GameObjects.Text {
+    const text = this.add
+      .text(x, y, msg, {
+        fontSize: '22px',
+        color,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5);
     this.uiElements.push(text);
     return text;
   }
@@ -76,7 +102,12 @@ export class LobbyScene extends Phaser.Scene {
 
         if (elapsed < graceMs) {
           this.addSceneBg();
-          const text = this.addStatusText(cx, cy, 'Reconnecting to lobby...', Colors.status.warning);
+          const text = this.addStatusText(
+            cx,
+            cy,
+            'Reconnecting to lobby...',
+            Colors.status.warning,
+          );
 
           // Attempt lobby reconnection with retries (server needs ~9s to process F5 disconnect)
           const LOBBY_MAX_RETRIES = 12;
@@ -92,8 +123,10 @@ export class LobbyScene extends Phaser.Scene {
             } catch (e) {
               console.log(`Lobby reconnection attempt ${attempt}/${LOBBY_MAX_RETRIES} failed:`, e);
               if (attempt < LOBBY_MAX_RETRIES) {
-                await new Promise(resolve => setTimeout(resolve, LOBBY_RETRY_DELAY));
-                text.setText(`Reconnecting to lobby... (attempt ${attempt + 1}/${LOBBY_MAX_RETRIES})`);
+                await new Promise((resolve) => setTimeout(resolve, LOBBY_RETRY_DELAY));
+                text.setText(
+                  `Reconnecting to lobby... (attempt ${attempt + 1}/${LOBBY_MAX_RETRIES})`,
+                );
               }
             }
           }
@@ -104,11 +137,14 @@ export class LobbyScene extends Phaser.Scene {
 
             // Update stored token
             if (this.room.reconnectionToken) {
-              sessionStorage.setItem('bangerLobbyRoom', JSON.stringify({
-                token: this.room.reconnectionToken,
-                roomId: this.room.id,
-                timestamp: Date.now()
-              }));
+              sessionStorage.setItem(
+                'bangerLobbyRoom',
+                JSON.stringify({
+                  token: this.room.reconnectionToken,
+                  roomId: this.room.id,
+                  timestamp: Date.now(),
+                }),
+              );
             }
 
             this.showLobbyView();
@@ -170,7 +206,7 @@ export class LobbyScene extends Phaser.Scene {
           console.log(`Reconnection attempt ${attempt}/${MAX_RETRIES} failed:`, e);
           if (attempt < MAX_RETRIES) {
             // Wait before retrying -- gives server time to process disconnect
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
             text.setText(`Reconnecting to match... (attempt ${attempt + 1}/${MAX_RETRIES})`);
           }
         }
@@ -179,10 +215,13 @@ export class LobbyScene extends Phaser.Scene {
       if (reconnectedRoom) {
         // Update stored token
         if (reconnectedRoom.reconnectionToken) {
-          sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
-            token: reconnectedRoom.reconnectionToken,
-            timestamp: Date.now()
-          }));
+          sessionStorage.setItem(
+            'bangerActiveRoom',
+            JSON.stringify({
+              token: reconnectedRoom.reconnectionToken,
+              timestamp: Date.now(),
+            }),
+          );
         }
 
         // Go directly to game scene
@@ -190,7 +229,6 @@ export class LobbyScene extends Phaser.Scene {
       } else {
         throw new Error('All reconnection attempts failed');
       }
-
     } catch (e) {
       console.error('Reconnection failed:', e);
 
@@ -224,63 +262,106 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(cityBg);
 
     // Dark overlay for readability
-    const overlay = this.add.rectangle(cx, cy, w, h, Colors.bg.deepNum, 0.7);
+    const overlay = this.add.rectangle(cx, cy, w, h, Colors.bg.deepNum, Colors.bg.overlayAlpha);
     this.uiElements.push(overlay);
 
     // Subtle vine decorations (scaled to new resolution)
-    const vineGfx = this.add.graphics();
-    vineGfx.lineStyle(Decorative.vine.thickness, Decorative.vine.color, Decorative.vine.alpha);
-    vineGfx.beginPath();
-    vineGfx.moveTo(40, 100); vineGfx.lineTo(55, 220); vineGfx.lineTo(35, 340);
-    vineGfx.lineTo(60, 460); vineGfx.lineTo(40, 580);
-    vineGfx.strokePath();
-    vineGfx.beginPath();
-    vineGfx.moveTo(w - 40, 100); vineGfx.lineTo(w - 55, 220); vineGfx.lineTo(w - 35, 340);
-    vineGfx.lineTo(w - 60, 460); vineGfx.lineTo(w - 40, 580);
-    vineGfx.strokePath();
-    // Small golden solar dots
-    vineGfx.fillStyle(Decorative.solarDots.color, Decorative.solarDots.alphaMin);
-    for (let i = 0; i < 15; i++) {
-      vineGfx.fillCircle(
-        Phaser.Math.Between(80, w - 80),
-        Phaser.Math.Between(80, h - 80),
-        Phaser.Math.FloatBetween(Decorative.solarDots.radiusMin, Decorative.solarDots.radiusMax)
-      );
-    }
-    this.uiElements.push(vineGfx);
+    // const vineGfx = this.add.graphics();
+    // vineGfx.lineStyle(
+    //   Decorative.vine.thickness,
+    //   Decorative.vine.color,
+    //   Decorative.vine.alpha,
+    // );
+    // vineGfx.beginPath();
+    // vineGfx.moveTo(40, 100);
+    // vineGfx.lineTo(55, 220);
+    // vineGfx.lineTo(35, 340);
+    // vineGfx.lineTo(60, 460);
+    // vineGfx.lineTo(40, 580);
+    // vineGfx.strokePath();
+    // vineGfx.beginPath();
+    // vineGfx.moveTo(w - 40, 100);
+    // vineGfx.lineTo(w - 55, 220);
+    // vineGfx.lineTo(w - 35, 340);
+    // vineGfx.lineTo(w - 60, 460);
+    // vineGfx.lineTo(w - 40, 580);
+    // vineGfx.strokePath();
+    // // Small golden solar dots
+    // vineGfx.fillStyle(
+    //   Decorative.solarDots.color,
+    //   Decorative.solarDots.alphaMin,
+    // );
+    // for (let i = 0; i < 15; i++) {
+    //   vineGfx.fillCircle(
+    //     Phaser.Math.Between(80, w - 80),
+    //     Phaser.Math.Between(80, h - 80),
+    //     Phaser.Math.FloatBetween(
+    //       Decorative.solarDots.radiusMin,
+    //       Decorative.solarDots.radiusMax,
+    //     ),
+    //   );
+    // }
+    // this.uiElements.push(vineGfx);
 
     // Title -- golden with green stroke
-    const title = this.add.text(cx, 140, 'BANGER', {
-      ...TextStyle.hero,
-      fontSize: '52px',
-      fontFamily: 'monospace',
-      strokeThickness: 4,
-    }).setOrigin(0.5);
+    const title = this.add
+      .text(cx, 140, 'BANGER', {
+        ...TextStyle.hero,
+        fontSize: '52px',
+        fontFamily: 'monospace',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5);
     this.uiElements.push(title);
 
     // Decorative gold line under title
     const lineGfx = this.add.graphics();
-    lineGfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color, Decorative.divider.alpha);
+    lineGfx.lineStyle(
+      Decorative.divider.thickness,
+      Decorative.divider.color,
+      Decorative.divider.alpha,
+    );
     lineGfx.lineBetween(cx - 200, 175, cx + 200, 175);
     this.uiElements.push(lineGfx);
 
     // Menu buttons -- using design token button presets
     const menuItems = [
-      { text: 'Create Private Room', preset: Buttons.primary, y: 260, handler: () => this.createPrivateRoom() },
-      { text: 'Join Private Room', preset: Buttons.primary, y: 340, handler: () => this.showJoinInput() },
-      { text: 'Find Match', preset: Buttons.accent, y: 420, handler: () => this.showRoleSelectForMatchmaking() },
-      { text: 'How to Play', preset: Buttons.secondary, y: 500, handler: () => this.scene.start('HelpScene') },
+      {
+        text: 'Create Private Room',
+        preset: Buttons.primary,
+        y: 260,
+        handler: () => this.createPrivateRoom(),
+      },
+      {
+        text: 'Join Private Room',
+        preset: Buttons.primary,
+        y: 340,
+        handler: () => this.showJoinInput(),
+      },
+      {
+        text: 'Find Match',
+        preset: Buttons.accent,
+        y: 420,
+        handler: () => this.showRoleSelectForMatchmaking(),
+      },
+      {
+        text: 'How to Play',
+        preset: Buttons.secondary,
+        y: 500,
+        handler: () => this.scene.start('HelpScene'),
+      },
     ];
 
-    menuItems.forEach(btn => {
-      const button = this.add.text(cx, btn.y, btn.text, {
-        fontSize: btn.preset.fontSize,
-        color: btn.preset.text,
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        backgroundColor: btn.preset.bg,
-        padding: { x: Spacing.lg, y: Spacing.md }
-      })
+    menuItems.forEach((btn) => {
+      const button = this.add
+        .text(cx, btn.y, btn.text, {
+          fontSize: btn.preset.fontSize,
+          color: btn.preset.text,
+          fontFamily: 'monospace',
+          fontStyle: 'bold',
+          backgroundColor: btn.preset.bg,
+          padding: { x: Spacing.lg, y: Spacing.md },
+        })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
@@ -291,7 +372,7 @@ export class LobbyScene extends Phaser.Scene {
         button.setBackgroundColor(btn.preset.bg);
       });
       button.on('pointerdown', () => {
-        if (this.audioManager) this.audioManager.playSFX('button_click');
+        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
         btn.handler();
       });
 
@@ -315,7 +396,7 @@ export class LobbyScene extends Phaser.Scene {
     try {
       this.room = await this.client.create('lobby_room', {
         private: true,
-        name: this.playerName
+        name: this.playerName,
       });
 
       console.log('Created private room:', this.room.id);
@@ -337,10 +418,12 @@ export class LobbyScene extends Phaser.Scene {
     this.addSceneBg();
 
     // Label
-    const label = this.add.text(cx, 240, 'Enter Room Code:', {
-      ...TextStyle.heroHeading,
-      fontFamily: 'monospace',
-    }).setOrigin(0.5);
+    const label = this.add
+      .text(cx, 240, 'Enter Room Code:', {
+        ...TextStyle.heroHeading,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
     this.uiElements.push(label);
 
     // HTML input element for room code -- styled to match solarpunk aesthetic
@@ -384,21 +467,22 @@ export class LobbyScene extends Phaser.Scene {
     this.htmlInput.focus();
 
     // Join button -- primary preset
-    const joinButton = this.add.text(cx, 440, 'Join', {
-      fontSize: Buttons.primary.fontSize,
-      color: Buttons.primary.text,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      backgroundColor: Buttons.primary.bg,
-      padding: { x: 32, y: 12 }
-    })
+    const joinButton = this.add
+      .text(cx, 440, 'Join', {
+        fontSize: Buttons.primary.fontSize,
+        color: Buttons.primary.text,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        backgroundColor: Buttons.primary.bg,
+        padding: { x: 32, y: 12 },
+      })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
     joinButton.on('pointerover', () => joinButton.setBackgroundColor(Buttons.primary.hover));
     joinButton.on('pointerout', () => joinButton.setBackgroundColor(Buttons.primary.bg));
     joinButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playSFX('button_click');
+      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
       if (this.htmlInput) {
         const code = this.htmlInput.value.trim().toUpperCase();
         if (code.length === LOBBY_CONFIG.ROOM_CODE_LENGTH) {
@@ -410,20 +494,21 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(joinButton);
 
     // Back button -- secondary preset
-    const backButton = this.add.text(cx, 520, 'Back', {
-      fontSize: Buttons.secondary.fontSize,
-      color: Colors.text.secondary,
-      fontFamily: 'monospace',
-      backgroundColor: Buttons.secondary.bg,
-      padding: { x: 20, y: 8 }
-    })
+    const backButton = this.add
+      .text(cx, 520, 'Back', {
+        fontSize: Buttons.secondary.fontSize,
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        backgroundColor: Buttons.secondary.bg,
+        padding: { x: 20, y: 8 },
+      })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
     backButton.on('pointerover', () => backButton.setBackgroundColor(Buttons.secondary.hover));
     backButton.on('pointerout', () => backButton.setBackgroundColor(Buttons.secondary.bg));
     backButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playSFX('button_click');
+      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
       this.showMainMenu();
     });
     this.uiElements.push(backButton);
@@ -467,9 +552,10 @@ export class LobbyScene extends Phaser.Scene {
       console.error('Failed to join room:', e);
 
       // Show appropriate error message
-      const errorMsg = e?.message?.includes('full') || e?.message?.includes('locked')
-        ? 'Room is full!'
-        : 'Room not found!';
+      const errorMsg =
+        e?.message?.includes('full') || e?.message?.includes('locked')
+          ? 'Room is full!'
+          : 'Room not found!';
       statusText.setText(errorMsg);
       statusText.setColor(Colors.status.danger);
 
@@ -487,10 +573,12 @@ export class LobbyScene extends Phaser.Scene {
     this.addSceneBg();
 
     // Title
-    const title = this.add.text(cx, 180, 'Select Preferred Role', {
-      ...TextStyle.heroHeading,
-      fontFamily: 'monospace',
-    }).setOrigin(0.5);
+    const title = this.add
+      .text(cx, 180, 'Select Preferred Role', {
+        ...TextStyle.heroHeading,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
     this.uiElements.push(title);
 
     // Role buttons -- use character colors from tokens
@@ -500,18 +588,19 @@ export class LobbyScene extends Phaser.Scene {
       { role: 'baran', label: 'Baran (Guardian)', y: 450 },
     ];
 
-    roles.forEach(r => {
+    roles.forEach((r) => {
       const roleColor = charColor(r.role);
-      const button = this.add.text(cx, r.y, r.label, {
-        fontSize: '22px',
-        color: Colors.text.primary,
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        backgroundColor: Colors.bg.elevated,
-        padding: { x: 28, y: 14 },
-        stroke: '#000000',
-        strokeThickness: 2,
-      })
+      const button = this.add
+        .text(cx, r.y, r.label, {
+          fontSize: '22px',
+          color: Colors.text.primary,
+          fontFamily: 'monospace',
+          fontStyle: 'bold',
+          backgroundColor: Colors.bg.elevated,
+          padding: { x: 28, y: 14 },
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
@@ -522,27 +611,28 @@ export class LobbyScene extends Phaser.Scene {
       button.on('pointerover', () => button.setBackgroundColor(Buttons.secondary.hover));
       button.on('pointerout', () => button.setBackgroundColor(Colors.bg.elevated));
       button.on('pointerdown', () => {
-        if (this.audioManager) this.audioManager.playSFX('button_click');
+        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
         this.joinMatchmaking(r.role);
       });
       this.uiElements.push(button);
     });
 
     // Back button
-    const backButton = this.add.text(cx, 580, 'Back', {
-      fontSize: Buttons.secondary.fontSize,
-      color: Colors.text.secondary,
-      fontFamily: 'monospace',
-      backgroundColor: Buttons.secondary.bg,
-      padding: { x: 20, y: 8 }
-    })
+    const backButton = this.add
+      .text(cx, 580, 'Back', {
+        fontSize: Buttons.secondary.fontSize,
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        backgroundColor: Buttons.secondary.bg,
+        padding: { x: 20, y: 8 },
+      })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
     backButton.on('pointerover', () => backButton.setBackgroundColor(Buttons.secondary.hover));
     backButton.on('pointerout', () => backButton.setBackgroundColor(Buttons.secondary.bg));
     backButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playSFX('button_click');
+      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
       this.showMainMenu();
     });
     this.uiElements.push(backButton);
@@ -566,28 +656,31 @@ export class LobbyScene extends Phaser.Scene {
         dots = (dots + 1) % 4;
         statusText.setText('Searching for match' + '.'.repeat(dots));
       },
-      loop: true
+      loop: true,
     });
 
     // Queue size display
-    const queueText = this.add.text(cx, 380, '', {
-      fontSize: '16px',
-      color: Colors.text.secondary,
-      fontFamily: 'monospace',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
+    const queueText = this.add
+      .text(cx, 380, '', {
+        fontSize: '16px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
     this.uiElements.push(queueText);
 
     // Cancel button -- danger preset
-    const cancelButton = this.add.text(cx, 480, 'Cancel', {
-      fontSize: Buttons.danger.fontSize,
-      color: Buttons.danger.text,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      backgroundColor: Buttons.danger.bg,
-      padding: { x: 24, y: 10 }
-    })
+    const cancelButton = this.add
+      .text(cx, 480, 'Cancel', {
+        fontSize: Buttons.danger.fontSize,
+        color: Buttons.danger.text,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        backgroundColor: Buttons.danger.bg,
+        padding: { x: 24, y: 10 },
+      })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
@@ -607,7 +700,7 @@ export class LobbyScene extends Phaser.Scene {
       // Join the matchmaking room (shared instance for all queuing players)
       const matchmakingRoom = await this.client.joinOrCreate('matchmaking_room', {
         preferredRole,
-        name: this.playerName
+        name: this.playerName,
       });
 
       // Track queue sizes from state
@@ -621,44 +714,57 @@ export class LobbyScene extends Phaser.Scene {
       });
 
       // Listen for match found
-      matchmakingRoom.onMessage('matchFound', async (data: { lobbyRoomId: string; assignedRole: string }) => {
-        console.log('Match found! Joining lobby:', data.lobbyRoomId);
-        spinnerInterval.destroy();
+      matchmakingRoom.onMessage(
+        'matchFound',
+        async (data: { lobbyRoomId: string; assignedRole: string }) => {
+          console.log('Match found! Joining lobby:', data.lobbyRoomId);
+          spinnerInterval.destroy();
 
-        // Leave matchmaking room
-        matchmakingRoom.leave();
+          // Leave matchmaking room
+          matchmakingRoom.leave();
 
-        // Show transition message
-        this.clearUI();
-        this.addSceneBg();
-        this.addStatusText(cx, this.cameras.main.centerY, 'Match found! Joining lobby...', Colors.status.success);
-
-        try {
-          // Join the lobby that matchmaking created
-          this.room = await this.client.joinById(data.lobbyRoomId, {
-            name: this.playerName,
-            fromMatchmaking: true,
-            preferredRole: data.assignedRole
-          });
-
-          console.log('Joined matchmaking lobby:', this.room.id);
-          this.showLobbyView();
-
-          // Select assigned role AFTER showLobbyView (which resets selectedRole)
-          // Use a short delay to ensure characterPanelUpdaters are registered
-          this.time.delayedCall(100, () => {
-            if (this.room && data.assignedRole) {
-              this.selectRole(data.assignedRole);
-            }
-          });
-        } catch (e) {
-          console.error('Failed to join matchmaking lobby:', e);
+          // Show transition message
           this.clearUI();
           this.addSceneBg();
-          this.addStatusText(cx, this.cameras.main.centerY, 'Failed to join lobby', Colors.status.danger);
-          this.time.delayedCall(3000, () => this.showMainMenu());
-        }
-      });
+          this.addStatusText(
+            cx,
+            this.cameras.main.centerY,
+            'Match found! Joining lobby...',
+            Colors.status.success,
+          );
+
+          try {
+            // Join the lobby that matchmaking created
+            this.room = await this.client.joinById(data.lobbyRoomId, {
+              name: this.playerName,
+              fromMatchmaking: true,
+              preferredRole: data.assignedRole,
+            });
+
+            console.log('Joined matchmaking lobby:', this.room.id);
+            this.showLobbyView();
+
+            // Select assigned role AFTER showLobbyView (which resets selectedRole)
+            // Use a short delay to ensure characterPanelUpdaters are registered
+            this.time.delayedCall(100, () => {
+              if (this.room && data.assignedRole) {
+                this.selectRole(data.assignedRole);
+              }
+            });
+          } catch (e) {
+            console.error('Failed to join matchmaking lobby:', e);
+            this.clearUI();
+            this.addSceneBg();
+            this.addStatusText(
+              cx,
+              this.cameras.main.centerY,
+              'Failed to join lobby',
+              Colors.status.danger,
+            );
+            this.time.delayedCall(3000, () => this.showMainMenu());
+          }
+        },
+      );
 
       // Update cancel to also leave matchmaking room
       cancelButton.removeAllListeners('pointerdown');
@@ -667,7 +773,6 @@ export class LobbyScene extends Phaser.Scene {
         matchmakingRoom.leave();
         this.showMainMenu();
       });
-
     } catch (e) {
       console.error('Failed to join matchmaking:', e);
       spinnerInterval.destroy();
@@ -695,14 +800,16 @@ export class LobbyScene extends Phaser.Scene {
     const updateRoomCode = (value: string) => {
       if (value && this.room?.state.isPrivate) {
         if (!codeLabel) {
-          codeLabel = this.add.text(cx, 45, `Room Code: ${value}`, {
-            fontSize: '28px',
-            color: Colors.gold.primary,
-            fontStyle: 'bold',
-            fontFamily: 'monospace',
-            stroke: '#000000',
-            strokeThickness: 3,
-          }).setOrigin(0.5);
+          codeLabel = this.add
+            .text(cx, 45, `Room Code: ${value}`, {
+              fontSize: '28px',
+              color: Colors.gold.primary,
+              fontStyle: 'bold',
+              fontFamily: 'monospace',
+              stroke: '#000000',
+              strokeThickness: 3,
+            })
+            .setOrigin(0.5);
           this.uiElements.push(codeLabel);
         } else {
           codeLabel.setText(`Room Code: ${value}`);
@@ -722,11 +829,14 @@ export class LobbyScene extends Phaser.Scene {
 
     // Store lobby reconnection token for browser refresh recovery
     if (this.room.reconnectionToken) {
-      sessionStorage.setItem('bangerLobbyRoom', JSON.stringify({
-        token: this.room.reconnectionToken,
-        roomId: this.room.id,
-        timestamp: Date.now()
-      }));
+      sessionStorage.setItem(
+        'bangerLobbyRoom',
+        JSON.stringify({
+          token: this.room.reconnectionToken,
+          roomId: this.room.id,
+          timestamp: Date.now(),
+        }),
+      );
     }
 
     // Character selection section
@@ -739,14 +849,17 @@ export class LobbyScene extends Phaser.Scene {
     this.createReadyButton();
 
     // Countdown display (initially hidden)
-    const countdownText = this.add.text(cx, 150, '', {
-      fontSize: '64px',
-      color: Colors.gold.primary,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 4
-    }).setOrigin(0.5).setVisible(false);
+    const countdownText = this.add
+      .text(cx, 150, '', {
+        fontSize: '64px',
+        color: Colors.gold.primary,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
     this.uiElements.push(countdownText);
 
     // Listen for countdown changes
@@ -763,15 +876,17 @@ export class LobbyScene extends Phaser.Scene {
 
     // Listen for role errors
     this.room.onMessage('roleError', (message: string) => {
-      const errorText = this.add.text(cx, 640, message, {
-        fontSize: '16px',
-        color: Colors.status.danger,
-        fontFamily: 'monospace',
-        backgroundColor: '#000000',
-        padding: { x: 12, y: 6 },
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
+      const errorText = this.add
+        .text(cx, 640, message, {
+          fontSize: '16px',
+          color: Colors.status.danger,
+          fontFamily: 'monospace',
+          backgroundColor: '#000000',
+          padding: { x: 12, y: 6 },
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5);
       this.uiElements.push(errorText);
 
       // Auto-hide after 3 seconds
@@ -791,14 +906,17 @@ export class LobbyScene extends Phaser.Scene {
         const gameRoom = await this.client.joinById(data.gameRoomId, {
           name: this.playerName,
           fromLobby: true,
-          role: this.selectedRole
+          role: this.selectedRole,
         });
 
         // Store reconnection token
-        sessionStorage.setItem('bangerActiveRoom', JSON.stringify({
-          token: gameRoom.reconnectionToken,
-          timestamp: Date.now()
-        }));
+        sessionStorage.setItem(
+          'bangerActiveRoom',
+          JSON.stringify({
+            token: gameRoom.reconnectionToken,
+            timestamp: Date.now(),
+          }),
+        );
 
         // Transition to GameScene
         this.scene.start('GameScene', { room: gameRoom });
@@ -819,10 +937,12 @@ export class LobbyScene extends Phaser.Scene {
     this.characterPanelUpdaters = [];
 
     const titleY = this.room.state.isPrivate ? 110 : 75;
-    const title = this.add.text(cx, titleY, 'Select Character', {
-      ...TextStyle.heroHeading,
-      fontFamily: 'monospace',
-    }).setOrigin(0.5);
+    const title = this.add
+      .text(cx, titleY, 'Select Character', {
+        ...TextStyle.heroHeading,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
     this.uiElements.push(title);
 
     // Character panels -- space evenly across wider screen
@@ -852,28 +972,32 @@ export class LobbyScene extends Phaser.Scene {
       this.uiElements.push(sprite);
 
       // Character name -- role-colored with stroke
-      const nameText = this.add.text(x, panelY + 30, char.name, {
-        fontSize: '16px',
-        color: charColor(char.role),
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
+      const nameText = this.add
+        .text(x, panelY + 30, char.name, {
+          fontSize: '16px',
+          color: charColor(char.role),
+          fontFamily: 'monospace',
+          fontStyle: 'bold',
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5);
       this.uiElements.push(nameText);
 
       // Character description
-      const descText = this.add.text(x, panelY + 50, char.desc, {
-        fontSize: '12px',
-        color: Colors.text.secondary,
-        fontFamily: 'monospace',
-      }).setOrigin(0.5);
+      const descText = this.add
+        .text(x, panelY + 50, char.desc, {
+          fontSize: '12px',
+          color: Colors.text.secondary,
+          fontFamily: 'monospace',
+        })
+        .setOrigin(0.5);
       this.uiElements.push(descText);
 
       // Click handler
       panel.on('pointerdown', () => {
         if (this.isRoleAvailable(char.role)) {
-          if (this.audioManager) this.audioManager.playSFX('button_click');
+          if (this.audioManager) this.audioManager.playWAVSFX('select_1');
           this.selectRole(char.role);
         }
       });
@@ -930,11 +1054,13 @@ export class LobbyScene extends Phaser.Scene {
     const cx = this.cameras.main.centerX;
 
     const titleY = this.room.state.isPrivate ? 350 : 310;
-    const title = this.add.text(cx, titleY, 'Players', {
-      ...TextStyle.heroHeading,
-      fontSize: '20px',
-      fontFamily: 'monospace',
-    }).setOrigin(0.5);
+    const title = this.add
+      .text(cx, titleY, 'Players', {
+        ...TextStyle.heroHeading,
+        fontSize: '20px',
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
     this.uiElements.push(title);
 
     const listStartY = titleY + 40;
@@ -942,30 +1068,29 @@ export class LobbyScene extends Phaser.Scene {
 
     const updatePlayerList = () => {
       // Clear existing player texts
-      playerTexts.forEach(text => text.destroy());
+      playerTexts.forEach((text) => text.destroy());
       playerTexts.clear();
 
       // Create new player texts
       let index = 0;
       this.room!.state.players.forEach((player: any, sessionId: string) => {
         const y = listStartY + index * 30;
-        const roleName = player.role ? player.role.charAt(0).toUpperCase() + player.role.slice(1) : 'Selecting...';
+        const roleName = player.role
+          ? player.role.charAt(0).toUpperCase() + player.role.slice(1)
+          : 'Selecting...';
         const readyIcon = player.ready ? '✓' : '○';
         const readyColor = player.ready ? Colors.status.success : Colors.text.disabled;
         const connectedStatus = player.connected ? '' : ' [DC]';
 
-        const text = this.add.text(
-          cx,
-          y,
-          `${player.name} - ${roleName} ${readyIcon}${connectedStatus}`,
-          {
+        const text = this.add
+          .text(cx, y, `${player.name} - ${roleName} ${readyIcon}${connectedStatus}`, {
             fontSize: '16px',
             color: readyColor,
             fontFamily: 'monospace',
             stroke: '#000000',
             strokeThickness: 2,
-          }
-        ).setOrigin(0.5);
+          })
+          .setOrigin(0.5);
 
         this.uiElements.push(text);
         playerTexts.set(sessionId, text);
@@ -989,14 +1114,15 @@ export class LobbyScene extends Phaser.Scene {
     const cx = this.cameras.main.centerX;
 
     const buttonY = 580;
-    const readyButton = this.add.text(cx, buttonY, 'Ready', {
-      fontSize: Buttons.primary.fontSize,
-      color: Buttons.primary.text,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      backgroundColor: Buttons.disabled.bg,
-      padding: { x: 32, y: 12 }
-    })
+    const readyButton = this.add
+      .text(cx, buttonY, 'Ready', {
+        fontSize: Buttons.primary.fontSize,
+        color: Buttons.primary.text,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        backgroundColor: Buttons.disabled.bg,
+        padding: { x: 32, y: 12 },
+      })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
@@ -1027,7 +1153,7 @@ export class LobbyScene extends Phaser.Scene {
     }
 
     readyButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playSFX('ready_chime');
+      if (this.audioManager) this.audioManager.playWAVSFX('select_2');
       if (this.room) {
         this.room.send('toggleReady');
       }
@@ -1048,7 +1174,7 @@ export class LobbyScene extends Phaser.Scene {
         this.room.send('selectRole', { role });
       }
       // Immediate optimistic UI update
-      this.characterPanelUpdaters.forEach(fn => fn());
+      this.characterPanelUpdaters.forEach((fn) => fn());
     }
   }
 
@@ -1070,71 +1196,113 @@ export class LobbyScene extends Phaser.Scene {
     if (!this.audioManager) return;
 
     const cx = this.cameras.main.centerX;
+    const sliderWidth = 120;
+    const sliderHeight = 8;
 
     const controls = [
-      { label: 'Music', get: () => this.audioManager!.getMusicVolume(), set: (v: number) => this.audioManager!.setMusicVolume(v) },
-      { label: 'SFX', get: () => this.audioManager!.getSFXVolume(), set: (v: number) => this.audioManager!.setSFXVolume(v) },
+      {
+        label: 'Music',
+        get: () => this.audioManager!.getMusicVolume(),
+        set: (v: number) => this.audioManager!.setMusicVolume(v),
+      },
+      {
+        label: 'SFX',
+        get: () => this.audioManager!.getSFXVolume(),
+        set: (v: number) => this.audioManager!.setSFXVolume(v),
+      },
     ];
 
     controls.forEach((ctrl, index) => {
-      const y = startY + index * 35;
-      const labelText = this.add.text(cx - 120, y, ctrl.label + ':', {
-        fontSize: '16px',
-        color: Colors.text.secondary,
-        fontFamily: 'monospace',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0, 0.5);
+      const y = startY + index * 40;
+
+      // Label
+      const labelText = this.add
+        .text(cx - 130, y, ctrl.label + ':', {
+          fontSize: '14px',
+          color: Colors.text.secondary,
+          fontFamily: 'monospace',
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
+        .setOrigin(0, 0.5);
       this.uiElements.push(labelText);
 
-      const volText = this.add.text(cx, y, `${Math.round(ctrl.get() * 100)}%`, {
-        fontSize: '16px',
-        color: Colors.text.primary,
-        fontFamily: 'monospace',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5, 0.5);
+      // Slider background bar (dark)
+      const sliderX = cx - 30;
+      const sliderBg = this.add.rectangle(
+        sliderX,
+        y,
+        sliderWidth,
+        sliderHeight,
+        Colors.bg.elevatedNum,
+      );
+      sliderBg.setOrigin(0, 0.5);
+      this.uiElements.push(sliderBg);
+
+      // Slider fill bar (colored)
+      const fillWidth = ctrl.get() * sliderWidth;
+      const sliderFill = this.add.rectangle(
+        sliderX,
+        y,
+        fillWidth,
+        sliderHeight,
+        Colors.gold.primaryNum,
+      );
+      sliderFill.setOrigin(0, 0.5);
+      this.uiElements.push(sliderFill);
+
+      // Percentage text
+      const volText = this.add
+        .text(sliderX + sliderWidth + 12, y, `${Math.round(ctrl.get() * 100)}%`, {
+          fontSize: '14px',
+          color: Colors.text.primary,
+          fontFamily: 'monospace',
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
+        .setOrigin(0, 0.5);
       this.uiElements.push(volText);
 
-      // Minus button
-      const minusBtn = this.add.text(cx - 50, y, ' - ', {
-        fontSize: '18px',
-        color: Colors.text.primary,
-        fontFamily: 'monospace',
-        backgroundColor: Colors.bg.elevated,
-        padding: { x: 6, y: 2 }
-      }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
-      minusBtn.on('pointerover', () => minusBtn.setBackgroundColor(Buttons.secondary.hover));
-      minusBtn.on('pointerout', () => minusBtn.setBackgroundColor(Colors.bg.elevated));
-      minusBtn.on('pointerdown', () => {
-        const newVal = Math.max(0, ctrl.get() - 0.1);
-        ctrl.set(newVal);
-        volText.setText(`${Math.round(newVal * 100)}%`);
-      });
-      this.uiElements.push(minusBtn);
+      // Clickable hit area over slider (wider for easy clicking)
+      const hitArea = this.add.rectangle(
+        sliderX + sliderWidth / 2,
+        y,
+        sliderWidth + 10,
+        sliderHeight + 14,
+        0x000000,
+        0,
+      );
+      hitArea.setInteractive({ useHandCursor: true });
+      this.uiElements.push(hitArea);
 
-      // Plus button
-      const plusBtn = this.add.text(cx + 50, y, ' + ', {
-        fontSize: '18px',
-        color: Colors.text.primary,
-        fontFamily: 'monospace',
-        backgroundColor: Colors.bg.elevated,
-        padding: { x: 6, y: 2 }
-      }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
-      plusBtn.on('pointerover', () => plusBtn.setBackgroundColor(Buttons.secondary.hover));
-      plusBtn.on('pointerout', () => plusBtn.setBackgroundColor(Colors.bg.elevated));
-      plusBtn.on('pointerdown', () => {
-        const newVal = Math.min(1, ctrl.get() + 0.1);
-        ctrl.set(newVal);
-        volText.setText(`${Math.round(newVal * 100)}%`);
+      const updateSlider = (pointerX: number) => {
+        const localX = pointerX - sliderBg.getTopLeft().x;
+        const ratio = Math.max(0, Math.min(1, localX / sliderWidth));
+        ctrl.set(ratio);
+        sliderFill.width = ratio * sliderWidth;
+        volText.setText(`${Math.round(ratio * 100)}%`);
+      };
+
+      hitArea.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        updateSlider(pointer.x);
+        // Play test sound on SFX slider change
+        if (ctrl.label === 'SFX' && this.audioManager) {
+          this.audioManager.playWAVSFX('select_1');
+        }
       });
-      this.uiElements.push(plusBtn);
+
+      // Support drag along the slider
+      hitArea.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+        if (pointer.isDown) {
+          updateSlider(pointer.x);
+        }
+      });
     });
   }
 
   private clearUI() {
     // Destroy all UI elements
-    this.uiElements.forEach(el => {
+    this.uiElements.forEach((el) => {
       if (el && !el.scene) return; // Already destroyed
       el.destroy();
     });
