@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 10 -- Powerup System (Complete, including UAT gap closure)
+**Current focus:** Phase 11 -- Minimap & Music
 
 ## Current Position
 
-Phase: 10 (Powerup System)
-Plan: 5 of 5 in current phase
-Status: Phase 10 Complete (all plans + UAT gap closure)
-Last activity: 2026-02-18 -- Completed 10-05 (UAT Gap Closure)
+Phase: 11 (Minimap & Music)
+Plan: 1 of 3 in current phase
+Status: Plan 11-01 complete (Audio Infrastructure)
+Last activity: 2026-02-18 -- Completed 11-01 (Audio Infrastructure)
 
-Progress: [####################] 100% (all v2.0 Phase 10 plans complete, including gap closure)
+Progress: [#######.............] 33% (1 of 3 Phase 11 plans complete)
 
 ## Performance Metrics
 
@@ -38,6 +38,7 @@ Progress: [####################] 100% (all v2.0 Phase 10 plans complete, includi
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 | 9.1 Tilemap Collision Masks | 3 | Complete |
 | 10. Powerup System | 5 | Complete (incl. gap closure) |
+| 11. Minimap & Music | 3 | In Progress (1/3) |
 
 ## Accumulated Context
 
@@ -128,6 +129,12 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Idle aura tracked in separate powerupIdleEmitters map for independent lifecycle from buff auras
 - Number() cast on Colyseus message data.type prevents string/number enum mismatch in switch
 
+**Phase 11 decisions:**
+- fadeVolume uses 50ms setInterval steps for smooth linear volume ramping
+- volumeDipFactor field integrates with setMusicVolume to respect slider changes during dip
+- crossfadeTo respects active volumeDipFactor for target volume calculation
+- playMusicWithPause stale guard checks currentMusic identity before restarting
+
 ### Pending Todos
 
 None.
@@ -147,9 +154,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 10-05-PLAN.md (UAT Gap Closure)
-Resume file: .planning/phases/10-powerup-system/10-05-SUMMARY.md
-Next step: Phase 10 fully complete with gap closure -- proceed to next phase or re-UAT
+Stopped at: Completed 11-01-PLAN.md (Audio Infrastructure)
+Resume file: .planning/phases/11-minimap-music/11-01-SUMMARY.md
+Next step: Execute 11-02-PLAN.md (Minimap) or 11-03-PLAN.md (Audio Integration)
 
 ---
-*Updated: 2026-02-18 after completing 10-05*
+*Updated: 2026-02-18 after completing 11-01*
