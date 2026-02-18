@@ -1,13 +1,7 @@
 import Phaser from 'phaser';
 import { ParticleFactory } from '../systems/ParticleFactory';
 import { AudioManager } from '../systems/AudioManager';
-import {
-  Colors,
-  TextStyle,
-  Buttons,
-  Decorative,
-  charColor,
-} from '../ui/designTokens';
+import { Colors, TextStyle, Buttons, Decorative, charColor } from '../ui/designTokens';
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -25,7 +19,10 @@ export class VictoryScene extends Phaser.Scene {
       arenaName: string;
       winner: string;
       duration: number;
-      stats: Record<string, { kills: number; deaths: number; damageDealt: number; shotsFired: number; shotsHit: number }>;
+      stats: Record<
+        string,
+        { kills: number; deaths: number; damageDealt: number; shotsFired: number; shotsHit: number }
+      >;
     }>;
   }) {
     const { winner, stats, duration, localSessionId, room } = data;
@@ -42,6 +39,27 @@ export class VictoryScene extends Phaser.Scene {
       (winner === 'paran' && localRole === 'paran') ||
       (winner === 'guardians' && localRole !== 'paran');
 
+    // Get AudioManager from registry
+    const audioManager = this.registry.get('audioManager') as AudioManager | null;
+
+    // Play victory or defeat music
+    if (didWin) {
+      // Small delay (music was fading in GameScene), then play victory track once
+      this.time.delayedCall(600, () => {
+        if (audioManager) {
+          audioManager.playMusic('audio/gameover/victory.mp3', false);
+        }
+      });
+    } else {
+      // Defeat sting first, then defeat track
+      if (audioManager) {
+        audioManager.playWAVSFX('lose_1');
+        this.time.delayedCall(1200, () => {
+          audioManager.playMusic('audio/gameover/defeat.mp3', false);
+        });
+      }
+    }
+
     // Victory splash image background (different for each outcome)
     const splashKey = didWin ? 'victory-guardian' : 'victory-paran';
     const splashBg = this.add.image(cx, cy, splashKey);
@@ -49,14 +67,10 @@ export class VictoryScene extends Phaser.Scene {
     splashBg.setDepth(0);
 
     // Dark overlay for readability
-    this.add
-      .rectangle(cx, cy, w, h, 0x000000, Colors.bg.overlayAlpha)
-      .setDepth(0.5);
+    this.add.rectangle(cx, cy, w, h, 0x000000, Colors.bg.overlayAlpha).setDepth(0.5);
 
     // Color wash overlay (between image and content)
-    const washColor = didWin
-      ? Colors.status.successNum
-      : Colors.status.dangerNum;
+    const washColor = didWin ? Colors.status.successNum : Colors.status.dangerNum;
     this.add.rectangle(cx, cy, w, h, washColor, 0.1).setDepth(0.6);
 
     // Victory/Defeat title
@@ -73,14 +87,18 @@ export class VictoryScene extends Phaser.Scene {
 
     // Winner subtitle with series score
     const stageResults = data.stageResults || [];
-    let paranWins = 0, guardianWins = 0;
+    let paranWins = 0,
+      guardianWins = 0;
     for (const stage of stageResults) {
       if (stage.winner === 'paran') paranWins++;
       else guardianWins++;
     }
-    const winnerLabel = stageResults.length > 0
-      ? `${winner === 'paran' ? 'Paran' : 'Guardians'} Win (${paranWins} - ${guardianWins})`
-      : winner === 'paran' ? 'Paran Wins!' : 'Guardians Win!';
+    const winnerLabel =
+      stageResults.length > 0
+        ? `${winner === 'paran' ? 'Paran' : 'Guardians'} Win (${paranWins} - ${guardianWins})`
+        : winner === 'paran'
+          ? 'Paran Wins!'
+          : 'Guardians Win!';
     this.add
       .text(cx, 150, winnerLabel, {
         fontSize: '24px',
@@ -97,28 +115,19 @@ export class VictoryScene extends Phaser.Scene {
     const minutes = Math.floor(durationSec / 60);
     const seconds = durationSec % 60;
     this.add
-      .text(
-        cx,
-        190,
-        `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`,
-        {
-          fontSize: '16px',
-          color: Colors.text.secondary,
-          fontFamily: 'monospace',
-          stroke: '#000000',
-          strokeThickness: 2,
-        },
-      )
+      .text(cx, 190, `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`, {
+        fontSize: '16px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
       .setOrigin(0.5)
       .setDepth(1);
 
     // Gold divider above stats
     const dividerGfx = this.add.graphics();
-    dividerGfx.lineStyle(
-      Decorative.divider.thickness,
-      Decorative.divider.color,
-      0.7,
-    );
+    dividerGfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
     dividerGfx.lineBetween(cx - 350, 225, cx + 350, 225);
     dividerGfx.setDepth(1);
 
@@ -177,25 +186,17 @@ export class VictoryScene extends Phaser.Scene {
 
       // Highlight row for local player
       if (isLocal) {
-        this.add
-          .rectangle(cx, yOffset + 8, w - 200, 28, Colors.bg.elevatedNum, 0.5)
-          .setDepth(1);
+        this.add.rectangle(cx, yOffset + 8, w - 200, 28, Colors.bg.elevatedNum, 0.5).setDepth(1);
       }
 
       // Player name (truncate)
       const displayName =
-        playerStats.name.length > 12
-          ? playerStats.name.substring(0, 10) + '..'
-          : playerStats.name;
+        playerStats.name.length > 12 ? playerStats.name.substring(0, 10) + '..' : playerStats.name;
       this.add.text(cols.name, yOffset, displayName, style).setDepth(2);
 
       // Role
       const roleLabel =
-        playerStats.role === 'paran'
-          ? 'Paran'
-          : playerStats.role === 'faran'
-            ? 'Faran'
-            : 'Baran';
+        playerStats.role === 'paran' ? 'Paran' : playerStats.role === 'faran' ? 'Faran' : 'Baran';
       this.add
         .text(cols.role, yOffset, roleLabel, {
           ...style,
@@ -204,22 +205,11 @@ export class VictoryScene extends Phaser.Scene {
         .setDepth(2);
 
       // K/D/Damage/Accuracy
+      this.add.text(cols.kills, yOffset, String(playerStats.kills), style).setDepth(2);
+      this.add.text(cols.deaths, yOffset, String(playerStats.deaths), style).setDepth(2);
+      this.add.text(cols.damage, yOffset, String(playerStats.damageDealt), style).setDepth(2);
       this.add
-        .text(cols.kills, yOffset, String(playerStats.kills), style)
-        .setDepth(2);
-      this.add
-        .text(cols.deaths, yOffset, String(playerStats.deaths), style)
-        .setDepth(2);
-      this.add
-        .text(cols.damage, yOffset, String(playerStats.damageDealt), style)
-        .setDepth(2);
-      this.add
-        .text(
-          cols.accuracy,
-          yOffset,
-          `${playerStats.accuracy.toFixed(1)}%`,
-          style,
-        )
+        .text(cols.accuracy, yOffset, `${playerStats.accuracy.toFixed(1)}%`, style)
         .setDepth(2);
 
       yOffset += 35;
@@ -227,11 +217,7 @@ export class VictoryScene extends Phaser.Scene {
 
     // Gold divider below stats
     const dividerGfx2 = this.add.graphics();
-    dividerGfx2.lineStyle(
-      Decorative.divider.thickness,
-      Decorative.divider.color,
-      0.7,
-    );
+    dividerGfx2.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
     dividerGfx2.lineBetween(cx - 350, yOffset + 5, cx + 350, yOffset + 5);
     dividerGfx2.setDepth(1);
 
@@ -239,11 +225,14 @@ export class VictoryScene extends Phaser.Scene {
     if (stageResults.length > 0) {
       yOffset += 20; // Space after divider
 
-      this.add.text(cx, yOffset, 'STAGE BREAKDOWN', {
-        ...TextStyle.heroHeading,
-        fontSize: '18px',
-        fontFamily: 'monospace',
-      }).setOrigin(0.5).setDepth(1);
+      this.add
+        .text(cx, yOffset, 'STAGE BREAKDOWN', {
+          ...TextStyle.heroHeading,
+          fontSize: '18px',
+          fontFamily: 'monospace',
+        })
+        .setOrigin(0.5)
+        .setDepth(1);
       yOffset += 30;
 
       for (const stage of stageResults) {
@@ -254,26 +243,35 @@ export class VictoryScene extends Phaser.Scene {
         const sec = durationSec % 60;
 
         // Stage line: "Stage 1: Hedge Garden"
-        this.add.text(cx, yOffset,
-          `Stage ${stage.stageNumber}: ${stage.arenaName}`, {
-          fontSize: '15px',
-          color: Colors.text.primary,
-          fontFamily: 'monospace',
-          fontStyle: 'bold',
-          stroke: '#000000',
-          strokeThickness: 2,
-        }).setOrigin(0.5).setDepth(1);
+        this.add
+          .text(cx, yOffset, `Stage ${stage.stageNumber}: ${stage.arenaName}`, {
+            fontSize: '15px',
+            color: Colors.text.primary,
+            fontFamily: 'monospace',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 2,
+          })
+          .setOrigin(0.5)
+          .setDepth(1);
         yOffset += 22;
 
         // Winner line: "Winner: Paran  (2:34)"
-        this.add.text(cx, yOffset,
-          `Winner: ${stageWinLabel}  (${min}:${sec.toString().padStart(2, '0')})`, {
-          fontSize: '13px',
-          color: stageWinColor,
-          fontFamily: 'monospace',
-          stroke: '#000000',
-          strokeThickness: 2,
-        }).setOrigin(0.5).setDepth(1);
+        this.add
+          .text(
+            cx,
+            yOffset,
+            `Winner: ${stageWinLabel}  (${min}:${sec.toString().padStart(2, '0')})`,
+            {
+              fontSize: '13px',
+              color: stageWinColor,
+              fontFamily: 'monospace',
+              stroke: '#000000',
+              strokeThickness: 2,
+            },
+          )
+          .setOrigin(0.5)
+          .setDepth(1);
         yOffset += 26;
       }
     }
@@ -293,26 +291,20 @@ export class VictoryScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(2);
 
-    button.on('pointerover', () =>
-      button.setBackgroundColor(Buttons.primary.hover),
-    );
-    button.on('pointerout', () =>
-      button.setBackgroundColor(Buttons.primary.bg),
-    );
+    button.on('pointerover', () => button.setBackgroundColor(Buttons.primary.hover));
+    button.on('pointerout', () => button.setBackgroundColor(Buttons.primary.bg));
     button.on('pointerdown', () => {
-      // Play button click if audio available
-      const audioManager = this.registry.get(
-        'audioManager',
-      ) as AudioManager | null;
-      if (audioManager) audioManager.playSFX('button_click');
+      // Play button click SFX and fade out result music
+      if (audioManager) {
+        audioManager.playWAVSFX('select_1');
+        audioManager.fadeOutMusic(500);
+      }
       this.returnToLobby(room);
     });
 
     // --- Particle Effects ---
     const particleFactory = new ParticleFactory(this);
-    const particleColor = didWin
-      ? Colors.status.successNum
-      : Colors.status.dangerNum;
+    const particleColor = didWin ? Colors.status.successNum : Colors.status.dangerNum;
 
     // Multiple victory/defeat bursts at different positions (scaled for 1280x720)
     particleFactory.victoryBurst(w * 0.2, 120, particleColor);
@@ -328,6 +320,20 @@ export class VictoryScene extends Phaser.Scene {
       particleFactory.victoryBurst(w * 0.35, 140, particleColor);
       particleFactory.victoryBurst(w * 0.65, 140, particleColor);
     });
+
+    // Victory firework SFX tied to particle bursts (only on win)
+    if (didWin && audioManager) {
+      const fireworkTimes = [800, 1400, 2000, 2600, 3200];
+      for (const delay of fireworkTimes) {
+        this.time.delayedCall(delay, () => {
+          audioManager.playRandomWAV(['fire_1', 'fire_2', 'fire_3']);
+          // Additional particle burst at random position for each firework
+          const rx = cx + Phaser.Math.Between(-200, 200);
+          const ry = cy + Phaser.Math.Between(-150, 50);
+          particleFactory.victoryBurst(rx, ry, particleColor);
+        });
+      }
+    }
   }
 
   private returnToLobby(room: any) {
