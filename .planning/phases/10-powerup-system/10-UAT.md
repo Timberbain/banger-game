@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 10-powerup-system
 source: 10-01-SUMMARY.md, 10-02-SUMMARY.md, 10-03-SUMMARY.md, 10-04-SUMMARY.md
 started: 2026-02-17T16:00:00Z
-updated: 2026-02-18T10:10:00Z
+updated: 2026-02-18T16:20:00Z
 ---
 
 ## Current Test
@@ -71,7 +71,7 @@ skipped: 0
 ## Gaps
 
 - truth: "Powerup items are clearly visible on the arena floor"
-  status: failed
+  status: resolved
   reason: "User reported: Increase the size 2x. Add particle effects around the potion for better visibility."
   severity: minor
   test: 1
@@ -87,7 +87,7 @@ skipped: 0
     - "Track idle emitters in powerupEmitters Map, destroy on collection/despawn"
 
 - truth: "Powerup collection uses provided WAV SFX and buff aura particles are clearly visible"
-  status: failed
+  status: resolved
   reason: "User reported: I would like this sound to be played when picking up a powerup assets/soundeffects/powerup_1.wav. Add more particles when powerup is active - it is barely visible."
   severity: minor
   test: 2
@@ -103,7 +103,7 @@ skipped: 0
     - "Increase aura frequency to 80-120, alpha to 0.7-0.8, scale to 0.8-1.2, lifespan to 500-700ms"
 
 - truth: "Speed boost buff duration feels appropriately long for gameplay"
-  status: failed
+  status: resolved
   reason: "User reported: increase the duration 5x"
   severity: minor
   test: 3
@@ -115,7 +115,7 @@ skipped: 0
     - "Multiply all three duration values by 5 in shared/powerups.ts"
 
 - truth: "Red particle aura shows on Guardian when projectile buff is active"
-  status: failed
+  status: resolved
   reason: "User reported: the particle effect is not showing."
   severity: major
   test: 5
