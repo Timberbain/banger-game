@@ -34,6 +34,13 @@ const POWERUP_TEXTURE: Record<number, string> = {
   [PowerupType.PROJECTILE]: 'potion_projectile',
 };
 
+/** Stage music tracks -- one is randomly selected per match and persists across all stages */
+const STAGE_MUSIC_TRACKS = [
+  'audio/stage/Forest Deco Run.mp3',
+  'audio/stage/Art Deco Forest Arena.mp3',
+  'audio/stage/Per Ropar Glas (Remastered v2).mp3',
+];
+
 export class GameScene extends Phaser.Scene {
   private client!: Client;
   private room: Room | null = null;
@@ -132,6 +139,11 @@ export class GameScene extends Phaser.Scene {
   private powerupIdleEmitters: Map<string, Phaser.GameObjects.Particles.ParticleEmitter> =
     new Map();
 
+  // Music: selected stage track for current match (persists across stages)
+  private stageTrack: string = '';
+  // Paran projectile buff tracking for beam fire SFX
+  private hasProjectileBuff: boolean = false;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -197,6 +209,8 @@ export class GameScene extends Phaser.Scene {
     this.powerupTweens = new Map();
     this.buffAuras = new Map();
     this.powerupIdleEmitters = new Map();
+    this.stageTrack = '';
+    this.hasProjectileBuff = false;
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -306,10 +320,15 @@ export class GameScene extends Phaser.Scene {
           this.time.delayedCall(2000, () => {
             if (!this.matchEnded) this.statusText.setVisible(false);
           });
-          // Audio: match start fanfare + music
+          // Audio: match start fanfare + crossfade to stage music
           if (this.audioManager) {
             this.audioManager.playSFX('match_start_fanfare');
-            this.audioManager.playMusic('audio/match_music.mp3');
+            // Select stage track on first stage only
+            if (!this.stageTrack) {
+              this.stageTrack =
+                STAGE_MUSIC_TRACKS[Math.floor(Math.random() * STAGE_MUSIC_TRACKS.length)];
+              this.audioManager.crossfadeTo(this.stageTrack, true, 1000);
+            }
           }
           // Match-start overview animation
           this.startMatchOverview();
@@ -338,10 +357,10 @@ export class GameScene extends Phaser.Scene {
         this.matchWinner = data.winner;
         this.matchEnded = true;
 
-        // Audio: match end fanfare + stop music
+        // Audio: match end fanfare + fade out music
         if (this.audioManager) {
           this.audioManager.playSFX('match_end_fanfare');
-          this.audioManager.stopMusic();
+          this.audioManager.fadeOutMusic(500);
         }
 
         // Clear reconnection token on match end
@@ -383,8 +402,11 @@ export class GameScene extends Phaser.Scene {
         this.controlsLocked = true;
         this.inStageTransition = true; // Block position updates
 
-        // Audio: stage end fanfare
-        if (this.audioManager) this.audioManager.playSFX('match_end_fanfare');
+        // Audio: stage end fanfare + dip music volume
+        if (this.audioManager) {
+          this.audioManager.playSFX('match_end_fanfare');
+          this.audioManager.dipMusicVolume(0.3);
+        }
 
         // Create iris wipe circle (starts at full size, shrinks to 0)
         const cam = this.cameras.main;
@@ -556,6 +578,7 @@ export class GameScene extends Phaser.Scene {
                 this.time.delayedCall(800, () => {
                   this.controlsLocked = false;
                   this.overviewActive = false;
+                  if (this.audioManager) this.audioManager.restoreMusicVolume();
                   this.events.emit('overviewEnd');
                 });
               });
@@ -564,6 +587,7 @@ export class GameScene extends Phaser.Scene {
         } else {
           // Fallback: no iris (e.g., reconnect mid-transition) -- just do overview
           this.matchEnded = false;
+          if (this.audioManager) this.audioManager.restoreMusicVolume();
           this.startMatchOverview();
         }
       });
@@ -714,6 +738,14 @@ export class GameScene extends Phaser.Scene {
         if (sprite && this.particleFactory) {
           this.startBuffAura(data.playerId, Number(data.type), sprite);
         }
+
+        // Track projectile buff for local player (Paran beam fire SFX)
+        if (
+          data.playerId === this.room!.sessionId &&
+          Number(data.type) === PowerupType.PROJECTILE
+        ) {
+          this.hasProjectileBuff = true;
+        }
       });
 
       this.room.onMessage('powerupDespawn', (_data: any) => {
@@ -722,6 +754,13 @@ export class GameScene extends Phaser.Scene {
 
       this.room.onMessage('buffExpired', (data: any) => {
         this.stopBuffAura(data.playerId, Number(data.type));
+        // Clear projectile buff tracking for local player
+        if (
+          data.playerId === this.room!.sessionId &&
+          Number(data.type) === PowerupType.PROJECTILE
+        ) {
+          this.hasProjectileBuff = false;
+        }
       });
     } catch (e) {
       console.error('Connection failed:', e);
@@ -884,9 +923,15 @@ export class GameScene extends Phaser.Scene {
           const now = Date.now();
           if (now - this.lastLocalFireTime >= cooldownMs) {
             this.lastLocalFireTime = now;
-            // Play role-specific shoot sound only when a projectile would actually be created
+            // Play shoot sound: WAV for guardians/Paran beam, jsfxr for normal Paran
             if (this.audioManager) {
-              this.audioManager.playSFX(`${this.localRole}_shoot`);
+              if (this.localRole !== 'paran') {
+                this.audioManager.playRandomWAV(['laser_1', 'laser_4', 'laser_5']);
+              } else if (this.hasProjectileBuff) {
+                this.audioManager.playMultipleWAV(['earthquake', 'lightning']);
+              } else {
+                this.audioManager.playSFX('paran_shoot');
+              }
             }
             this.events.emit('localFired', { fireTime: now, cooldownMs });
           }
@@ -902,8 +947,9 @@ export class GameScene extends Phaser.Scene {
 
         // Wall impact: only trigger on actual tile collision (not direction changes or stops)
         if (this.prediction.getHadCollision()) {
-          // Audio: wall impact sound
-          if (this.audioManager) this.audioManager.playSFX('wall_impact');
+          // Audio: wall impact sound (randomized hurt WAV)
+          if (this.audioManager)
+            this.audioManager.playRandomWAV(['hurt_1', 'hurt_2', 'hurt_3', 'hurt_4']);
           // Visual: wall impact dust particles
           const wallSprite = this.playerSprites.get(this.room.sessionId);
           if (wallSprite && this.particleFactory) {
@@ -1203,7 +1249,13 @@ export class GameScene extends Phaser.Scene {
     if (this.audioManager && this.room && projectile.ownerId !== this.room.sessionId) {
       const ownerPlayer = this.room.state.players.get(projectile.ownerId);
       if (ownerPlayer && ownerPlayer.role) {
-        this.audioManager.playSFX(`${ownerPlayer.role}_shoot`);
+        if (projectile.isBeam) {
+          this.audioManager.playMultipleWAV(['earthquake', 'lightning']);
+        } else if (ownerPlayer.role !== 'paran') {
+          this.audioManager.playRandomWAV(['laser_1', 'laser_4', 'laser_5']);
+        } else {
+          this.audioManager.playSFX('paran_shoot');
+        }
       }
     }
 
@@ -1464,8 +1516,8 @@ export class GameScene extends Phaser.Scene {
         const roleColor = charColorNum(player.role);
 
         if (player.health <= 0) {
-          // Death: audio + explosion particles
-          if (this.audioManager) this.audioManager.playSFX(`${player.role}_death`);
+          // Death: disappear WAV + explosion particles
+          if (this.audioManager) this.audioManager.playWAVSFX('disappear');
           if (sprite && this.particleFactory) {
             this.particleFactory.deathExplosion(sprite.x, sprite.y, roleColor);
           }
@@ -1476,8 +1528,9 @@ export class GameScene extends Phaser.Scene {
             this.cameras.main.shake(100, 0.005);
           }
         } else {
-          // Damage: audio + sprite flash + hit burst
-          if (this.audioManager) this.audioManager.playSFX(`${player.role}_hit`);
+          // Damage: randomized hurt WAV + sprite flash + hit burst
+          if (this.audioManager)
+            this.audioManager.playRandomWAV(['hurt_1', 'hurt_2', 'hurt_3', 'hurt_4']);
           if (sprite && this.particleFactory) {
             this.particleFactory.hitBurst(sprite.x, sprite.y, roleColor);
           }
@@ -1623,10 +1676,14 @@ export class GameScene extends Phaser.Scene {
         this.time.delayedCall(2000, () => {
           if (!this.matchEnded) this.statusText.setVisible(false);
         });
-        // Audio: match start fanfare + music (reconnect path)
+        // Audio: match start fanfare + crossfade to stage music (reconnect path)
         if (this.audioManager) {
           this.audioManager.playSFX('match_start_fanfare');
-          this.audioManager.playMusic('audio/match_music.mp3');
+          if (!this.stageTrack) {
+            this.stageTrack =
+              STAGE_MUSIC_TRACKS[Math.floor(Math.random() * STAGE_MUSIC_TRACKS.length)];
+            this.audioManager.crossfadeTo(this.stageTrack, true, 1000);
+          }
         }
       } else if (value === 'waiting') {
         const count = this.room ? this.room.state.players.size : 0;
@@ -1651,10 +1708,10 @@ export class GameScene extends Phaser.Scene {
       this.matchWinner = data.winner;
       this.matchEnded = true;
 
-      // Audio: match end fanfare + stop music (reconnect path)
+      // Audio: match end fanfare + fade out music (reconnect path)
       if (this.audioManager) {
         this.audioManager.playSFX('match_end_fanfare');
-        this.audioManager.stopMusic();
+        this.audioManager.fadeOutMusic(500);
       }
 
       sessionStorage.removeItem('bangerActiveRoom');
@@ -1693,8 +1750,11 @@ export class GameScene extends Phaser.Scene {
       this.controlsLocked = true;
       this.inStageTransition = true; // Block position updates
 
-      // Audio: stage end fanfare
-      if (this.audioManager) this.audioManager.playSFX('match_end_fanfare');
+      // Audio: stage end fanfare + dip music volume
+      if (this.audioManager) {
+        this.audioManager.playSFX('match_end_fanfare');
+        this.audioManager.dipMusicVolume(0.3);
+      }
 
       // Create iris wipe circle (starts at full size, shrinks to 0)
       const cam = this.cameras.main;
@@ -1859,6 +1919,7 @@ export class GameScene extends Phaser.Scene {
               this.time.delayedCall(800, () => {
                 this.controlsLocked = false;
                 this.overviewActive = false;
+                if (this.audioManager) this.audioManager.restoreMusicVolume();
                 this.events.emit('overviewEnd');
               });
             });
@@ -1867,6 +1928,7 @@ export class GameScene extends Phaser.Scene {
       } else {
         // Fallback: no iris (e.g., reconnect mid-transition) -- just do overview
         this.matchEnded = false;
+        if (this.audioManager) this.audioManager.restoreMusicVolume();
         this.startMatchOverview();
       }
     });
@@ -2027,6 +2089,11 @@ export class GameScene extends Phaser.Scene {
       if (sprite && this.particleFactory) {
         this.startBuffAura(data.playerId, Number(data.type), sprite);
       }
+
+      // Track projectile buff for local player (Paran beam fire SFX) -- reconnect path
+      if (data.playerId === this.room!.sessionId && Number(data.type) === PowerupType.PROJECTILE) {
+        this.hasProjectileBuff = true;
+      }
     });
 
     this.room.onMessage('powerupDespawn', (_data: any) => {
@@ -2035,6 +2102,10 @@ export class GameScene extends Phaser.Scene {
 
     this.room.onMessage('buffExpired', (data: any) => {
       this.stopBuffAura(data.playerId, Number(data.type));
+      // Clear projectile buff tracking for local player -- reconnect path
+      if (data.playerId === this.room!.sessionId && Number(data.type) === PowerupType.PROJECTILE) {
+        this.hasProjectileBuff = false;
+      }
     });
   }
 
