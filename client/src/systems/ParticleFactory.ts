@@ -177,11 +177,11 @@ export class ParticleFactory {
    */
   speedAura(followTarget: Phaser.GameObjects.Sprite): Phaser.GameObjects.Particles.ParticleEmitter {
     const emitter = this.scene.add.particles(0, 0, 'particle', {
-      frequency: 50,
-      lifespan: 400,
-      speed: { min: 20, max: 60 },
-      scale: { start: 0.6, end: 0 },
-      alpha: { start: 0.5, end: 0 },
+      frequency: 25,
+      lifespan: 600,
+      speed: { min: 30, max: 80 },
+      scale: { start: 1.0, end: 0 },
+      alpha: { start: 0.8, end: 0 },
       tint: 0x4488ff,
       angle: { min: 0, max: 360 },
       follow: followTarget,
@@ -200,11 +200,11 @@ export class ParticleFactory {
     followTarget: Phaser.GameObjects.Sprite,
   ): Phaser.GameObjects.Particles.ParticleEmitter {
     const emitter = this.scene.add.particles(0, 0, 'particle', {
-      frequency: 40,
-      lifespan: 500,
-      speed: { min: 30, max: 50 },
-      scale: { start: 0.8, end: 0 },
-      alpha: { start: 0.6, end: 0 },
+      frequency: 20,
+      lifespan: 700,
+      speed: { min: 30, max: 60 },
+      scale: { start: 1.2, end: 0 },
+      alpha: { start: 0.8, end: 0 },
       tint: 0xffcc00,
       angle: { min: 0, max: 360 },
       follow: followTarget,
@@ -223,11 +223,11 @@ export class ParticleFactory {
     followTarget: Phaser.GameObjects.Sprite,
   ): Phaser.GameObjects.Particles.ParticleEmitter {
     const emitter = this.scene.add.particles(0, 0, 'particle', {
-      frequency: 60,
-      lifespan: 350,
-      speed: { min: 15, max: 45 },
-      scale: { start: 0.5, end: 0 },
-      alpha: { start: 0.6, end: 0 },
+      frequency: 20,
+      lifespan: 600,
+      speed: { min: 25, max: 60 },
+      scale: { start: 1.0, end: 0 },
+      alpha: { start: 0.8, end: 0 },
       tint: 0xff4422,
       gravityY: 30,
       angle: { min: 0, max: 360 },
@@ -235,6 +235,31 @@ export class ParticleFactory {
       emitting: true,
     });
     emitter.setDepth(9);
+    this.activeTrails.add(emitter);
+    return emitter;
+  }
+
+  /**
+   * Idle particle aura for ground powerup sprites.
+   * Gentle radial glow that makes pickups visible on the arena floor.
+   * Returns the emitter; caller must destroy via destroyTrail() when powerup is collected/despawned.
+   */
+  createPowerupIdleAura(
+    followTarget: Phaser.GameObjects.Sprite,
+    tint: number,
+  ): Phaser.GameObjects.Particles.ParticleEmitter {
+    const emitter = this.scene.add.particles(0, 0, 'particle', {
+      frequency: 80,
+      lifespan: 800,
+      speed: { min: 5, max: 20 },
+      scale: { start: 0.8, end: 0 },
+      alpha: { start: 0.5, end: 0 },
+      tint: tint,
+      angle: { min: 0, max: 360 },
+      follow: followTarget,
+      emitting: true,
+    });
+    emitter.setDepth(7); // Below the powerup sprite at 8
     this.activeTrails.add(emitter);
     return emitter;
   }

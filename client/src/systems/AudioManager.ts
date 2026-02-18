@@ -24,6 +24,7 @@ interface SfxrAudio {
 
 export class AudioManager {
   private sounds: Map<string, SfxrAudio> = new Map();
+  private wavSounds: Map<string, HTMLAudioElement> = new Map();
   private currentMusic: HTMLAudioElement | null = null;
   private sfxVolume: number;
   private musicVolume: number;
@@ -55,12 +56,40 @@ export class AudioManager {
   }
 
   /**
+   * Register a WAV sound file for playback.
+   * WAV sounds take priority over jsfxr sounds with the same key in playSFX.
+   */
+  registerWAV(key: string, src: string): void {
+    const audio = new Audio(src);
+    this.wavSounds.set(key, audio);
+  }
+
+  /**
+   * Play a WAV sound effect by key.
+   * Clones the HTMLAudioElement for overlapping playback support.
+   */
+  playWAVSFX(key: string): void {
+    const source = this.wavSounds.get(key);
+    if (!source) return;
+    const clone = source.cloneNode() as HTMLAudioElement;
+    clone.volume = this.sfxVolume;
+    clone.play().catch(() => {});
+  }
+
+  /**
    * Play a sound effect by key.
    * Each call creates a new playback instance (supports overlapping sounds).
+   * Checks WAV sounds first, then falls back to jsfxr sounds.
    */
   playSFX(key: string): void {
     if (!this.initialized) return;
     if (this.sfxVolume <= 0) return;
+
+    // Check WAV sounds first (higher priority)
+    if (this.wavSounds.has(key)) {
+      this.playWAVSFX(key);
+      return;
+    }
 
     const audio = this.sounds.get(key);
     if (!audio) {
@@ -141,6 +170,7 @@ export class AudioManager {
   destroy(): void {
     this.stopMusic();
     this.sounds.clear();
+    this.wavSounds.clear();
     this.initialized = false;
   }
 }

@@ -37,11 +37,11 @@ export const POWERUP_CONFIG = {
 
   // Buff durations
   /** Speed buff duration (ms) */
-  speedDuration: 4500,
+  speedDuration: 22500,
   /** Invincibility buff duration (ms) */
-  invincibilityDuration: 2500,
+  invincibilityDuration: 12500,
   /** Projectile buff duration (ms) */
-  projectileDuration: 5500,
+  projectileDuration: 27500,
 
   // Buff multipliers
   /** Speed multiplier during speed buff (+50%) */

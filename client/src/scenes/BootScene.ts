@@ -56,6 +56,7 @@ export class BootScene extends Phaser.Scene {
     // Audio context will be unlocked by user click on "Click to Start" below
     const audioManager = new AudioManager();
     audioManager.init();
+    audioManager.registerWAV('powerup_pickup', 'soundeffects/powerup_1.wav');
     this.registry.set('audioManager', audioManager);
 
     // Create character animations for all 3 roles (36-frame layout per character)
