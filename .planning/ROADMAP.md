@@ -105,12 +105,12 @@ Plans:
 **Goal:** Replace full-tile AABB collision with sub-tile rectangle collision shapes so players and projectiles collide with the visual edges of walls and obstacles, not invisible tile boundaries
 **Depends on:** Phase 9
 **Requirements:** COLL-MASK-01, COLL-MASK-02, COLL-MASK-03, COLL-MASK-04, COLL-MASK-05
-**Plans:** 5/5 plans complete
+**Plans:** 3 plans -- completed 2026-02-17
 
 Plans:
-- [ ] 09.1-01-PLAN.md -- Auto-derive collision rects from tilesets + embed in map JSONs
-- [ ] 09.1-02-PLAN.md -- CollisionGrid sub-rect resolution algorithm + isPointInSolidRect
-- [ ] 09.1-03-PLAN.md -- Server/client integration + F3 debug visualization overlay
+- [x] 09.1-01-PLAN.md -- Auto-derive collision rects from tilesets + embed in map JSONs
+- [x] 09.1-02-PLAN.md -- CollisionGrid sub-rect resolution algorithm + isPointInSolidRect
+- [x] 09.1-03-PLAN.md -- Server/client integration + F3 debug visualization overlay
 
 ### Phase 10: Powerup System
 **Goal**: Powerups spawn during gameplay, players collect them on contact, and temporary buffs (speed, invincibility, larger projectiles) add tactical depth to arena combat
@@ -129,7 +129,7 @@ Plans:
 - [x] 10-02-PLAN.md -- Client asset preloading (potion sprites), SFX definitions, ParticleFactory aura methods
 - [x] 10-03-PLAN.md -- Server buff gameplay effects (speed/invincibility/projectile/beam) + client prediction sync
 - [x] 10-04-PLAN.md -- GameScene powerup rendering + HUD buff indicators + kill feed + beam visuals
-- [ ] 10-05-PLAN.md -- Gap closure: sprite size 2x, WAV pickup SFX, aura visibility, 5x durations, type coercion fix
+- [x] 10-05-PLAN.md -- Gap closure: sprite size 2x, WAV pickup SFX, aura visibility, 5x durations, type coercion fix
 
 ### Phase 11: Minimap & Music
 **Goal**: Players have global arena awareness via a minimap overlay and matches have atmosphere through looping music with smooth transitions
