@@ -128,6 +128,9 @@ export class GameScene extends Phaser.Scene {
   // Buff aura emitters: Map<sessionId, Map<buffType, ParticleEmitter>>
   private buffAuras: Map<string, Map<number, Phaser.GameObjects.Particles.ParticleEmitter>> =
     new Map();
+  // Idle particle aura emitters for ground powerup sprites
+  private powerupIdleEmitters: Map<string, Phaser.GameObjects.Particles.ParticleEmitter> =
+    new Map();
 
   constructor() {
     super({ key: 'GameScene' });
@@ -193,6 +196,7 @@ export class GameScene extends Phaser.Scene {
     this.powerupSprites = new Map();
     this.powerupTweens = new Map();
     this.buffAuras = new Map();
+    this.powerupIdleEmitters = new Map();
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -622,9 +626,21 @@ export class GameScene extends Phaser.Scene {
       this.room.state.powerups.onAdd((powerup: any, key: string) => {
         const textureKey = POWERUP_TEXTURE[powerup.powerupType] || 'potion_speed';
         const sprite = this.add.sprite(powerup.x, powerup.y, textureKey);
-        sprite.setDisplaySize(16, 16); // 16x16 pixel art
+        sprite.setDisplaySize(32, 32); // 32x32 for clear visibility
         sprite.setDepth(8); // Above ground, below players (10)
         this.powerupSprites.set(key, sprite);
+
+        // Idle particle aura around ground powerup for visibility
+        if (this.particleFactory) {
+          const idleTint =
+            powerup.powerupType === PowerupType.SPEED
+              ? 0x4488ff
+              : powerup.powerupType === PowerupType.INVINCIBILITY
+                ? 0xffcc00
+                : 0xff4422;
+          const idleEmitter = this.particleFactory.createPowerupIdleAura(sprite, idleTint);
+          this.powerupIdleEmitters.set(key, idleEmitter);
+        }
 
         // Bobbing animation: oscillate y +/- 4px, 1000ms period
         const tween = this.tweens.add({
@@ -642,6 +658,13 @@ export class GameScene extends Phaser.Scene {
       });
 
       this.room.state.powerups.onRemove((_powerup: any, key: string) => {
+        // Destroy idle aura emitter before sprite
+        const idleEmitter = this.powerupIdleEmitters.get(key);
+        if (idleEmitter && this.particleFactory) {
+          this.particleFactory.destroyTrail(idleEmitter);
+          this.powerupIdleEmitters.delete(key);
+        }
+
         const sprite = this.powerupSprites.get(key);
         if (sprite) {
           sprite.destroy();
@@ -687,7 +710,7 @@ export class GameScene extends Phaser.Scene {
         // Start buff aura on the collecting player
         const sprite = this.playerSprites.get(data.playerId);
         if (sprite && this.particleFactory) {
-          this.startBuffAura(data.playerId, data.type, sprite);
+          this.startBuffAura(data.playerId, Number(data.type), sprite);
         }
       });
 
@@ -696,7 +719,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       this.room.onMessage('buffExpired', (data: any) => {
-        this.stopBuffAura(data.playerId, data.type);
+        this.stopBuffAura(data.playerId, Number(data.type));
       });
     } catch (e) {
       console.error('Connection failed:', e);
@@ -1919,9 +1942,21 @@ export class GameScene extends Phaser.Scene {
     this.room.state.powerups.onAdd((powerup: any, key: string) => {
       const textureKey = POWERUP_TEXTURE[powerup.powerupType] || 'potion_speed';
       const sprite = this.add.sprite(powerup.x, powerup.y, textureKey);
-      sprite.setDisplaySize(16, 16);
+      sprite.setDisplaySize(32, 32);
       sprite.setDepth(8);
       this.powerupSprites.set(key, sprite);
+
+      // Idle particle aura around ground powerup for visibility
+      if (this.particleFactory) {
+        const idleTint =
+          powerup.powerupType === PowerupType.SPEED
+            ? 0x4488ff
+            : powerup.powerupType === PowerupType.INVINCIBILITY
+              ? 0xffcc00
+              : 0xff4422;
+        const idleEmitter = this.particleFactory.createPowerupIdleAura(sprite, idleTint);
+        this.powerupIdleEmitters.set(key, idleEmitter);
+      }
 
       const tween = this.tweens.add({
         targets: sprite,
@@ -1937,6 +1972,13 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.room.state.powerups.onRemove((_powerup: any, key: string) => {
+      // Destroy idle aura emitter before sprite
+      const idleEmitter = this.powerupIdleEmitters.get(key);
+      if (idleEmitter && this.particleFactory) {
+        this.particleFactory.destroyTrail(idleEmitter);
+        this.powerupIdleEmitters.delete(key);
+      }
+
       const sprite = this.powerupSprites.get(key);
       if (sprite) {
         sprite.destroy();
@@ -1979,7 +2021,7 @@ export class GameScene extends Phaser.Scene {
 
       const sprite = this.playerSprites.get(data.playerId);
       if (sprite && this.particleFactory) {
-        this.startBuffAura(data.playerId, data.type, sprite);
+        this.startBuffAura(data.playerId, Number(data.type), sprite);
       }
     });
 
@@ -1988,7 +2030,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.room.onMessage('buffExpired', (data: any) => {
-      this.stopBuffAura(data.playerId, data.type);
+      this.stopBuffAura(data.playerId, Number(data.type));
     });
   }
 
@@ -2032,6 +2074,12 @@ export class GameScene extends Phaser.Scene {
     this.powerupSprites.clear();
     this.powerupTweens.forEach((tween) => tween.destroy());
     this.powerupTweens.clear();
+
+    // Destroy powerup idle aura emitters
+    this.powerupIdleEmitters.forEach((emitter) => {
+      if (this.particleFactory) this.particleFactory.destroyTrail(emitter);
+    });
+    this.powerupIdleEmitters.clear();
 
     // Destroy all buff auras (must be before particleFactory.destroy())
     this.clearAllBuffAuras();
