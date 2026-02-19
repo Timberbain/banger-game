@@ -15,7 +15,7 @@ import {
 const MATCH_DURATION_MS = 300000; // 5 minutes
 
 interface KillFeedEntry {
-  text: Phaser.GameObjects.Text;
+  objects: Phaser.GameObjects.GameObject[];
   bg: Phaser.GameObjects.Rectangle;
   addedAt: number;
 }
@@ -102,6 +102,9 @@ export class HUDScene extends Phaser.Scene {
   private minimapDeathMarkers: Array<{ x: number; y: number; color: number; time: number }> = [];
   private minimapToggleJustPressed: boolean = false;
 
+  // Death overlay
+  private deathOverlayObjects: Phaser.GameObjects.GameObject[] = [];
+
   // GameScene reference for cross-scene events
   private gameScene: Phaser.Scene | null = null;
 
@@ -149,6 +152,7 @@ export class HUDScene extends Phaser.Scene {
     this.minimapFrameCounter = 0;
     this.minimapDeathMarkers = [];
     this.minimapToggleJustPressed = false;
+    this.deathOverlayObjects = [];
     this.gameScene = null;
 
     // Transparent background so GameScene shows through
@@ -496,30 +500,82 @@ export class HUDScene extends Phaser.Scene {
 
     // Push existing entries down
     for (const entry of this.killFeedEntries) {
-      entry.text.y += feedSpacing;
+      for (const obj of entry.objects) {
+        (obj as any).y += feedSpacing;
+      }
       entry.bg.y += feedSpacing;
     }
 
-    // Create text first so we can measure its width for the background
-    const displayText = `${data.killer} > ${data.victim}`;
-    const text = this.add.text(killFeedX - 8, baseY, displayText, {
+    const textStyle = {
       fontSize: '12px',
-      color: charColor(data.killerRole),
       fontFamily: 'monospace',
-      fontStyle: 'bold',
+      fontStyle: 'bold' as const,
       stroke: '#000000',
       strokeThickness: 2,
-    });
-    text.setOrigin(1, 0.5);
-    text.setDepth(201);
+    };
 
-    // Create background sized to fit text content (8px padding on each side)
-    const bg = this.add.rectangle(killFeedX, baseY, text.displayWidth + 16, 22, 0x000000, 0.5);
+    const objects: Phaser.GameObjects.GameObject[] = [];
+    let totalWidth: number;
+
+    // Kill entries (both roles are non-empty) get skull icon layout
+    const isKillEntry = data.killerRole !== '' && data.victimRole !== '';
+
+    if (isKillEntry) {
+      // Create victim text (rightmost)
+      const victimText = this.add.text(0, baseY, data.victim, {
+        ...textStyle,
+        color: charColor(data.victimRole),
+      });
+      victimText.setOrigin(0, 0.5);
+      victimText.setDepth(201);
+
+      // Create skull icon
+      const skullIcon = this.add.image(0, baseY, 'icon_skull');
+      skullIcon.setDisplaySize(14, 14);
+      skullIcon.setOrigin(0.5, 0.5);
+      skullIcon.setDepth(201);
+
+      // Create killer text (leftmost)
+      const killerText = this.add.text(0, baseY, data.killer, {
+        ...textStyle,
+        color: charColor(data.killerRole),
+      });
+      killerText.setOrigin(0, 0.5);
+      killerText.setDepth(201);
+
+      // Calculate total width and position from right
+      totalWidth = killerText.displayWidth + 4 + 14 + 4 + victimText.displayWidth;
+      const rightEdge = killFeedX - 8;
+
+      // Position from right: victim (rightmost), skull, killer (leftmost)
+      victimText.setPosition(rightEdge - victimText.displayWidth, baseY);
+      skullIcon.setPosition(rightEdge - victimText.displayWidth - 4 - 7, baseY);
+      killerText.setPosition(
+        rightEdge - victimText.displayWidth - 4 - 14 - 4 - killerText.displayWidth,
+        baseY,
+      );
+
+      objects.push(killerText, skullIcon, victimText);
+    } else {
+      // Non-kill entries (powerup spawn/collect) -- plain text with ">"
+      const displayText = `${data.killer} > ${data.victim}`;
+      const text = this.add.text(killFeedX - 8, baseY, displayText, {
+        ...textStyle,
+        color: charColor(data.killerRole) || Colors.text.primary,
+      });
+      text.setOrigin(1, 0.5);
+      text.setDepth(201);
+      totalWidth = text.displayWidth;
+      objects.push(text);
+    }
+
+    // Create background sized to fit content (8px padding each side)
+    const bg = this.add.rectangle(killFeedX, baseY, totalWidth + 16, 22, 0x000000, 0.5);
     bg.setOrigin(1, 0.5);
     bg.setDepth(200);
 
     const entry: KillFeedEntry = {
-      text,
+      objects,
       bg,
       addedAt: this.time.now,
     };
@@ -529,7 +585,9 @@ export class HUDScene extends Phaser.Scene {
     // Remove excess entries
     while (this.killFeedEntries.length > this.killFeedMaxEntries) {
       const removed = this.killFeedEntries.pop()!;
-      removed.text.destroy();
+      for (const obj of removed.objects) {
+        obj.destroy();
+      }
       removed.bg.destroy();
     }
   }
@@ -548,7 +606,9 @@ export class HUDScene extends Phaser.Scene {
         // Fade out in the last 1 second
         const fadeProgress = (age - (this.killFeedFadeDuration - 1000)) / 1000;
         const alpha = 1 - fadeProgress;
-        entry.text.setAlpha(alpha);
+        for (const obj of entry.objects) {
+          (obj as any).setAlpha(alpha);
+        }
         entry.bg.setAlpha(alpha * 0.5);
       }
     }
@@ -557,7 +617,9 @@ export class HUDScene extends Phaser.Scene {
     for (let i = toRemove.length - 1; i >= 0; i--) {
       const idx = toRemove[i];
       const entry = this.killFeedEntries[idx];
-      entry.text.destroy();
+      for (const obj of entry.objects) {
+        obj.destroy();
+      }
       entry.bg.destroy();
       this.killFeedEntries.splice(idx, 1);
     }
@@ -782,6 +844,8 @@ export class HUDScene extends Phaser.Scene {
         // Stage ended -- keep HUD visible but show stage result briefly
         // Clear buff indicators (buffs expire at stage end)
         this.clearBuffIndicators();
+        // Clear death overlay
+        this.clearDeathOverlay();
         // Hide minimap during stage end
         this.minimapVisible = false;
       } else if (value === 'stage_transition') {
@@ -1178,7 +1242,7 @@ export class HUDScene extends Phaser.Scene {
     this.gameScene.events.on(
       'localDied',
       () => {
-        // Spectator HUD will be shown by spectatorChanged event
+        this.showDeathOverlay();
       },
       this,
     );
@@ -1198,6 +1262,57 @@ export class HUDScene extends Phaser.Scene {
       },
       this,
     );
+  }
+
+  // =====================
+  // DEATH OVERLAY
+  // =====================
+
+  private showDeathOverlay(): void {
+    // Large gravestone icon centered
+    const gravestone = this.add.image(this.W / 2, this.H / 2 - 30, 'icon_gravestone');
+    gravestone.setDisplaySize(64, 64);
+    gravestone.setDepth(300);
+    gravestone.setAlpha(0);
+
+    // "ELIMINATED" text below
+    const eliminatedText = this.add.text(this.W / 2, this.H / 2 + 30, 'ELIMINATED', {
+      ...TextStyle.splash,
+      fontSize: '36px',
+      color: Colors.status.danger,
+    });
+    eliminatedText.setOrigin(0.5);
+    eliminatedText.setDepth(300);
+    eliminatedText.setAlpha(0);
+
+    this.deathOverlayObjects = [gravestone, eliminatedText];
+
+    // Fade in
+    this.tweens.add({
+      targets: [gravestone, eliminatedText],
+      alpha: 1,
+      duration: 500,
+    });
+
+    // Fade out after 3 seconds
+    this.tweens.add({
+      targets: [gravestone, eliminatedText],
+      alpha: 0,
+      duration: 800,
+      delay: 3000,
+      onComplete: () => {
+        gravestone.destroy();
+        eliminatedText.destroy();
+        this.deathOverlayObjects = [];
+      },
+    });
+  }
+
+  private clearDeathOverlay(): void {
+    for (const obj of this.deathOverlayObjects) {
+      obj.destroy();
+    }
+    this.deathOverlayObjects = [];
   }
 
   // =====================
@@ -1231,6 +1346,9 @@ export class HUDScene extends Phaser.Scene {
 
     // Clear buff indicators
     this.clearBuffIndicators();
+
+    // Clear death overlay
+    this.clearDeathOverlay();
 
     // Cleanup minimap
     if (this.minimapGfx) {

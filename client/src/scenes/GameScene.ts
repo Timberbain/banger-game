@@ -144,6 +144,9 @@ export class GameScene extends Phaser.Scene {
   // Paran projectile buff tracking for beam fire SFX
   private hasProjectileBuff: boolean = false;
 
+  // Arena floor gravestones at death locations
+  private gravestoneSprites: Phaser.GameObjects.Image[] = [];
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -211,6 +214,7 @@ export class GameScene extends Phaser.Scene {
     this.powerupIdleEmitters = new Map();
     this.stageTrack = '';
     this.hasProjectileBuff = false;
+    this.gravestoneSprites = [];
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -762,6 +766,24 @@ export class GameScene extends Phaser.Scene {
           this.hasProjectileBuff = false;
         }
       });
+
+      // Kill event: spawn gravestone at death location
+      this.room.onMessage(
+        'kill',
+        (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
+          if (!this.room) return;
+          // Find victim's position from state
+          this.room.state.players.forEach((player: any) => {
+            if (player.name === data.victim) {
+              const gravestone = this.add.image(player.x, player.y, 'icon_gravestone');
+              gravestone.setDisplaySize(32, 32);
+              gravestone.setDepth(5); // Below players (10), above ground (0)
+              gravestone.setTint(charColorNum(data.victimRole));
+              this.gravestoneSprites.push(gravestone);
+            }
+          });
+        },
+      );
     } catch (e) {
       console.error('Connection failed:', e);
       this.statusText.setText('Connection failed - is server running?');
@@ -2097,6 +2119,23 @@ export class GameScene extends Phaser.Scene {
         this.hasProjectileBuff = false;
       }
     });
+
+    // Kill event: spawn gravestone at death location (reconnect path)
+    this.room.onMessage(
+      'kill',
+      (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
+        if (!this.room) return;
+        this.room.state.players.forEach((player: any) => {
+          if (player.name === data.victim) {
+            const gravestone = this.add.image(player.x, player.y, 'icon_gravestone');
+            gravestone.setDisplaySize(32, 32);
+            gravestone.setDepth(5);
+            gravestone.setTint(charColorNum(data.victimRole));
+            this.gravestoneSprites.push(gravestone);
+          }
+        });
+      },
+    );
   }
 
   /**
@@ -2112,6 +2151,10 @@ export class GameScene extends Phaser.Scene {
       if (this.particleFactory) this.particleFactory.destroyTrail(trail);
     });
     this.projectileTrails.clear();
+
+    // Destroy arena gravestone sprites
+    this.gravestoneSprites.forEach((sprite) => sprite.destroy());
+    this.gravestoneSprites = [];
 
     // Destroy eliminated texts and DC labels
     this.eliminatedTexts.forEach((text) => text.destroy());
