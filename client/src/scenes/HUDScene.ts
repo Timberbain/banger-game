@@ -518,13 +518,8 @@ export class HUDScene extends Phaser.Scene {
       entry.bg.y += feedSpacing;
     }
 
-    // Create background
+    // Create text first so we can measure its width for the background
     const displayText = `${data.killer} > ${data.victim}`;
-    const bg = this.add.rectangle(killFeedX, baseY, 180, 22, 0x000000, 0.5);
-    bg.setOrigin(1, 0.5);
-    bg.setDepth(200);
-
-    // Create text with killer colored by role
     const text = this.add.text(killFeedX - 8, baseY, displayText, {
       fontSize: '12px',
       color: charColor(data.killerRole),
@@ -535,6 +530,11 @@ export class HUDScene extends Phaser.Scene {
     });
     text.setOrigin(1, 0.5);
     text.setDepth(201);
+
+    // Create background sized to fit text content (8px padding on each side)
+    const bg = this.add.rectangle(killFeedX, baseY, text.displayWidth + 16, 22, 0x000000, 0.5);
+    bg.setOrigin(1, 0.5);
+    bg.setDepth(200);
 
     const entry: KillFeedEntry = {
       text,

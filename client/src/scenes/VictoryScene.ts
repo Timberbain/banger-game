@@ -295,11 +295,16 @@ export class VictoryScene extends Phaser.Scene {
     button.on('pointerout', () => button.setBackgroundColor(Buttons.primary.bg));
     button.on('pointerdown', () => {
       // Play button click SFX and fade out result music
+      // Delay returnToLobby until fade completes so isPlayingMusic() returns false
+      // when LobbyScene.create() runs -- allowing lobby music to start
       if (audioManager) {
         audioManager.playWAVSFX('select_1');
-        audioManager.fadeOutMusic(500);
+        audioManager.fadeOutMusic(500, () => {
+          this.returnToLobby(room);
+        });
+      } else {
+        this.returnToLobby(room);
       }
-      this.returnToLobby(room);
     });
 
     // --- Particle Effects ---
