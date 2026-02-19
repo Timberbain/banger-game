@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 12 (HUD Icon Overhaul)
-Plan: 2 of 2 in current phase
-Status: Phase 12 complete (HUD Icon Overhaul)
-Last activity: 2026-02-19 -- Completed 12-02 (Kill Feed, Gravestones, Death Overlay, Radial Buffs, Low-Health Tint)
+Plan: 3 of 3 in current phase
+Status: Phase 12 complete (HUD Icon Overhaul + gap closure)
+Last activity: 2026-02-19 -- Completed 12-03 (UAT Gap Closure: HUD readability, death overlay, aura colors, spectator overlap)
 
-Progress: [####################] 100% (2 of 2 Phase 12 plans complete)
+Progress: [####################] 100% (3 of 3 Phase 12 plans complete)
 
 ## Performance Metrics
 
@@ -39,7 +39,7 @@ Progress: [####################] 100% (2 of 2 Phase 12 plans complete)
 | 9.1 Tilemap Collision Masks | 3 | Complete |
 | 10. Powerup System | 5 | Complete (incl. gap closure) |
 | 11. Minimap & Music | 4 | Complete (incl. gap closure) |
-| 12. HUD Icon Overhaul | 2 | Complete |
+| 12. HUD Icon Overhaul | 3 | Complete (incl. gap closure) |
 
 ## Accumulated Context
 
@@ -161,8 +161,12 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Radial sweep buff indicators use Graphics.slice() with semi-transparent black overlay draining clockwise
 - Buff indicators positioned dynamically to the right of heart row at same y baseline (H*0.92)
 - Low-health tint pulse (0xff4444, 300ms cycle) for remote players only below 50% HP
-- Death overlay: depth 300, gravestone 64x64 + ELIMINATED 36px text, 500ms in / 3s hold / 800ms out
+- Death overlay: depth 300, gravestone 64x64 centered (no ELIMINATED text), 500ms in / 3s hold / 800ms out
 - Arena floor gravestones at death locations tinted with character color, depth 5, persist per stage
+- Dark backdrop panel (depth 199, 0.4 alpha) behind top-center HUD cluster for arena-independent readability
+- Inactive score pips: 0x666666 at full alpha (from 0x444444/0.6) for better contrast on dark backdrop
+- Spectator bar at H*0.16 (from H*0.07) to clear top-center HUD cluster
+- Aura colors corrected: speed=red (0xCC3333), invincibility=blue (0x4488ff), projectile=green (0x44CC66)
 
 ### Pending Todos
 
@@ -183,9 +187,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 12-02-PLAN.md (Kill Feed, Gravestones, Death Overlay, Radial Buffs, Low-Health Tint) -- Phase 12 complete
-Resume file: .planning/phases/12-hud-icon-overhaul/12-02-SUMMARY.md
-Next step: Next phase or UAT verification
+Stopped at: Completed 12-03-PLAN.md (UAT Gap Closure) -- Phase 12 fully complete with all gaps resolved
+Resume file: .planning/phases/12-hud-icon-overhaul/12-03-SUMMARY.md
+Next step: Next phase or final verification
 
 ---
-*Updated: 2026-02-19 after completing 12-02 (Phase 12 HUD Icon Overhaul complete)*
+*Updated: 2026-02-19 after completing 12-03 (Phase 12 HUD Icon Overhaul gap closure complete)*
