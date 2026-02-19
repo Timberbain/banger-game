@@ -159,11 +159,12 @@ Plans:
   3. Round counter shows current stage progress (e.g., "1-0") with a visual stage indicator
   4. Active powerup type and remaining duration are shown in the HUD using potion icon sprites
   5. All HUD elements are positioned correctly at 1280x720 with no overlap, cutoff, or misalignment
-**Plans:** 2/2 plans complete
+**Plans:** 3 plans
 
 Plans:
-- [ ] 12-01-PLAN.md -- Asset pipeline + heart health display + timer icon + round score pips + potion color mapping
-- [ ] 12-02-PLAN.md -- Kill feed skull icons + arena gravestones + death overlay + radial powerup indicators + low-health tint pulse + layout pass
+- [x] 12-01-PLAN.md -- Asset pipeline + heart health display + timer icon + round score pips + potion color mapping
+- [x] 12-02-PLAN.md -- Kill feed skull icons + arena gravestones + death overlay + radial powerup indicators + low-health tint pulse + layout pass
+- [ ] 12-03-PLAN.md -- Gap closure: top-center readability, ELIMINATED text removal, aura color fix, spectator overlap
 
 ## Progress
 
@@ -177,9 +178,9 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 8. Arena Overhaul | v2.0 | 5/5 | Complete | 2026-02-14 |
 | 9. Multi-Stage Rounds | v2.0 | 5/5 | Complete | 2026-02-18 |
 | 10. Powerup System | v2.0 | 5/5 | Complete | 2026-02-18 |
-| 11. Minimap & Music | 4/4 | Complete    | 2026-02-19 | - |
-| 12. HUD Icon Overhaul | 2/2 | Complete   | 2026-02-19 | - |
+| 11. Minimap & Music | v2.0 | 4/4 | Complete | 2026-02-19 |
+| 12. HUD Icon Overhaul | v2.0 | 2/3 | Gap closure | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-19 (Phase 11 gap closure plan added)*
+*Last updated: 2026-02-19 (Phase 12 gap closure plan added)*
