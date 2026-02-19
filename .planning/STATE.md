@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** The asymmetric momentum mechanic must feel right -- Paran building terrifying speed with Pac-Man cardinal movement but losing everything on collision, guardians relying on positioning and teamwork to force those collisions.
-**Current focus:** Phase 11 -- Minimap & Music
+**Current focus:** Phase 12 -- HUD Icon Overhaul
 
 ## Current Position
 
-Phase: 11 (Minimap & Music)
-Plan: 4 of 4 in current phase
-Status: Phase 11 complete (all 4 plans including gap closure)
-Last activity: 2026-02-19 -- Completed 11-04 (UAT Gap Closure)
+Phase: 12 (HUD Icon Overhaul)
+Plan: 1 of 2 in current phase
+Status: Plan 12-01 complete (Core HUD Icon Replacements)
+Last activity: 2026-02-19 -- Completed 12-01 (Core HUD Icon Replacements)
 
-Progress: [####################] 100% (4 of 4 Phase 11 plans complete)
+Progress: [##########..........] 50% (1 of 2 Phase 12 plans complete)
 
 ## Performance Metrics
 
@@ -39,6 +39,7 @@ Progress: [####################] 100% (4 of 4 Phase 11 plans complete)
 | 9.1 Tilemap Collision Masks | 3 | Complete |
 | 10. Powerup System | 5 | Complete (incl. gap closure) |
 | 11. Minimap & Music | 4 | Complete (incl. gap closure) |
+| 12. HUD Icon Overhaul | 2 | In Progress (1/2) |
 
 ## Accumulated Context
 
@@ -149,6 +150,14 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Shoot SFX in createProjectileSprite (server-confirmed), not input handler (client-predicted)
 - fadeOutMusic callback gates returnToLobby so isPlayingMusic() returns false before LobbyScene.create()
 
+**Phase 12 decisions:**
+- 10 HP per heart icon (Paran=15 hearts, Guardians=5 hearts) for clear visual health feedback
+- Local player health only -- removed all non-local health bars from HUD for cleaner display
+- Graphics-based pip rendering for round score (simpler than Image objects for small colored dots)
+- Potion color mapping: Red=Speed, Blue=Invincibility, Green=Projectile (consistent across all files)
+- Heart damage animation uses texture key comparison to detect transition direction (full->empty triggers tween)
+- Paired icon+text layout: timer icon and text share visibility, tint, and alpha state
+
 ### Pending Todos
 
 None.
@@ -168,9 +177,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-hud-icon-overhaul/12-CONTEXT.md
-Next step: /gsd:plan-phase 12
+Stopped at: Completed 12-01-PLAN.md (Core HUD Icon Replacements)
+Resume file: .planning/phases/12-hud-icon-overhaul/12-01-SUMMARY.md
+Next step: Execute 12-02-PLAN.md
 
 ---
-*Updated: 2026-02-19 after Phase 12 context gathering*
+*Updated: 2026-02-19 after completing 12-01 (Core HUD Icon Replacements)*
