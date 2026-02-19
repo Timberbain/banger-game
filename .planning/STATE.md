@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 11 (Minimap & Music)
-Plan: 3 of 3 in current phase
-Status: Phase 11 complete (all 3 plans)
-Last activity: 2026-02-18 -- Completed 11-03 (Audio Integration)
+Plan: 4 of 4 in current phase
+Status: Phase 11 complete (all 4 plans including gap closure)
+Last activity: 2026-02-19 -- Completed 11-04 (UAT Gap Closure)
 
-Progress: [####################] 100% (3 of 3 Phase 11 plans complete)
+Progress: [####################] 100% (4 of 4 Phase 11 plans complete)
 
 ## Performance Metrics
 
@@ -38,7 +38,7 @@ Progress: [####################] 100% (3 of 3 Phase 11 plans complete)
 | 9. Multi-Stage Rounds | 5 | Complete (incl. gap closures) |
 | 9.1 Tilemap Collision Masks | 3 | Complete |
 | 10. Powerup System | 5 | Complete (incl. gap closure) |
-| 11. Minimap & Music | 3 | Complete |
+| 11. Minimap & Music | 4 | Complete (incl. gap closure) |
 
 ## Accumulated Context
 
@@ -144,6 +144,10 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - hasProjectileBuff tracked client-side via powerupCollect/buffExpired for Paran beam fire SFX accuracy
 - Volume sliders use rectangle hit areas with drag support, replacing +/- buttons
 - Return-to-lobby: VictoryScene fadeOutMusic(500ms), LobbyScene detects silence and starts loop after 500ms delay
+- Kill feed bg: text-first creation, then bg sized to text.displayWidth + 16px padding
+- stopAndPlayWAV: reuses source HTMLAudioElement (currentTime=0) for exclusive non-overlapping playback
+- Shoot SFX in createProjectileSprite (server-confirmed), not input handler (client-predicted)
+- fadeOutMusic callback gates returnToLobby so isPlayingMusic() returns false before LobbyScene.create()
 
 ### Pending Todos
 
@@ -163,10 +167,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Completed 11-03-PLAN.md (Audio Integration) -- Phase 11 complete
-Resume file: .planning/phases/11-minimap-music/11-03-SUMMARY.md
-Next step: Phase 11 UAT or next phase
+Last session: 2026-02-19
+Stopped at: Completed 11-04-PLAN.md (UAT Gap Closure) -- Phase 11 fully complete
+Resume file: .planning/phases/11-minimap-music/11-04-SUMMARY.md
+Next step: Phase 11 UAT retest or next phase
 
 ---
-*Updated: 2026-02-18 after completing 11-03 (Phase 11 complete)*
+*Updated: 2026-02-19 after completing 11-04 (Phase 11 gap closure complete)*

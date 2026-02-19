@@ -34,7 +34,7 @@
 - [x] **Phase 8: Arena Overhaul** - Tileset art and larger scrollable arenas (50x38 tiles) -- completed 2026-02-14
 - [x] **Phase 9: Multi-Stage Rounds** - Best-of-3 match structure with stage transitions -- completed 2026-02-18
 - [x] **Phase 10: Powerup System** - Server-authoritative powerup spawning, collection, and temporary buffs -- completed 2026-02-18
-- [ ] **Phase 11: Minimap & Music** - Minimap overlay and music system with crossfade transitions
+- [x] **Phase 11: Minimap & Music** - Minimap overlay and music system with crossfade transitions (completed 2026-02-19)
 - [ ] **Phase 12: HUD Icon Overhaul** - Icon-based HUD replacing text-only elements
 
 ## Phase Details
@@ -141,7 +141,7 @@ Plans:
   3. Lobby scene plays background music on loop from the provided lobby soundtrack
   4. A randomly selected stage track plays during all stages of a match, and a different track is picked for each new game
   5. Music crossfades smoothly between lobby and game transitions with no jarring cuts or silence gaps
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 11-01-PLAN.md -- AudioManager extension (crossfade, loop-with-pause, volume dip, WAV methods) + asset pipeline
@@ -177,7 +177,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 8. Arena Overhaul | v2.0 | 5/5 | Complete | 2026-02-14 |
 | 9. Multi-Stage Rounds | v2.0 | 5/5 | Complete | 2026-02-18 |
 | 10. Powerup System | v2.0 | 5/5 | Complete | 2026-02-18 |
-| 11. Minimap & Music | v2.0 | 3/4 | In progress | - |
+| 11. Minimap & Music | 4/4 | Complete   | 2026-02-19 | - |
 | 12. HUD Icon Overhaul | v2.0 | 0/TBD | Not started | - |
 
 ---
