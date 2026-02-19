@@ -6,7 +6,6 @@ import { CollisionGrid } from '../../../shared/collisionGrid';
 import {
   Colors,
   TextStyle,
-  HealthBar,
   CooldownBar,
   Layout,
   charColor,
@@ -19,14 +18,6 @@ interface KillFeedEntry {
   text: Phaser.GameObjects.Text;
   bg: Phaser.GameObjects.Rectangle;
   addedAt: number;
-}
-
-interface HealthBarUI {
-  bg: Phaser.GameObjects.Rectangle;
-  fill: Phaser.GameObjects.Rectangle;
-  label: Phaser.GameObjects.Text;
-  sessionId: string;
-  isLocal: boolean;
 }
 
 /**
@@ -45,12 +36,13 @@ export class HUDScene extends Phaser.Scene {
   private W: number = 1280;
   private H: number = 720;
 
-  // Health bars
-  private healthBars: HealthBarUI[] = [];
-  private lowHealthFlashTimers: Map<string, Phaser.Time.TimerEvent> = new Map();
+  // Heart-based health display (local player only)
+  private heartIcons: Phaser.GameObjects.Image[] = [];
+  private localPlayerLabel: Phaser.GameObjects.Text | null = null;
 
   // Match timer
   private timerText: Phaser.GameObjects.Text | null = null;
+  private timerIcon: Phaser.GameObjects.Image | null = null;
   private timerFlashTimer: Phaser.Time.TimerEvent | null = null;
   private isTimerFlashing: boolean = false;
 
@@ -84,8 +76,8 @@ export class HUDScene extends Phaser.Scene {
   // Match countdown
   private countdownText: Phaser.GameObjects.Text | null = null;
 
-  // Round score display
-  private roundScoreText: Phaser.GameObjects.Text | null = null;
+  // Round score display (pips)
+  private roundScorePipsGfx: Phaser.GameObjects.Graphics | null = null;
   private stageLabel: Phaser.GameObjects.Text | null = null;
 
   // Buff indicators
@@ -122,9 +114,10 @@ export class HUDScene extends Phaser.Scene {
     this.room = null;
     this.localSessionId = '';
     this.localRole = '';
-    this.healthBars = [];
-    this.lowHealthFlashTimers = new Map();
+    this.heartIcons = [];
+    this.localPlayerLabel = null;
     this.timerText = null;
+    this.timerIcon = null;
     this.timerFlashTimer = null;
     this.isTimerFlashing = false;
     this.killFeedEntries = [];
@@ -146,7 +139,7 @@ export class HUDScene extends Phaser.Scene {
     this.spectatorTargetName = '';
     this.spectatorTargetRole = '';
     this.countdownText = null;
-    this.roundScoreText = null;
+    this.roundScorePipsGfx = null;
     this.stageLabel = null;
     this.buffIndicators = new Map();
     this.minimapGfx = null;
@@ -175,7 +168,7 @@ export class HUDScene extends Phaser.Scene {
     // Get GameScene reference for cross-scene events
     this.gameScene = this.scene.get('GameScene');
 
-    // 1. Create health bars (bottom of screen)
+    // 1. Create health display (heart icons, bottom of screen, local player only)
     this.createHealthBars();
 
     // 2. Create match timer (top center)
@@ -216,7 +209,7 @@ export class HUDScene extends Phaser.Scene {
   update(time: number, _delta: number) {
     if (!this.room) return;
 
-    // Update health bars
+    // Update health display (heart icons)
     this.updateHealthBars();
 
     // Update match timer
@@ -239,19 +232,18 @@ export class HUDScene extends Phaser.Scene {
   }
 
   // =====================
-  // 1. HEALTH BARS
+  // 1. HEALTH DISPLAY (Heart Icons - Local Player Only)
   // =====================
 
   private createHealthBars(): void {
     if (!this.room) return;
 
-    // We'll rebuild health bars when players are available
     // Use a slight delay to allow state sync
     this.time.delayedCall(100, () => {
       this.rebuildHealthBars();
     });
 
-    // Re-build bars when players are added or removed
+    // Re-build hearts when players are added or removed
     if (this.room.state.players) {
       this.room.state.players.onAdd(() => {
         this.time.delayedCall(50, () => this.rebuildHealthBars());
@@ -263,121 +255,94 @@ export class HUDScene extends Phaser.Scene {
   }
 
   private rebuildHealthBars(): void {
-    // Clean up existing bars
-    for (const bar of this.healthBars) {
-      bar.bg.destroy();
-      bar.fill.destroy();
-      bar.label.destroy();
+    // Clean up existing heart icons and label
+    for (const icon of this.heartIcons) {
+      icon.destroy();
     }
-    this.healthBars = [];
+    this.heartIcons = [];
+    if (this.localPlayerLabel) {
+      this.localPlayerLabel.destroy();
+      this.localPlayerLabel = null;
+    }
 
     if (!this.room) return;
 
-    // Collect all players
-    const players: {
-      sessionId: string;
-      name: string;
-      role: string;
-      health: number;
-      maxHealth: number;
-    }[] = [];
-    this.room.state.players.forEach((player: any, sessionId: string) => {
-      const role = player.role || 'faran';
-      const maxHealth = CHARACTERS[role]?.maxHealth || 100;
-      players.push({
-        sessionId,
-        name: player.name || role,
-        role,
-        health: player.health,
-        maxHealth,
-      });
-    });
+    // Find the local player
+    const localPlayer = this.room.state.players.get(this.localSessionId);
+    if (!localPlayer) return;
 
-    // Sort so local player is in the center
-    const localIdx = players.findIndex((p) => p.sessionId === this.localSessionId);
-    if (localIdx > -1) {
-      const local = players.splice(localIdx, 1)[0];
-      // Insert at center
-      const mid = Math.floor(players.length / 2);
-      players.splice(mid, 0, local);
+    const role = localPlayer.role || 'faran';
+    const maxHealth = CHARACTERS[role]?.maxHealth || 100;
+    const heartCount = Math.ceil(maxHealth / 10); // 10 HP per heart
+    const iconSize = 32;
+    const iconSpacing = 34; // 32px icon + 2px gap
+    const heartY = this.H * 0.92;
+
+    // Center the heart row horizontally
+    const totalWidth = heartCount * iconSpacing - 2; // subtract last gap
+    const startX = this.W / 2 - totalWidth / 2;
+
+    for (let i = 0; i < heartCount; i++) {
+      const x = startX + i * iconSpacing + iconSize / 2;
+      const heart = this.add.image(x, heartY, 'icon_heart_full');
+      heart.setDisplaySize(iconSize, iconSize);
+      heart.setDepth(200);
+      this.heartIcons.push(heart);
     }
 
-    const totalPlayers = players.length;
-    const barY = this.H * 0.95;
-
-    for (let i = 0; i < totalPlayers; i++) {
-      const p = players[i];
-      const isLocal = p.sessionId === this.localSessionId;
-      const barW = isLocal ? 200 : 140;
-      const barH = isLocal ? 16 : 12;
-
-      // Space evenly across bottom
-      const spacing = this.W / (totalPlayers + 1);
-      const barX = spacing * (i + 1);
-
-      // Background (dark red)
-      const bg = this.add.rectangle(barX, barY, barW, barH, HealthBar.bg);
-      bg.setOrigin(0.5, 0.5);
-      bg.setDepth(200);
-
-      // Fill (role color)
-      const color = charColorNum(p.role);
-      const fill = this.add.rectangle(barX - barW / 2, barY, barW, barH, color);
-      fill.setOrigin(0, 0.5);
-      fill.setDepth(201);
-
-      // Label above bar
-      const labelSize = isLocal ? '13px' : '11px';
-      const displayName = isLocal ? `${p.name} (YOU)` : p.name;
-      const label = this.add.text(barX, barY - barH / 2 - 10, displayName, {
-        fontSize: labelSize,
-        color: charColor(p.role),
+    // Player name label below the heart row
+    const playerName = localPlayer.name || role;
+    this.localPlayerLabel = this.add.text(
+      this.W / 2,
+      heartY + iconSize / 2 + 8,
+      `${playerName} (YOU)`,
+      {
+        fontSize: '13px',
+        color: charColor(role),
         fontFamily: 'monospace',
         fontStyle: 'bold',
         stroke: '#000000',
         strokeThickness: 2,
-      });
-      label.setOrigin(0.5, 1);
-      label.setDepth(202);
-
-      this.healthBars.push({ bg, fill, label, sessionId: p.sessionId, isLocal });
-    }
+      },
+    );
+    this.localPlayerLabel.setOrigin(0.5, 0);
+    this.localPlayerLabel.setDepth(202);
   }
 
   private updateHealthBars(): void {
-    if (!this.room) return;
+    if (!this.room || this.heartIcons.length === 0) return;
 
-    for (const bar of this.healthBars) {
-      const player = this.room.state.players.get(bar.sessionId);
-      if (!player) continue;
+    const localPlayer = this.room.state.players.get(this.localSessionId);
+    if (!localPlayer) return;
 
-      const role = player.role || 'faran';
-      const maxHealth = CHARACTERS[role]?.maxHealth || 100;
-      const healthPct = Math.max(0, player.health / maxHealth);
-      const barW = bar.isLocal ? 200 : 140;
+    const role = localPlayer.role || 'faran';
+    const maxHealth = CHARACTERS[role]?.maxHealth || 100;
+    const heartCount = Math.ceil(maxHealth / 10);
+    const fullHearts = Math.ceil(Math.max(0, localPlayer.health) / 10);
 
-      // Update fill width
-      bar.fill.setSize(barW * healthPct, bar.fill.height);
+    for (let i = 0; i < this.heartIcons.length && i < heartCount; i++) {
+      const heart = this.heartIcons[i];
+      const shouldBeFull = i < fullHearts;
+      const currentKey = heart.texture.key;
 
-      // Low health flash effect (below 25%)
-      if (healthPct < 0.25 && healthPct > 0) {
-        if (!this.lowHealthFlashTimers.has(bar.sessionId)) {
-          const timer = this.time.addEvent({
-            delay: 300,
-            loop: true,
-            callback: () => {
-              bar.fill.setAlpha(bar.fill.alpha === 1 ? 0.5 : 1);
-            },
-          });
-          this.lowHealthFlashTimers.set(bar.sessionId, timer);
-        }
-      } else {
-        const existingTimer = this.lowHealthFlashTimers.get(bar.sessionId);
-        if (existingTimer) {
-          existingTimer.destroy();
-          this.lowHealthFlashTimers.delete(bar.sessionId);
-          bar.fill.setAlpha(1);
-        }
+      if (shouldBeFull && currentKey !== 'icon_heart_full') {
+        // Restore to full (e.g., heal or stage reset)
+        heart.setTexture('icon_heart_full');
+        heart.setScale(1);
+        heart.setAlpha(1);
+      } else if (!shouldBeFull && currentKey === 'icon_heart_full') {
+        // Transition from full to empty: flash + shrink animation
+        heart.setTexture('icon_heart_empty');
+        this.tweens.add({
+          targets: heart,
+          scaleX: 0.5,
+          scaleY: 0.5,
+          duration: 150,
+          yoyo: true,
+          onComplete: () => {
+            heart.setScale(1);
+          },
+        });
       }
     }
   }
@@ -387,7 +352,15 @@ export class HUDScene extends Phaser.Scene {
   // =====================
 
   private createMatchTimer(): void {
-    this.timerText = this.add.text(this.W * 0.5, this.H * 0.03, '', {
+    // Hourglass icon to the left of the timer text
+    this.timerIcon = this.add.image(this.W * 0.5 - 30, this.H * 0.03, 'icon_timer');
+    this.timerIcon.setDisplaySize(24, 24);
+    this.timerIcon.setOrigin(0.5, 0.5);
+    this.timerIcon.setDepth(200);
+    this.timerIcon.setVisible(false);
+
+    // Timer text to the right of the icon
+    this.timerText = this.add.text(this.W * 0.5 + 5, this.H * 0.03, '', {
       ...TextStyle.hud,
       fontSize: '20px',
     });
@@ -402,10 +375,12 @@ export class HUDScene extends Phaser.Scene {
     const matchState = this.room.state.matchState;
     if (matchState !== 'playing') {
       this.timerText.setVisible(false);
+      if (this.timerIcon) this.timerIcon.setVisible(false);
       return;
     }
 
     this.timerText.setVisible(true);
+    if (this.timerIcon) this.timerIcon.setVisible(true);
 
     const serverTime = this.room.state.serverTime || 0;
     const matchStartTime = this.room.state.matchStartTime || 0;
@@ -421,12 +396,15 @@ export class HUDScene extends Phaser.Scene {
       if (!this.isTimerFlashing) {
         this.isTimerFlashing = true;
         this.timerText.setColor(Colors.status.danger);
+        if (this.timerIcon) this.timerIcon.setTint(Colors.status.dangerNum);
         this.timerFlashTimer = this.time.addEvent({
           delay: 500,
           loop: true,
           callback: () => {
             if (this.timerText) {
-              this.timerText.setAlpha(this.timerText.alpha === 1 ? 0.5 : 1);
+              const newAlpha = this.timerText.alpha === 1 ? 0.5 : 1;
+              this.timerText.setAlpha(newAlpha);
+              if (this.timerIcon) this.timerIcon.setAlpha(newAlpha);
             }
           },
         });
@@ -439,6 +417,10 @@ export class HUDScene extends Phaser.Scene {
       }
       this.timerText.setColor(Colors.text.primary);
       this.timerText.setAlpha(1);
+      if (this.timerIcon) {
+        this.timerIcon.clearTint();
+        this.timerIcon.setAlpha(1);
+      }
     }
   }
 
@@ -788,6 +770,10 @@ export class HUDScene extends Phaser.Scene {
           this.timerText.setColor(Colors.text.primary);
           this.timerText.setAlpha(1);
         }
+        if (this.timerIcon) {
+          this.timerIcon.clearTint();
+          this.timerIcon.setAlpha(1);
+        }
         // Reset spectator HUD when new stage begins
         this.hideSpectatorHUD();
         // Restore minimap to user preference when gameplay starts
@@ -799,13 +785,8 @@ export class HUDScene extends Phaser.Scene {
         // Hide minimap during stage end
         this.minimapVisible = false;
       } else if (value === 'stage_transition') {
-        // Rebuild health bars (players reset to full health)
+        // Rebuild health display (players reset to full health)
         this.time.delayedCall(200, () => this.rebuildHealthBars());
-        // Reset low health flash timers
-        for (const timer of this.lowHealthFlashTimers.values()) {
-          timer.destroy();
-        }
-        this.lowHealthFlashTimers.clear();
         // Clear any remaining buff indicators
         this.clearBuffIndicators();
         // Hide minimap during stage transition
@@ -840,14 +821,18 @@ export class HUDScene extends Phaser.Scene {
   }
 
   // =====================
-  // 9. ROUND SCORE DISPLAY
+  // 9. ROUND SCORE DISPLAY (Colored Pips)
   // =====================
 
   private createRoundScore(): void {
     if (!this.room) return;
 
-    // Stage label: "Stage 1" above the score
-    this.stageLabel = this.add.text(this.W * 0.5, this.H * 0.06, 'Stage 1', {
+    // Round score pips (Graphics-based colored circles)
+    this.roundScorePipsGfx = this.add.graphics();
+    this.roundScorePipsGfx.setDepth(200);
+
+    // Stage label below the pips
+    this.stageLabel = this.add.text(this.W * 0.5, this.H * 0.09, 'Stage 1', {
       fontSize: '12px',
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -857,23 +842,14 @@ export class HUDScene extends Phaser.Scene {
     this.stageLabel.setOrigin(0.5, 0.5);
     this.stageLabel.setDepth(200);
 
-    // Score text: "0 - 0" below the timer
-    this.roundScoreText = this.add.text(this.W * 0.5, this.H * 0.09, '0 - 0', {
-      fontSize: '16px',
-      color: Colors.gold.primary,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 3,
-    });
-    this.roundScoreText.setOrigin(0.5, 0.5);
-    this.roundScoreText.setDepth(200);
+    // Initial draw
+    this.updateRoundScore();
 
     // Listen for schema changes on stage wins
-    this.room.state.listen('paranStageWins', (value: number) => {
+    this.room.state.listen('paranStageWins', (_value: number) => {
       this.updateRoundScore();
     });
-    this.room.state.listen('guardianStageWins', (value: number) => {
+    this.room.state.listen('guardianStageWins', (_value: number) => {
       this.updateRoundScore();
     });
     this.room.state.listen('currentStage', (value: number) => {
@@ -884,10 +860,47 @@ export class HUDScene extends Phaser.Scene {
   }
 
   private updateRoundScore(): void {
-    if (!this.roundScoreText || !this.room) return;
+    if (!this.roundScorePipsGfx || !this.room) return;
+
+    this.roundScorePipsGfx.clear();
+
     const paranWins = this.room.state.paranStageWins || 0;
     const guardianWins = this.room.state.guardianStageWins || 0;
-    this.roundScoreText.setText(`${paranWins} - ${guardianWins}`);
+    const winsToWin = 2; // Best-of-3
+    const pipRadius = 5;
+    const pipSpacing = 16;
+    const pipY = this.H * 0.07;
+    const centerX = this.W * 0.5;
+
+    // Layout: [P1] [P2]  |  [G1] [G2]
+    // Separator is a thin vertical line at center
+    const separatorGap = 8; // gap between pips and separator
+
+    // Paran pips on the left
+    for (let i = 0; i < winsToWin; i++) {
+      const x = centerX - separatorGap - (winsToWin - i) * pipSpacing + pipSpacing / 2;
+      if (i < paranWins) {
+        this.roundScorePipsGfx.fillStyle(Colors.char.paranNum, 1);
+      } else {
+        this.roundScorePipsGfx.fillStyle(0x444444, 0.6);
+      }
+      this.roundScorePipsGfx.fillCircle(x, pipY, pipRadius);
+    }
+
+    // Separator: thin vertical line
+    this.roundScorePipsGfx.fillStyle(0xffffff, 0.3);
+    this.roundScorePipsGfx.fillRect(centerX - 1, pipY - 4, 2, 8);
+
+    // Guardian pips on the right
+    for (let i = 0; i < winsToWin; i++) {
+      const x = centerX + separatorGap + i * pipSpacing + pipSpacing / 2;
+      if (i < guardianWins) {
+        this.roundScorePipsGfx.fillStyle(Colors.char.faranNum, 1);
+      } else {
+        this.roundScorePipsGfx.fillStyle(0x444444, 0.6);
+      }
+      this.roundScorePipsGfx.fillCircle(x, pipY, pipRadius);
+    }
   }
 
   // =====================
@@ -1204,10 +1217,17 @@ export class HUDScene extends Phaser.Scene {
       this.timerFlashTimer = null;
     }
 
-    for (const timer of this.lowHealthFlashTimers.values()) {
-      timer.destroy();
+    // Destroy timer icon
+    if (this.timerIcon) {
+      this.timerIcon.destroy();
+      this.timerIcon = null;
     }
-    this.lowHealthFlashTimers.clear();
+
+    // Destroy round score pips graphics
+    if (this.roundScorePipsGfx) {
+      this.roundScorePipsGfx.destroy();
+      this.roundScorePipsGfx = null;
+    }
 
     // Clear buff indicators
     this.clearBuffIndicators();
