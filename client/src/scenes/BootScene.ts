@@ -38,9 +38,18 @@ export class BootScene extends Phaser.Scene {
     this.load.image('victory-paran', 'images/victory-paran-splash.png');
 
     // Powerup potion sprites (16x16 pixel art icons)
-    this.load.image('potion_speed', 'icons/potion-blue.png');
-    this.load.image('potion_invincibility', 'icons/potion-orange.png');
-    this.load.image('potion_projectile', 'icons/potion-red.png');
+    // Color mapping: Red=Speed, Blue=Invincibility, Green=Projectile
+    this.load.image('potion_speed', 'icons/potion-red.png');
+    this.load.image('potion_invincibility', 'icons/potion-blue.png');
+    this.load.image('potion_projectile', 'icons/potion-green.png');
+
+    // HUD icon assets (32x32 PNGs)
+    this.load.image('icon_heart_full', 'icons/heart-full.png');
+    this.load.image('icon_heart_empty', 'icons/heart-empty.png');
+    this.load.image('icon_timer', 'icons/timer.png');
+    this.load.image('icon_skull', 'icons/skull.png');
+    this.load.image('icon_gravestone', 'icons/gravestone.png');
+    this.load.image('potion_green', 'icons/potion-green.png');
 
     // Preload all arena tilesets and tilemaps for instant stage transitions
     this.load.image('tileset_hedge', 'tilesets/arena_hedge.png');
