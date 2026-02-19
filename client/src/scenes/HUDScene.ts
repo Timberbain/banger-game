@@ -901,7 +901,7 @@ export class HUDScene extends Phaser.Scene {
     // Timer at H*0.03, pips at H*0.06, stage label at H*0.09
     // Width enough for timer icon + text + pips spread
     const panelW = 160;
-    const panelH = 60;
+    const panelH = 80;
     const panelX = this.W / 2 - panelW / 2;
     const panelY = this.H * 0.03 - 16; // Above timer center
     this.topCenterBackdrop.fillStyle(0x000000, 0.4);
@@ -1292,28 +1292,41 @@ export class HUDScene extends Phaser.Scene {
 
   private showDeathOverlay(): void {
     // Large gravestone icon centered
-    const gravestone = this.add.image(this.W / 2, this.H / 2, 'icon_gravestone');
+    const gravestone = this.add.image(this.W / 2, this.H / 2 - 30, 'icon_gravestone');
     gravestone.setDisplaySize(64, 64);
     gravestone.setDepth(300);
     gravestone.setAlpha(0);
 
-    this.deathOverlayObjects = [gravestone];
+    // ELIMINATED text below gravestone
+    const eliminatedText = this.add.text(this.W / 2, this.H / 2 + 30, 'ELIMINATED', {
+      fontSize: '36px',
+      color: '#ff4444',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+    eliminatedText.setOrigin(0.5);
+    eliminatedText.setDepth(300);
+    eliminatedText.setAlpha(0);
+
+    this.deathOverlayObjects = [gravestone, eliminatedText];
 
     // Fade in
     this.tweens.add({
-      targets: gravestone,
+      targets: [gravestone, eliminatedText],
       alpha: 1,
       duration: 500,
     });
 
     // Fade out after 3 seconds
     this.tweens.add({
-      targets: gravestone,
+      targets: [gravestone, eliminatedText],
       alpha: 0,
       duration: 800,
       delay: 3000,
       onComplete: () => {
         gravestone.destroy();
+        eliminatedText.destroy();
         this.deathOverlayObjects = [];
       },
     });

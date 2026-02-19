@@ -76,7 +76,7 @@ export class GameScene extends Phaser.Scene {
   // Combat rendering
   private projectileSprites: Map<number, Phaser.GameObjects.Sprite> = new Map();
   private projectileVelocities: Map<number, { vx: number; vy: number }> = new Map();
-  private eliminatedTexts: Map<string, Phaser.GameObjects.Text> = new Map();
+  // eliminatedTexts removed — gravestones on arena floor replace permanent text labels
   private dcLabels: Map<string, Phaser.GameObjects.Text> = new Map();
 
   // Collision grid for client prediction
@@ -170,7 +170,7 @@ export class GameScene extends Phaser.Scene {
     this.playerAnimKeys = new Map();
     this.projectileSprites = new Map();
     this.projectileVelocities = new Map();
-    this.eliminatedTexts = new Map();
+    // eliminatedTexts removed — gravestones replace permanent text labels
     this.dcLabels = new Map();
     this.directionPressOrder = [];
     this.prevKeyState = { left: false, right: false, up: false, down: false };
@@ -1071,15 +1071,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Update eliminated text and DC label positions
+    // Update DC label positions
     this.room.state.players.forEach((player: any, sessionId: string) => {
       const sprite = this.playerSprites.get(sessionId);
       if (sprite) {
-        const eliminatedText = this.eliminatedTexts.get(sessionId);
-        if (eliminatedText) {
-          eliminatedText.x = sprite.x;
-          eliminatedText.y = sprite.y - 40;
-        }
         const dcLabel = this.dcLabels.get(sessionId);
         if (dcLabel) {
           dcLabel.x = sprite.x;
@@ -1234,11 +1229,6 @@ export class GameScene extends Phaser.Scene {
     }
     this.playerRoles.delete(sessionId);
     this.playerAnimKeys.delete(sessionId);
-    const eliminatedText = this.eliminatedTexts.get(sessionId);
-    if (eliminatedText) {
-      eliminatedText.destroy();
-      this.eliminatedTexts.delete(sessionId);
-    }
     const dcLabel = this.dcLabels.get(sessionId);
     if (dcLabel) {
       dcLabel.destroy();
@@ -1661,16 +1651,6 @@ export class GameScene extends Phaser.Scene {
         dcLabel.destroy();
         this.dcLabels.delete(sessionId);
       }
-      if (!this.eliminatedTexts.has(sessionId)) {
-        const eliminatedText = this.add.text(player.x, player.y - 40, 'ELIMINATED', {
-          fontSize: '14px',
-          color: '#ff0000',
-          fontStyle: 'bold',
-        });
-        eliminatedText.setOrigin(0.5);
-        eliminatedText.setDepth(12);
-        this.eliminatedTexts.set(sessionId, eliminatedText);
-      }
     } else {
       const sprite = this.playerSprites.get(sessionId);
       if (sprite) sprite.setAlpha(1.0);
@@ -1678,11 +1658,6 @@ export class GameScene extends Phaser.Scene {
       if (dcLabel) {
         dcLabel.destroy();
         this.dcLabels.delete(sessionId);
-      }
-      const eliminatedText = this.eliminatedTexts.get(sessionId);
-      if (eliminatedText) {
-        eliminatedText.destroy();
-        this.eliminatedTexts.delete(sessionId);
       }
     }
 
@@ -2205,9 +2180,7 @@ export class GameScene extends Phaser.Scene {
     this.lowHealthPulseTweens.forEach((timer) => timer.destroy());
     this.lowHealthPulseTweens.clear();
 
-    // Destroy eliminated texts and DC labels
-    this.eliminatedTexts.forEach((text) => text.destroy());
-    this.eliminatedTexts.clear();
+    // Destroy DC labels
     this.dcLabels.forEach((text) => text.destroy());
     this.dcLabels.clear();
 
