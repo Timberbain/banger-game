@@ -273,6 +273,28 @@ export class AudioManager {
   }
 
   /**
+   * Play a WAV SFX, stopping any previous playback of the same key first.
+   * Use for sounds that should NOT overlap (e.g., rapid-fire laser).
+   */
+  stopAndPlayWAV(key: string): void {
+    const source = this.wavSounds.get(key);
+    if (!source) return;
+    source.currentTime = 0;
+    source.volume = this.sfxVolume;
+    source.play().catch(() => {});
+  }
+
+  /**
+   * Play a random WAV from a set, stopping any previous playback of that key.
+   * Use for rapid-fire sounds that should not overlap.
+   */
+  stopAndPlayRandomWAV(keys: string[]): void {
+    if (keys.length === 0) return;
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    this.stopAndPlayWAV(key);
+  }
+
+  /**
    * Play a random WAV sound effect from a set of keys.
    */
   playRandomWAV(keys: string[]): void {

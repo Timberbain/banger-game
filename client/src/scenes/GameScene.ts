@@ -923,16 +923,6 @@ export class GameScene extends Phaser.Scene {
           const now = Date.now();
           if (now - this.lastLocalFireTime >= cooldownMs) {
             this.lastLocalFireTime = now;
-            // Play shoot sound: WAV for guardians/Paran beam, jsfxr for normal Paran
-            if (this.audioManager) {
-              if (this.localRole !== 'paran') {
-                this.audioManager.playRandomWAV(['laser_1', 'laser_4', 'laser_5']);
-              } else if (this.hasProjectileBuff) {
-                this.audioManager.playMultipleWAV(['earthquake', 'lightning']);
-              } else {
-                this.audioManager.playSFX('paran_shoot');
-              }
-            }
             this.events.emit('localFired', { fireTime: now, cooldownMs });
           }
         }
@@ -1245,14 +1235,14 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Play shoot sound for remote projectiles (local player already plays via input handler)
-    if (this.audioManager && this.room && projectile.ownerId !== this.room.sessionId) {
+    // Play shoot sound for all projectiles (server-confirmed timing)
+    if (this.audioManager && this.room) {
       const ownerPlayer = this.room.state.players.get(projectile.ownerId);
       if (ownerPlayer && ownerPlayer.role) {
         if (projectile.isBeam) {
           this.audioManager.playMultipleWAV(['earthquake', 'lightning']);
         } else if (ownerPlayer.role !== 'paran') {
-          this.audioManager.playRandomWAV(['laser_1', 'laser_4', 'laser_5']);
+          this.audioManager.stopAndPlayRandomWAV(['laser_1', 'laser_4', 'laser_5']);
         } else {
           this.audioManager.playSFX('paran_shoot');
         }
