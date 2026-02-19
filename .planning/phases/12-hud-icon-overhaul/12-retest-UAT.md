@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 12-hud-icon-overhaul
 source: 12-03-SUMMARY.md
 started: 2026-02-19T15:00:00Z
@@ -9,9 +9,7 @@ re_test: true
 
 ## Current Test
 
-number: 3
-name: Powerup Aura Colors
-awaiting: user response
+[testing complete]
 
 ## Re-Tests (from 12-03 gap closure)
 
@@ -46,7 +44,7 @@ skipped: 0
 ## Gaps
 
 - truth: "Stage label contained within the dark backdrop panel"
-  status: fixing
+  status: resolved
   reason: "User reported: Stage 1 text is outside/below the dark backdrop box"
   severity: cosmetic
   test: 1
@@ -54,7 +52,7 @@ skipped: 0
   fix: "Increased panelH from 60 to 80px"
 
 - truth: "Death overlay shows ELIMINATED text; arena floor shows gravestones only (no permanent text)"
-  status: fixing
+  status: resolved
   reason: "User reported: ELIMINATED text removed from wrong location — overlay instead of arena floor"
   severity: major
   test: 2
