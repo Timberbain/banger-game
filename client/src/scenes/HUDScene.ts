@@ -101,6 +101,9 @@ export class HUDScene extends Phaser.Scene {
   private minimapDeathMarkers: Array<{ x: number; y: number; color: number; time: number }> = [];
   private minimapToggleJustPressed: boolean = false;
 
+  // Top-center backdrop
+  private topCenterBackdrop: Phaser.GameObjects.Graphics | null = null;
+
   // Death overlay
   private deathOverlayObjects: Phaser.GameObjects.GameObject[] = [];
 
@@ -151,6 +154,7 @@ export class HUDScene extends Phaser.Scene {
     this.minimapFrameCounter = 0;
     this.minimapDeathMarkers = [];
     this.minimapToggleJustPressed = false;
+    this.topCenterBackdrop = null;
     this.deathOverlayObjects = [];
     this.gameScene = null;
 
@@ -197,6 +201,9 @@ export class HUDScene extends Phaser.Scene {
 
     // 9. Create round score display (top center, below timer)
     this.createRoundScore();
+
+    // 9b. Dark backdrop behind top-center HUD cluster
+    this.createTopCenterBackdrop();
 
     // 10. Create minimap overlay (top-right)
     this.createMinimap();
@@ -365,7 +372,7 @@ export class HUDScene extends Phaser.Scene {
     // Timer text to the right of the icon
     this.timerText = this.add.text(this.W * 0.5 + 5, this.H * 0.03, '', {
       ...TextStyle.hud,
-      fontSize: '20px',
+      fontSize: '24px',
     });
     this.timerText.setOrigin(0.5, 0.5);
     this.timerText.setDepth(200);
@@ -765,7 +772,7 @@ export class HUDScene extends Phaser.Scene {
   private createSpectatorHUD(): void {
     // Hidden by default, shown when spectating
     // Semi-transparent background rectangle for spectator banner
-    this.spectatorBar = this.add.text(this.W * 0.5, this.H * 0.07, '', {
+    this.spectatorBar = this.add.text(this.W * 0.5, this.H * 0.16, '', {
       ...TextStyle.hud,
       backgroundColor: '#00000088',
       padding: { x: 12, y: 6 },
@@ -774,7 +781,7 @@ export class HUDScene extends Phaser.Scene {
     this.spectatorBar.setDepth(250);
     this.spectatorBar.setVisible(false);
 
-    this.spectatorInstruction = this.add.text(this.W * 0.5, this.H * 0.1, 'Press TAB to cycle', {
+    this.spectatorInstruction = this.add.text(this.W * 0.5, this.H * 0.2, 'Press TAB to cycle', {
       fontSize: '12px',
       color: Colors.text.secondary,
       fontFamily: 'monospace',
@@ -884,6 +891,24 @@ export class HUDScene extends Phaser.Scene {
   }
 
   // =====================
+  // 9b. TOP-CENTER DARK BACKDROP
+  // =====================
+
+  private createTopCenterBackdrop(): void {
+    this.topCenterBackdrop = this.add.graphics();
+    this.topCenterBackdrop.setDepth(199); // Behind HUD elements at 200
+    // Dark backdrop panel: covers timer area through stage label
+    // Timer at H*0.03, pips at H*0.06, stage label at H*0.09
+    // Width enough for timer icon + text + pips spread
+    const panelW = 160;
+    const panelH = 60;
+    const panelX = this.W / 2 - panelW / 2;
+    const panelY = this.H * 0.03 - 16; // Above timer center
+    this.topCenterBackdrop.fillStyle(0x000000, 0.4);
+    this.topCenterBackdrop.fillRoundedRect(panelX, panelY, panelW, panelH, 8);
+  }
+
+  // =====================
   // 9. ROUND SCORE DISPLAY (Colored Pips)
   // =====================
 
@@ -896,11 +921,11 @@ export class HUDScene extends Phaser.Scene {
 
     // Stage label below the pips
     this.stageLabel = this.add.text(this.W * 0.5, this.H * 0.09, 'Stage 1', {
-      fontSize: '12px',
-      color: Colors.text.secondary,
+      fontSize: '14px',
+      color: Colors.text.primary,
       fontFamily: 'monospace',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
     });
     this.stageLabel.setOrigin(0.5, 0.5);
     this.stageLabel.setDepth(200);
@@ -930,9 +955,9 @@ export class HUDScene extends Phaser.Scene {
     const paranWins = this.room.state.paranStageWins || 0;
     const guardianWins = this.room.state.guardianStageWins || 0;
     const winsToWin = 2; // Best-of-3
-    const pipRadius = 5;
-    const pipSpacing = 16;
-    const pipY = this.H * 0.07;
+    const pipRadius = 7;
+    const pipSpacing = 20;
+    const pipY = this.H * 0.06;
     const centerX = this.W * 0.5;
 
     // Layout: [P1] [P2]  |  [G1] [G2]
@@ -945,7 +970,7 @@ export class HUDScene extends Phaser.Scene {
       if (i < paranWins) {
         this.roundScorePipsGfx.fillStyle(Colors.char.paranNum, 1);
       } else {
-        this.roundScorePipsGfx.fillStyle(0x444444, 0.6);
+        this.roundScorePipsGfx.fillStyle(0x666666, 1.0);
       }
       this.roundScorePipsGfx.fillCircle(x, pipY, pipRadius);
     }
@@ -960,7 +985,7 @@ export class HUDScene extends Phaser.Scene {
       if (i < guardianWins) {
         this.roundScorePipsGfx.fillStyle(Colors.char.faranNum, 1);
       } else {
-        this.roundScorePipsGfx.fillStyle(0x444444, 0.6);
+        this.roundScorePipsGfx.fillStyle(0x666666, 1.0);
       }
       this.roundScorePipsGfx.fillCircle(x, pipY, pipRadius);
     }
@@ -1267,39 +1292,28 @@ export class HUDScene extends Phaser.Scene {
 
   private showDeathOverlay(): void {
     // Large gravestone icon centered
-    const gravestone = this.add.image(this.W / 2, this.H / 2 - 30, 'icon_gravestone');
+    const gravestone = this.add.image(this.W / 2, this.H / 2, 'icon_gravestone');
     gravestone.setDisplaySize(64, 64);
     gravestone.setDepth(300);
     gravestone.setAlpha(0);
 
-    // "ELIMINATED" text below
-    const eliminatedText = this.add.text(this.W / 2, this.H / 2 + 30, 'ELIMINATED', {
-      ...TextStyle.splash,
-      fontSize: '36px',
-      color: Colors.status.danger,
-    });
-    eliminatedText.setOrigin(0.5);
-    eliminatedText.setDepth(300);
-    eliminatedText.setAlpha(0);
-
-    this.deathOverlayObjects = [gravestone, eliminatedText];
+    this.deathOverlayObjects = [gravestone];
 
     // Fade in
     this.tweens.add({
-      targets: [gravestone, eliminatedText],
+      targets: gravestone,
       alpha: 1,
       duration: 500,
     });
 
     // Fade out after 3 seconds
     this.tweens.add({
-      targets: [gravestone, eliminatedText],
+      targets: gravestone,
       alpha: 0,
       duration: 800,
       delay: 3000,
       onComplete: () => {
         gravestone.destroy();
-        eliminatedText.destroy();
         this.deathOverlayObjects = [];
       },
     });
@@ -1333,6 +1347,12 @@ export class HUDScene extends Phaser.Scene {
     if (this.timerIcon) {
       this.timerIcon.destroy();
       this.timerIcon = null;
+    }
+
+    // Destroy top-center backdrop
+    if (this.topCenterBackdrop) {
+      this.topCenterBackdrop.destroy();
+      this.topCenterBackdrop = null;
     }
 
     // Destroy round score pips graphics
