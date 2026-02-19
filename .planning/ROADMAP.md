@@ -141,12 +141,13 @@ Plans:
   3. Lobby scene plays background music on loop from the provided lobby soundtrack
   4. A randomly selected stage track plays during all stages of a match, and a different track is picked for each new game
   5. Music crossfades smoothly between lobby and game transitions with no jarring cuts or silence gaps
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] 11-01-PLAN.md -- AudioManager extension (crossfade, loop-with-pause, volume dip, WAV methods) + asset pipeline
-- [ ] 11-02-PLAN.md -- Minimap overlay on HUDScene (wall blocks, player dots, powerup dots, toggle, death markers)
-- [ ] 11-03-PLAN.md -- Music integration across scenes (lobby/stage/victory/defeat) + WAV SFX replacements + volume sliders
+- [x] 11-01-PLAN.md -- AudioManager extension (crossfade, loop-with-pause, volume dip, WAV methods) + asset pipeline
+- [x] 11-02-PLAN.md -- Minimap overlay on HUDScene (wall blocks, player dots, powerup dots, toggle, death markers)
+- [x] 11-03-PLAN.md -- Music integration across scenes (lobby/stage/victory/defeat) + WAV SFX replacements + volume sliders
+- [ ] 11-04-PLAN.md -- Gap closure: kill feed overflow, laser SFX overlap, lobby music restart
 
 ### Phase 12: HUD Icon Overhaul
 **Goal**: All HUD elements use the provided icon assets (hearts, timer, skull, potions, gravestone) replacing text-only displays, properly laid out for 1280x720 with round and powerup indicators
@@ -176,9 +177,9 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 8. Arena Overhaul | v2.0 | 5/5 | Complete | 2026-02-14 |
 | 9. Multi-Stage Rounds | v2.0 | 5/5 | Complete | 2026-02-18 |
 | 10. Powerup System | v2.0 | 5/5 | Complete | 2026-02-18 |
-| 11. Minimap & Music | v2.0 | 0/3 | Not started | - |
+| 11. Minimap & Music | v2.0 | 3/4 | In progress | - |
 | 12. HUD Icon Overhaul | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-09*
-*Last updated: 2026-02-18 (Phase 9 marked complete, Phase 10 gap closure complete)*
+*Last updated: 2026-02-19 (Phase 11 gap closure plan added)*
