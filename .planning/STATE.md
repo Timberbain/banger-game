@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 12 (HUD Icon Overhaul)
-Plan: 1 of 2 in current phase
-Status: Plan 12-01 complete (Core HUD Icon Replacements)
-Last activity: 2026-02-19 -- Completed 12-01 (Core HUD Icon Replacements)
+Plan: 2 of 2 in current phase
+Status: Phase 12 complete (HUD Icon Overhaul)
+Last activity: 2026-02-19 -- Completed 12-02 (Kill Feed, Gravestones, Death Overlay, Radial Buffs, Low-Health Tint)
 
-Progress: [##########..........] 50% (1 of 2 Phase 12 plans complete)
+Progress: [####################] 100% (2 of 2 Phase 12 plans complete)
 
 ## Performance Metrics
 
@@ -39,7 +39,7 @@ Progress: [##########..........] 50% (1 of 2 Phase 12 plans complete)
 | 9.1 Tilemap Collision Masks | 3 | Complete |
 | 10. Powerup System | 5 | Complete (incl. gap closure) |
 | 11. Minimap & Music | 4 | Complete (incl. gap closure) |
-| 12. HUD Icon Overhaul | 2 | In Progress (1/2) |
+| 12. HUD Icon Overhaul | 2 | Complete |
 
 ## Accumulated Context
 
@@ -157,6 +157,12 @@ v2.0 pending decisions (from research): HD resolution, multi-stage rounds, tiles
 - Potion color mapping: Red=Speed, Blue=Invincibility, Green=Projectile (consistent across all files)
 - Heart damage animation uses texture key comparison to detect transition direction (full->empty triggers tween)
 - Paired icon+text layout: timer icon and text share visibility, tint, and alpha state
+- Kill feed skull icon only for actual kill events (both roles non-empty); powerup events use plain text
+- Radial sweep buff indicators use Graphics.slice() with semi-transparent black overlay draining clockwise
+- Buff indicators positioned dynamically to the right of heart row at same y baseline (H*0.92)
+- Low-health tint pulse (0xff4444, 300ms cycle) for remote players only below 50% HP
+- Death overlay: depth 300, gravestone 64x64 + ELIMINATED 36px text, 500ms in / 3s hold / 800ms out
+- Arena floor gravestones at death locations tinted with character color, depth 5, persist per stage
 
 ### Pending Todos
 
@@ -177,9 +183,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 12-01-PLAN.md (Core HUD Icon Replacements)
-Resume file: .planning/phases/12-hud-icon-overhaul/12-01-SUMMARY.md
-Next step: Execute 12-02-PLAN.md
+Stopped at: Completed 12-02-PLAN.md (Kill Feed, Gravestones, Death Overlay, Radial Buffs, Low-Health Tint) -- Phase 12 complete
+Resume file: .planning/phases/12-hud-icon-overhaul/12-02-SUMMARY.md
+Next step: Next phase or UAT verification
 
 ---
-*Updated: 2026-02-19 after completing 12-01 (Core HUD Icon Replacements)*
+*Updated: 2026-02-19 after completing 12-02 (Phase 12 HUD Icon Overhaul complete)*
