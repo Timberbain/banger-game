@@ -147,6 +147,9 @@ export class GameScene extends Phaser.Scene {
   // Arena floor gravestones at death locations
   private gravestoneSprites: Phaser.GameObjects.Image[] = [];
 
+  // Low-health tint pulse for remote players
+  private lowHealthPulseTweens: Map<string, Phaser.Time.TimerEvent> = new Map();
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -215,6 +218,7 @@ export class GameScene extends Phaser.Scene {
     this.stageTrack = '';
     this.hasProjectileBuff = false;
     this.gravestoneSprites = [];
+    this.lowHealthPulseTweens = new Map();
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -1240,6 +1244,13 @@ export class GameScene extends Phaser.Scene {
       dcLabel.destroy();
       this.dcLabels.delete(sessionId);
     }
+
+    // Clean up low-health pulse timer
+    const pulseTimer = this.lowHealthPulseTweens.get(sessionId);
+    if (pulseTimer) {
+      pulseTimer.destroy();
+      this.lowHealthPulseTweens.delete(sessionId);
+    }
   }
 
   /**
@@ -1563,6 +1574,40 @@ export class GameScene extends Phaser.Scene {
         }
       }
       this.playerHealthCache.set(sessionId, player.health);
+
+      // Low-health tint pulse for remote players only
+      if (!isLocal) {
+        const maxHealth = CHARACTERS[player.role]?.maxHealth || 100;
+        const healthPct = player.health / maxHealth;
+
+        if (healthPct < 0.5 && healthPct > 0 && !this.lowHealthPulseTweens.has(sessionId)) {
+          const sprite = this.playerSprites.get(sessionId);
+          if (sprite) {
+            let tintOn = false;
+            const timer = this.time.addEvent({
+              delay: 300,
+              loop: true,
+              callback: () => {
+                const s = this.playerSprites.get(sessionId);
+                if (!s) return;
+                tintOn = !tintOn;
+                if (tintOn) s.setTint(0xff4444);
+                else s.clearTint();
+              },
+            });
+            this.lowHealthPulseTweens.set(sessionId, timer);
+          }
+        } else if (
+          (healthPct >= 0.5 || healthPct <= 0) &&
+          this.lowHealthPulseTweens.has(sessionId)
+        ) {
+          const timer = this.lowHealthPulseTweens.get(sessionId)!;
+          timer.destroy();
+          this.lowHealthPulseTweens.delete(sessionId);
+          const sprite = this.playerSprites.get(sessionId);
+          if (sprite) sprite.clearTint();
+        }
+      }
     }
 
     // Update stored role if it changed
@@ -2155,6 +2200,10 @@ export class GameScene extends Phaser.Scene {
     // Destroy arena gravestone sprites
     this.gravestoneSprites.forEach((sprite) => sprite.destroy());
     this.gravestoneSprites = [];
+
+    // Clean up low-health pulse timers
+    this.lowHealthPulseTweens.forEach((timer) => timer.destroy());
+    this.lowHealthPulseTweens.clear();
 
     // Destroy eliminated texts and DC labels
     this.eliminatedTexts.forEach((text) => text.destroy());

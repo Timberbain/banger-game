@@ -80,13 +80,12 @@ export class HUDScene extends Phaser.Scene {
   private roundScorePipsGfx: Phaser.GameObjects.Graphics | null = null;
   private stageLabel: Phaser.GameObjects.Text | null = null;
 
-  // Buff indicators
+  // Buff indicators (radial timer sweep)
   private buffIndicators: Map<
     number,
     {
-      bg: Phaser.GameObjects.Rectangle;
-      fill: Phaser.GameObjects.Rectangle;
-      icon: Phaser.GameObjects.Sprite;
+      icon: Phaser.GameObjects.Image;
+      radialGfx: Phaser.GameObjects.Graphics;
       startTime: number;
       duration: number;
       flashTimer?: Phaser.Time.TimerEvent;
@@ -975,45 +974,28 @@ export class HUDScene extends Phaser.Scene {
     // If indicator already exists for this type, refresh it
     this.removeBuffIndicator(buffType);
 
-    const indicatorWidth = 50;
-    const indicatorHeight = 8;
-    const iconSize = 16;
+    // Position will be set by repositionBuffIndicators
+    const x = 0;
+    const y = this.H * 0.92;
 
-    // Position: centered at screen middle, offset by active indicator count
-    const x = 0; // will be repositioned
-    const y = this.H * 0.87; // Above cooldown bar
-
-    // Background bar (dark)
-    const bg = this.add.rectangle(x, y, indicatorWidth, indicatorHeight, 0x222222, 0.8);
-    bg.setOrigin(0.5, 0.5);
-    bg.setDepth(100);
-
-    // Fill bar (colored by type)
-    const fillColor =
-      buffType === PowerupType.SPEED
-        ? 0x4488ff
-        : buffType === PowerupType.INVINCIBILITY
-          ? 0xffcc00
-          : 0xff4422;
-    const fill = this.add.rectangle(x, y, indicatorWidth, indicatorHeight, fillColor, 0.9);
-    fill.setOrigin(0.5, 0.5);
-    fill.setDepth(101);
-
-    // Icon sprite above bar
+    // Potion icon (32x32)
     const textureKey =
       buffType === PowerupType.SPEED
         ? 'potion_speed'
         : buffType === PowerupType.INVINCIBILITY
           ? 'potion_invincibility'
           : 'potion_projectile';
-    const icon = this.add.sprite(x, y - iconSize, textureKey);
-    icon.setDisplaySize(iconSize, iconSize);
-    icon.setDepth(101);
+    const icon = this.add.image(x, y, textureKey);
+    icon.setDisplaySize(32, 32);
+    icon.setDepth(201);
+
+    // Radial sweep overlay (Graphics object)
+    const radialGfx = this.add.graphics();
+    radialGfx.setDepth(202);
 
     this.buffIndicators.set(buffType, {
-      bg,
-      fill,
       icon,
+      radialGfx,
       startTime: Date.now(),
       duration,
     });
@@ -1024,31 +1006,31 @@ export class HUDScene extends Phaser.Scene {
   private removeBuffIndicator(buffType: number): void {
     const indicator = this.buffIndicators.get(buffType);
     if (!indicator) return;
-    indicator.bg.destroy();
-    indicator.fill.destroy();
     indicator.icon.destroy();
+    indicator.radialGfx.destroy();
     if (indicator.flashTimer) indicator.flashTimer.destroy();
     this.buffIndicators.delete(buffType);
     this.repositionBuffIndicators();
   }
 
   private repositionBuffIndicators(): void {
-    const indicatorWidth = 50;
-    const gap = 8;
     const count = this.buffIndicators.size;
     if (count === 0) return;
 
-    const totalWidth = count * (indicatorWidth + gap) - gap;
-    const startX = this.W / 2 - totalWidth / 2;
-    const y = this.H * 0.87;
-    const iconSize = 16;
+    // Position buff icons to the right of the heart row
+    let heartRowRight = this.W / 2;
+    if (this.heartIcons.length > 0) {
+      const lastHeart = this.heartIcons[this.heartIcons.length - 1];
+      heartRowRight = lastHeart.x + 16; // half icon width (32/2)
+    }
 
+    const y = this.H * 0.92; // Same y as heart row
+    const iconSpacing = 40;
     let i = 0;
     this.buffIndicators.forEach((indicator) => {
-      const x = startX + i * (indicatorWidth + gap) + indicatorWidth / 2;
-      indicator.bg.setPosition(x, y);
-      indicator.fill.setPosition(x, y);
-      indicator.icon.setPosition(x, y - iconSize);
+      const x = heartRowRight + 24 + i * iconSpacing;
+      indicator.icon.setPosition(x, y);
+      // radialGfx draws at icon position in updateBuffIndicators
       i++;
     });
   }
@@ -1059,32 +1041,47 @@ export class HUDScene extends Phaser.Scene {
       const remaining = indicator.duration - elapsed;
       const fraction = Math.max(0, remaining / indicator.duration);
 
-      // Shrink fill bar width
-      const indicatorWidth = 50;
-      indicator.fill.setSize(indicatorWidth * fraction, 8);
-      // Adjust position to keep left-aligned shrink
-      const baseX = indicator.bg.x - indicatorWidth / 2;
-      indicator.fill.setPosition(baseX + (indicatorWidth * fraction) / 2, indicator.fill.y);
+      // Draw radial sweep overlay (clockwise drain from 12 o'clock)
+      const gfx = indicator.radialGfx;
+      const iconX = indicator.icon.x;
+      const iconY = indicator.icon.y;
 
-      // Flash when about to expire (last 1.5 seconds)
-      if (remaining < 1500 && remaining > 0 && !indicator.flashTimer) {
+      gfx.clear();
+      if (fraction < 1) {
+        const startAngle = Phaser.Math.DegToRad(-90); // 12 o'clock
+        const endAngle = Phaser.Math.DegToRad(-90 + 360 * (1 - fraction)); // elapsed portion
+        gfx.fillStyle(0x000000, 0.5);
+        gfx.slice(iconX, iconY, 16, startAngle, endAngle, false);
+        gfx.fillPath();
+      }
+
+      // Flash when about to expire (last 2 seconds): 5 flashes over 2s = 400ms cycle
+      if (remaining < 2000 && remaining > 0 && !indicator.flashTimer) {
         indicator.flashTimer = this.time.addEvent({
-          delay: 150,
+          delay: 200,
           callback: () => {
-            indicator.fill.setAlpha(indicator.fill.alpha === 1 ? 0.3 : 1);
             indicator.icon.setAlpha(indicator.icon.alpha === 1 ? 0.3 : 1);
           },
           loop: true,
         });
+      }
+
+      // Fade out when expired
+      if (remaining <= 0 && indicator.icon.alpha > 0) {
+        this.tweens.add({
+          targets: indicator.icon,
+          alpha: 0,
+          duration: 500,
+        });
+        gfx.clear();
       }
     });
   }
 
   private clearBuffIndicators(): void {
     this.buffIndicators.forEach((indicator) => {
-      indicator.bg.destroy();
-      indicator.fill.destroy();
       indicator.icon.destroy();
+      indicator.radialGfx.destroy();
       if (indicator.flashTimer) indicator.flashTimer.destroy();
     });
     this.buffIndicators.clear();
