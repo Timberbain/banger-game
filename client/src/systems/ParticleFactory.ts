@@ -172,7 +172,7 @@ export class ParticleFactory {
   }
 
   /**
-   * Speed buff aura -- blue-cyan particles, fast outward radial burst suggesting velocity.
+   * Speed buff aura -- red particles matching speed potion color.
    * Returns the emitter; caller must destroy when buff expires.
    */
   speedAura(followTarget: Phaser.GameObjects.Sprite): Phaser.GameObjects.Particles.ParticleEmitter {
@@ -181,6 +181,29 @@ export class ParticleFactory {
       lifespan: 600,
       speed: { min: 30, max: 80 },
       scale: { start: 1.0, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      tint: 0xcc3333,
+      angle: { min: 0, max: 360 },
+      follow: followTarget,
+      emitting: true,
+    });
+    emitter.setDepth(9);
+    this.activeTrails.add(emitter);
+    return emitter;
+  }
+
+  /**
+   * Invincibility buff aura -- blue particles matching invincibility potion color.
+   * Returns the emitter; caller must destroy when buff expires.
+   */
+  invincibilityAura(
+    followTarget: Phaser.GameObjects.Sprite,
+  ): Phaser.GameObjects.Particles.ParticleEmitter {
+    const emitter = this.scene.add.particles(0, 0, 'particle', {
+      frequency: 20,
+      lifespan: 700,
+      speed: { min: 30, max: 60 },
+      scale: { start: 1.2, end: 0 },
       alpha: { start: 0.8, end: 0 },
       tint: 0x4488ff,
       angle: { min: 0, max: 360 },
@@ -193,30 +216,7 @@ export class ParticleFactory {
   }
 
   /**
-   * Invincibility buff aura -- gold-amber particles, orbiting/shield-like pattern.
-   * Returns the emitter; caller must destroy when buff expires.
-   */
-  invincibilityAura(
-    followTarget: Phaser.GameObjects.Sprite,
-  ): Phaser.GameObjects.Particles.ParticleEmitter {
-    const emitter = this.scene.add.particles(0, 0, 'particle', {
-      frequency: 20,
-      lifespan: 700,
-      speed: { min: 30, max: 60 },
-      scale: { start: 1.2, end: 0 },
-      alpha: { start: 0.8, end: 0 },
-      tint: 0xffcc00,
-      angle: { min: 0, max: 360 },
-      follow: followTarget,
-      emitting: true,
-    });
-    emitter.setDepth(9);
-    this.activeTrails.add(emitter);
-    return emitter;
-  }
-
-  /**
-   * Projectile buff aura -- red-orange spark particles with slight gravity.
+   * Projectile buff aura -- green particles matching projectile potion color.
    * Returns the emitter; caller must destroy when buff expires.
    */
   projectileAura(
@@ -228,7 +228,7 @@ export class ParticleFactory {
       speed: { min: 25, max: 60 },
       scale: { start: 1.0, end: 0 },
       alpha: { start: 0.8, end: 0 },
-      tint: 0xff4422,
+      tint: 0x44cc66,
       gravityY: 30,
       angle: { min: 0, max: 360 },
       follow: followTarget,
