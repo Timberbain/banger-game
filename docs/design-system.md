@@ -14,84 +14,84 @@
 
 Five gold tones spanning from aged brass to gleaming temple dome. Inspired by the golden architecture in `assets/images/splash-bg.png` (the hedge maze temple with its multi-toned dome and brass columns).
 
-| Token | Hex | Numeric | Use |
-|-------|-----|---------|-----|
-| `gold.dark` | `#9E7828` | `0x9E7828` | Active/pressed states, deep borders, aged brass |
-| `gold.brass` | `#C49432` | `0xC49432` | Trim, borders, secondary gold accents, button borders |
-| `gold.primary` | `#D4A84A` | `0xD4A84A` | Titles, headers, decorative accents, selected states |
-| `gold.light` | `#E8C56A` | `0xE8C56A` | Hover states on gold elements, sun ray decorations |
-| `gold.gleam` | `#F2DA78` | `0xF2DA78` | Sparkle highlights, particle bursts, solar dot decorations |
+| Token          | Hex       | Numeric    | Use                                                        |
+| -------------- | --------- | ---------- | ---------------------------------------------------------- |
+| `gold.dark`    | `#9E7828` | `0x9E7828` | Active/pressed states, deep borders, aged brass            |
+| `gold.brass`   | `#C49432` | `0xC49432` | Trim, borders, secondary gold accents, button borders      |
+| `gold.primary` | `#D4A84A` | `0xD4A84A` | Titles, headers, decorative accents, selected states       |
+| `gold.light`   | `#E8C56A` | `0xE8C56A` | Hover states on gold elements, sun ray decorations         |
+| `gold.gleam`   | `#F2DA78` | `0xF2DA78` | Sparkle highlights, particle bursts, solar dot decorations |
 
 ### Background — Deep Forest at Dusk
 
 Warm dark greens with enough saturation to read as "forest" rather than "black screen." Shifted from pure green hue (H:120) toward warmer teal-green (H:145).
 
-| Token | Hex | Numeric | Use |
-|-------|-----|---------|-----|
-| `bg.deep` | `#101E14` | `0x101E14` | Main scene backgrounds, deepest layer |
-| `bg.surface` | `#172C1C` | `0x172C1C` | Panel backgrounds, cards, content areas |
-| `bg.elevated` | `#203828` | `0x203828` | Hovered panels, active cards, raised surfaces |
-| `bg.overlay` | `rgba(0,0,0,0.85)` | — | Victory overlay, modals, dimming layers |
+| Token         | Hex                | Numeric    | Use                                           |
+| ------------- | ------------------ | ---------- | --------------------------------------------- |
+| `bg.deep`     | `#101E14`          | `0x101E14` | Main scene backgrounds, deepest layer         |
+| `bg.surface`  | `#172C1C`          | `0x172C1C` | Panel backgrounds, cards, content areas       |
+| `bg.elevated` | `#203828`          | `0x203828` | Hovered panels, active cards, raised surfaces |
+| `bg.overlay`  | `rgba(0,0,0,0.85)` | —          | Victory overlay, modals, dimming layers       |
 
 ### Accent — Solarpunk Spectrum
 
 Six accent colors spanning the full solarpunk world: solar tech blue, living vine green, bright leaf chartreuse, sky azure, sandy earth, and aqua tech glow. The solar blue (`assets/images/city.png` — sky, water, solar panels) and earth tones (`assets/images/splash-bg.png` — sandy hedge maze paths) were previously absent from the palette.
 
-| Token | Hex | Numeric | Use |
-|-------|-----|---------|-----|
-| `accent.vine` | `#3E7C3A` | `0x3E7C3A` | Primary interactive elements, CTA buttons |
-| `accent.vineHover` | `#4E9C46` | `0x4E9C46` | Hover state for vine elements |
-| `accent.solar` | `#4A92CC` | `0x4A92CC` | Info elements, accent buttons, tech UI |
-| `accent.leaf` | `#6CB84C` | `0x6CB84C` | Bright highlights, fresh/new indicators, health |
-| `accent.sky` | `#5CACD2` | `0x5CACD2` | Light blue accents, hover state for solar buttons |
-| `accent.earth` | `#C4A260` | `0xC4A260` | Sandy warmth, path colors, warm UI surfaces |
-| `accent.aqua` | `#50C8C8` | `0x50C8C8` | Fountain/tech glow, crystal highlights, special FX |
+| Token              | Hex       | Numeric    | Use                                                |
+| ------------------ | --------- | ---------- | -------------------------------------------------- |
+| `accent.vine`      | `#3E7C3A` | `0x3E7C3A` | Primary interactive elements, CTA buttons          |
+| `accent.vineHover` | `#4E9C46` | `0x4E9C46` | Hover state for vine elements                      |
+| `accent.solar`     | `#4A92CC` | `0x4A92CC` | Info elements, accent buttons, tech UI             |
+| `accent.leaf`      | `#6CB84C` | `0x6CB84C` | Bright highlights, fresh/new indicators, health    |
+| `accent.sky`       | `#5CACD2` | `0x5CACD2` | Light blue accents, hover state for solar buttons  |
+| `accent.earth`     | `#C4A260` | `0xC4A260` | Sandy warmth, path colors, warm UI surfaces        |
+| `accent.aqua`      | `#50C8C8` | `0x50C8C8` | Fountain/tech glow, crystal highlights, special FX |
 
 ### Surface — Warm Architecture
 
 Cream and stone tones inspired by the solarpunk buildings in `assets/images/city.png` (warm ivory facades with cream-colored domes and pillars).
 
-| Token | Hex | Numeric | Use |
-|-------|-----|---------|-----|
+| Token           | Hex       | Numeric    | Use                                              |
+| --------------- | --------- | ---------- | ------------------------------------------------ |
 | `surface.ivory` | `#ECE0C2` | `0xECE0C2` | Panel borders, input backgrounds, light surfaces |
-| `surface.stone` | `#D8D0BC` | `0xD8D0BC` | Architecture panels, info surfaces, warm cards |
+| `surface.stone` | `#D8D0BC` | `0xD8D0BC` | Architecture panels, info surfaces, warm cards   |
 
 ### Text — Warm Neutrals
 
 Warm-tinted grays that feel organic rather than terminal-cold.
 
-| Token | Hex | Use |
-|-------|-----|-----|
-| `text.primary` | `#FFFFFF` | Body text, button labels, HUD values |
+| Token            | Hex       | Use                                   |
+| ---------------- | --------- | ------------------------------------- |
+| `text.primary`   | `#FFFFFF` | Body text, button labels, HUD values  |
 | `text.secondary` | `#B0AEA0` | Descriptions, subtitles, muted labels |
-| `text.disabled` | `#5E5848` | Disabled buttons, unavailable options |
+| `text.disabled`  | `#5E5848` | Disabled buttons, unavailable options |
 
 ### Status — Semantic Colors
 
-| Token | Hex | Numeric | Use |
-|-------|-----|---------|-----|
-| `status.success` | `#44CC44` | `0x44CC44` | Ready, health full, cooldown ready |
+| Token            | Hex       | Numeric    | Use                                   |
+| ---------------- | --------- | ---------- | ------------------------------------- |
+| `status.success` | `#44CC44` | `0x44CC44` | Ready, health full, cooldown ready    |
 | `status.warning` | `#CCCC00` | `0xCCCC00` | Searching, recharging, low-time timer |
-| `status.danger` | `#CC3333` | `0xCC3333` | Errors, low health, defeat, cancel |
+| `status.danger`  | `#CC3333` | `0xCC3333` | Errors, low health, defeat, cancel    |
 
 ### Character Identity Colors
 
 These are stable role identity colors. They do not change.
 
-| Token | Hex | Numeric | Character | Sprite |
-|-------|-----|---------|-----------|--------|
+| Token        | Hex       | Numeric    | Character         | Sprite                            |
+| ------------ | --------- | ---------- | ----------------- | --------------------------------- |
 | `char.paran` | `#FFCC00` | `0xFFCC00` | Paran (The Force) | `client/public/sprites/paran.png` |
-| `char.faran` | `#FF4444` | `0xFF4444` | Faran (Guardian) | `client/public/sprites/faran.png` |
-| `char.baran` | `#44CC66` | `0x44CC66` | Baran (Guardian) | `client/public/sprites/baran.png` |
+| `char.faran` | `#FF4444` | `0xFF4444` | Faran (Guardian)  | `client/public/sprites/faran.png` |
+| `char.baran` | `#44CC66` | `0x44CC66` | Baran (Guardian)  | `client/public/sprites/baran.png` |
 
 ### Contrast Verification
 
-| Foreground | Background | Ratio | WCAG |
-|------------|------------|-------|------|
-| `gold.primary` (#D4A84A) | `bg.deep` (#101E14) | ~6.5:1 | AA |
-| `text.primary` (#FFFFFF) | `accent.vine` (#3E7C3A) | ~4.6:1 | AA |
-| `text.secondary` (#B0AEA0) | `bg.surface` (#172C1C) | ~5.5:1 | AA |
-| `gold.gleam` (#F2DA78) | `bg.deep` (#101E14) | ~10:1 | AAA |
+| Foreground                 | Background              | Ratio  | WCAG |
+| -------------------------- | ----------------------- | ------ | ---- |
+| `gold.primary` (#D4A84A)   | `bg.deep` (#101E14)     | ~6.5:1 | AA   |
+| `text.primary` (#FFFFFF)   | `accent.vine` (#3E7C3A) | ~4.6:1 | AA   |
+| `text.secondary` (#B0AEA0) | `bg.surface` (#172C1C)  | ~5.5:1 | AA   |
+| `gold.gleam` (#F2DA78)     | `bg.deep` (#101E14)     | ~10:1  | AAA  |
 
 ---
 
@@ -99,38 +99,38 @@ These are stable role identity colors. They do not change.
 
 ### Font Stack
 
-| Role | Font | Fallback | Use |
-|------|------|----------|-----|
-| Display | Engebrechtre Ex Bd | Georgia, serif | Game title, victory splash |
-| Heading | Engebrechtre Bd | Georgia, serif | Section titles, panel headers |
-| Body | monospace (system) | — | Stats, descriptions, lists |
-| UI | monospace (system) | — | Buttons, countdown, room codes |
+| Role    | Font               | Fallback       | Use                            |
+| ------- | ------------------ | -------------- | ------------------------------ |
+| Display | Engebrechtre Ex Bd | Georgia, serif | Game title, victory splash     |
+| Heading | Engebrechtre Bd    | Georgia, serif | Section titles, panel headers  |
+| Body    | monospace (system) | —              | Stats, descriptions, lists     |
+| UI      | monospace (system) | —              | Buttons, countdown, room codes |
 
 Font files: `assets/fonts/engebrechtre/` (8 OTF variants: Rg, Bd, Ex, Ex Bd + italics).
 Loaded via CSS `@font-face` in `index.html`, confirmed ready via `document.fonts.ready` in BootScene.
 
 ### Type Scale
 
-| Token | Size | Font | Use |
-|-------|------|------|-----|
-| `type.title` | 64px | Engebrechtre Ex Bd | Game title |
-| `type.splash` | 48px | Engebrechtre Ex Bd | Victory/Defeat, role banner |
-| `type.heading` | 28px | Engebrechtre Bd | Scene section titles |
-| `type.subheading` | 22px | Engebrechtre Bd | Menu buttons, stat headers |
-| `type.body` | 16px | monospace | Player lists, stat rows |
-| `type.caption` | 14px | monospace | Labels, role reminders |
-| `type.small` | 12px | monospace | Kill feed, ping, fine detail |
+| Token             | Size | Font               | Use                          |
+| ----------------- | ---- | ------------------ | ---------------------------- |
+| `type.title`      | 64px | Engebrechtre Ex Bd | Game title                   |
+| `type.splash`     | 48px | Engebrechtre Ex Bd | Victory/Defeat, role banner  |
+| `type.heading`    | 28px | Engebrechtre Bd    | Scene section titles         |
+| `type.subheading` | 22px | Engebrechtre Bd    | Menu buttons, stat headers   |
+| `type.body`       | 16px | monospace          | Player lists, stat rows      |
+| `type.caption`    | 14px | monospace          | Labels, role reminders       |
+| `type.small`      | 12px | monospace          | Kill feed, ping, fine detail |
 
 ### Text Style Presets
 
-| Preset | Color | Stroke | Thickness | Use |
-|--------|-------|--------|-----------|-----|
-| `hero` | gold.primary | bg.surface | 6px | Title, scene headers |
-| `heroHeading` | gold.primary | bg.surface | 3px | Section headings |
-| `splash` | white | #000000 | 6px | Role banner, fight countdown |
-| `hud` | white, bold | #000000 | 3px | Timer, health labels, HUD |
-| `clean` | white | none | 0 | Buttons, body text |
-| `muted` | text.secondary | none | 0 | Descriptions, subtitles |
+| Preset        | Color          | Stroke     | Thickness | Use                          |
+| ------------- | -------------- | ---------- | --------- | ---------------------------- |
+| `hero`        | gold.primary   | bg.surface | 6px       | Title, scene headers         |
+| `heroHeading` | gold.primary   | bg.surface | 3px       | Section headings             |
+| `splash`      | white          | #000000    | 6px       | Role banner, fight countdown |
+| `hud`         | white, bold    | #000000    | 3px       | Timer, health labels, HUD    |
+| `clean`       | white          | none       | 0         | Buttons, body text           |
+| `muted`       | text.secondary | none       | 0         | Descriptions, subtitles      |
 
 ---
 
@@ -138,16 +138,17 @@ Loaded via CSS `@font-face` in `index.html`, confirmed ready via `document.fonts
 
 These rules apply to all visual elements. The game renders at integer scale with no anti-aliasing.
 
-| Constraint | Value | Rationale |
-|------------|-------|-----------|
-| Tile/sprite size | 32x32 px | Standard pixel art game tile |
-| Max tileset colors | 16 | Keeps each map visually cohesive |
-| Max character colors | 5 | Clear silhouettes at native resolution |
-| Outline color | `0x000000` | Defines shape at small sizes |
-| Min text stroke | 2px | Readability over pixel art backgrounds |
-| Dither patterns | checker, stripe, scatter | Texture transitions without smooth gradients |
+| Constraint           | Value                    | Rationale                                    |
+| -------------------- | ------------------------ | -------------------------------------------- |
+| Tile/sprite size     | 32x32 px                 | Standard pixel art game tile                 |
+| Max tileset colors   | 16                       | Keeps each map visually cohesive             |
+| Max character colors | 5                        | Clear silhouettes at native resolution       |
+| Outline color        | `0x000000`               | Defines shape at small sizes                 |
+| Min text stroke      | 2px                      | Readability over pixel art backgrounds       |
+| Dither patterns      | checker, stripe, scatter | Texture transitions without smooth gradients |
 
 **Rules:**
+
 - **No anti-aliasing.** All sprites render at integer scale. Adjacent colors must differ by >10% luminance to read as distinct pixels.
 - **No smooth gradients.** Use hard color steps. The gold range (dark -> brass -> primary -> light -> gleam) is designed for stepped pixel shading, not CSS gradients.
 - **Black stroke on ALL text.** Every text element in the game uses 2-6px black stroke. Non-negotiable for readability over busy pixel art backgrounds.
@@ -163,20 +164,24 @@ Asset generator: `scripts/generate-assets.py` (Python 3 + PIL/Pillow).
 ### Buttons
 
 **Primary** (Ready, Return to Lobby, Create Room):
+
 - BG: `accent.vine` (#3E7C3A) | Hover: `accent.vineHover` (#4E9C46) | Active: #306828
 - Border: 2px `gold.brass` (#C49432) | Text: white, 22px monospace bold
 - Padding: 24h x 12v | Corners: sharp (0 radius — Streamline Moderne)
 
 **Secondary** (Join, Back):
+
 - BG: `bg.elevated` (#203828) | Hover: #2A4C2A
 - Border: 1px `accent.vine` | Text: white, 16px
 
 **Accent** (How to Play, info actions):
+
 - BG: `accent.solar` (#4A92CC) | Hover: `accent.sky` (#5CACD2)
 - Border: `gold.brass` — the signature Art Deco combo of blue + gold trim
 - Text: white, 20px
 
 **Danger** (Cancel, Leave):
+
 - BG: `status.danger` (#CC3333) | Hover: #DD4444 | Text: white bold
 
 **Disabled**: BG: `text.disabled` (#5E5848), text: `text.secondary` (#B0AEA0), no hover
@@ -188,6 +193,24 @@ Asset generator: `scripts/generate-assets.py` (Python 3 + PIL/Pillow).
 - Selected: 4px `status.success` border
 - Disabled: opacity 0.5
 - Padding: 12px
+
+### HUD Backdrops
+
+Semi-transparent floating panels used for HUD elements rendered over gameplay (timer cluster, minimap, volume controller). Codified in the `HudBackdrop` token in `designTokens.ts`.
+
+- **When to use:** Any floating HUD element that overlays the game arena and needs a readable background
+- **Token:** `HudBackdrop` from `client/src/ui/designTokens.ts`
+- **Fill:** black (`0x000000`) at 45% alpha
+- **Corners:** 6px rounded
+- **Border:** 1px `gold.brass` (`0xC49432`) at 60% alpha
+
+```typescript
+// Usage with Phaser Graphics:
+gfx.fillStyle(HudBackdrop.fill, HudBackdrop.fillAlpha);
+gfx.fillRoundedRect(x, y, w, h, HudBackdrop.radius);
+gfx.lineStyle(HudBackdrop.borderWidth, HudBackdrop.borderColor, HudBackdrop.borderAlpha);
+gfx.strokeRoundedRect(x, y, w, h, HudBackdrop.radius);
+```
 
 ### Health Bars
 
@@ -218,25 +241,25 @@ Asset generator: `scripts/generate-assets.py` (Python 3 + PIL/Pillow).
 
 ### Spacing Scale
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `space.xs` | 4px | Tight padding |
-| `space.sm` | 8px | Icon margins |
-| `space.md` | 12px | Panel padding, button vertical |
-| `space.lg` | 24px | Button horizontal, section gaps |
-| `space.xl` | 40px | Between sections |
-| `space.xxl` | 70px | Title to content |
+| Token       | Value | Use                             |
+| ----------- | ----- | ------------------------------- |
+| `space.xs`  | 4px   | Tight padding                   |
+| `space.sm`  | 8px   | Icon margins                    |
+| `space.md`  | 12px  | Panel padding, button vertical  |
+| `space.lg`  | 24px  | Button horizontal, section gaps |
+| `space.xl`  | 40px  | Between sections                |
+| `space.xxl` | 70px  | Title to content                |
 
 ### HUD Layout (800x600)
 
-| Element | Position | Anchor |
-|---------|----------|--------|
-| Role reminder | (10, 10) | Top-left |
-| Match timer | (400, 20) | Top-center |
-| Ping display | (780, 20) | Top-right |
-| Kill feed | (790, 60+) | Top-right stack |
-| Cooldown bar | (400, 538) | Center-bottom |
-| Health bars | (*, 575) | Bottom row |
+| Element       | Position   | Anchor          |
+| ------------- | ---------- | --------------- |
+| Role reminder | (10, 10)   | Top-left        |
+| Match timer   | (400, 20)  | Top-center      |
+| Ping display  | (780, 20)  | Top-right       |
+| Kill feed     | (790, 60+) | Top-right stack |
+| Cooldown bar  | (400, 538) | Center-bottom   |
+| Health bars   | (\*, 575)  | Bottom row      |
 
 ### Scene Conventions
 
@@ -309,12 +332,12 @@ Tile ID mapping: 1=floor, 2=ground, 3=wall (impassable), 4=heavy obstacle (3HP),
 
 All 25x19 tiles (800x608px), Tiled JSON format. Two layers: "Ground" (walkable floor) and "Walls" (collision + obstacles).
 
-| Map | File | Tileset | Theme |
-|-----|------|---------|-------|
-| Test Arena | `client/public/maps/test_arena.json` | solarpunk_ruins | Overgrown temple ruins |
-| Corridor Chaos | `client/public/maps/corridor_chaos.json` | solarpunk_living | Dense hedge maze |
-| Cross Fire | `client/public/maps/cross_fire.json` | solarpunk_tech | Solar tech facility |
-| Pillars | `client/public/maps/pillars.json` | solarpunk_mixed | Reclaimed urban zone |
+| Map            | File                                     | Tileset          | Theme                  |
+| -------------- | ---------------------------------------- | ---------------- | ---------------------- |
+| Test Arena     | `client/public/maps/test_arena.json`     | solarpunk_ruins  | Overgrown temple ruins |
+| Corridor Chaos | `client/public/maps/corridor_chaos.json` | solarpunk_living | Dense hedge maze       |
+| Cross Fire     | `client/public/maps/cross_fire.json`     | solarpunk_tech   | Solar tech facility    |
+| Pillars        | `client/public/maps/pillars.json`        | solarpunk_mixed  | Reclaimed urban zone   |
 
 ### Audio
 
@@ -325,6 +348,7 @@ All SFX are procedurally generated via jsfxr at runtime (defined in `client/src/
 ### Fonts
 
 **`assets/fonts/engebrechtre/`** — Engebrechtre Art Deco typeface. 8 OTF variants:
+
 - Regular (Rg), Bold (Bd), Extra Bold (Ex Bd), Extended (Ex)
 - Italic variants of each
 - Display use: Ex Bd for titles, Bd for headings
@@ -340,61 +364,61 @@ These document the target color palettes for when tilesets are updated to match 
 
 Warm weathered stone with moss growth and golden inlay details.
 
-| Element | Color | Hex |
-|---------|-------|-----|
-| Floor base | Warm weathered stone | #948C78 |
-| Floor highlight | Stone light | #A89E8A |
-| Floor moss | Moss spots | #486C34 |
-| Wall base | Dark stone | #524E44 |
-| Wall mortar | Mortar lines | #3E3A30 |
-| Wall vine | Vine growth | #306026 |
-| Heavy obstacle | Pillar base | #443E34 |
-| Heavy cap | Mossy top | #345828 |
-| Gold accent | Inlay detail | #C49432 |
+| Element         | Color                | Hex     |
+| --------------- | -------------------- | ------- |
+| Floor base      | Warm weathered stone | #948C78 |
+| Floor highlight | Stone light          | #A89E8A |
+| Floor moss      | Moss spots           | #486C34 |
+| Wall base       | Dark stone           | #524E44 |
+| Wall mortar     | Mortar lines         | #3E3A30 |
+| Wall vine       | Vine growth          | #306026 |
+| Heavy obstacle  | Pillar base          | #443E34 |
+| Heavy cap       | Mossy top            | #345828 |
+| Gold accent     | Inlay detail         | #C49432 |
 
 ### Living Target (corridor_chaos)
 
 Rich hedge greens matching the hedge maze reference (`assets/images/splash-bg.png`).
 
-| Element | Color | Hex |
-|---------|-------|-----|
-| Floor base | Grass | #689444 |
-| Floor light | Grass highlight | #80B050 |
-| Floor dirt | Dirt path | #C4A260 |
-| Wall base | Hedge dark | #304C20 |
-| Wall leaf | Leaf layer | #489038 |
-| Wall highlight | Leaf highlight | #68B050 |
-| Heavy obstacle | Thick log | #5C4024 |
-| Heavy bark | Bark texture | #48321C |
-| Path | Sandy path | #C0A060 |
+| Element        | Color           | Hex     |
+| -------------- | --------------- | ------- |
+| Floor base     | Grass           | #689444 |
+| Floor light    | Grass highlight | #80B050 |
+| Floor dirt     | Dirt path       | #C4A260 |
+| Wall base      | Hedge dark      | #304C20 |
+| Wall leaf      | Leaf layer      | #489038 |
+| Wall highlight | Leaf highlight  | #68B050 |
+| Heavy obstacle | Thick log       | #5C4024 |
+| Heavy bark     | Bark texture    | #48321C |
+| Path           | Sandy path      | #C0A060 |
 
 ### Tech Target (cross_fire)
 
 Solar-punk technology with blue crystal glow and panel grids.
 
-| Element | Color | Hex |
-|---------|-------|-----|
-| Floor base | Solar panel | #344052 |
-| Floor grid | Grid lines | #485466 |
-| Wall base | Crystal wall | #1C2E48 |
-| Wall crystal | Crystal formation | #346CA8 |
-| Wall glow | Crystal core | #6CBCF0 |
-| Heavy crystal | Full crystal | #3E78B4 |
-| Accent cyan | Tech glow | #40C0C0 |
-| Accent gold | Solar trim | #D4A84A |
+| Element       | Color             | Hex     |
+| ------------- | ----------------- | ------- |
+| Floor base    | Solar panel       | #344052 |
+| Floor grid    | Grid lines        | #485466 |
+| Wall base     | Crystal wall      | #1C2E48 |
+| Wall crystal  | Crystal formation | #346CA8 |
+| Wall glow     | Crystal core      | #6CBCF0 |
+| Heavy crystal | Full crystal      | #3E78B4 |
+| Accent cyan   | Tech glow         | #40C0C0 |
+| Accent gold   | Solar trim        | #D4A84A |
 
 ### Mixed Target (pillars)
 
 Warm brick walls with vine overlay and brass machinery details.
 
-| Element | Color | Hex |
-|---------|-------|-----|
-| Floor base | Cobblestone | #8C8676 |
-| Floor grass | Grass patches | #528234 |
-| Wall base | Brick | #5C362C |
-| Wall brick | Brick face | #683E32 |
-| Wall vine | Vine overlay | #387028 |
-| Heavy base | Machinery | #484844 |
-| Heavy vine | Vine on machine | #387028 |
-| Light base | Crate | #847048 |
-| Brass accent | Machinery trim | #C49432 |
+| Element      | Color           | Hex     |
+| ------------ | --------------- | ------- |
+| Floor base   | Cobblestone     | #8C8676 |
+| Floor grass  | Grass patches   | #528234 |
+| Wall base    | Brick           | #5C362C |
+| Wall brick   | Brick face      | #683E32 |
+| Wall vine    | Vine overlay    | #387028 |
+| Heavy base   | Machinery       | #484844 |
+| Heavy vine   | Vine on machine | #387028 |
+| Light base   | Crate           | #847048 |
+| Brass accent | Machinery trim  | #C49432 |

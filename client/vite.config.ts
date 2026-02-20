@@ -12,6 +12,11 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        editor: path.resolve(__dirname, 'editor/index.html'),
+        tileViewer: path.resolve(__dirname, 'tile-viewer/index.html'),
+      },
       output: {
         manualChunks: {
           phaser: ['phaser'],

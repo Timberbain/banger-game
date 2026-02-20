@@ -1,0 +1,159 @@
+{
+  "name": "paran",
+  "description": "Paran — 2-color Pac-Man with chomp, cardinal directions, and death sequence",
+  "width": 32,
+  "height": 32,
+  "layout": {
+    "type": "grid",
+    "columns": 4,
+    "rows": 3
+  },
+  "totalFrames": 11,
+  "emptyCells": [
+    [
+      2,
+      3
+    ]
+  ],
+  "displaySize": {
+    "width": 32,
+    "height": 32
+  },
+  "scale": 1.0,
+  "anchor": {
+    "x": 0.5,
+    "y": 0.5
+  },
+  "collision": {
+    "type": "circle",
+    "radius": 12
+  },
+  "palette": [
+    {
+      "role": "fill",
+      "hex": "#FFB570"
+    },
+    {
+      "role": "outline",
+      "hex": "#BA6156"
+    }
+  ],
+  "animations": {
+    "walk": {
+      "frames": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "frameRate": 8,
+      "loop": true,
+      "directions": [
+        "right",
+        "left",
+        "up",
+        "down"
+      ]
+    },
+    "idle": {
+      "frames": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          0
+        ]
+      ],
+      "frameRate": 3,
+      "loop": true,
+      "directions": [
+        "right",
+        "left",
+        "up",
+        "down"
+      ]
+    },
+    "shoot": {
+      "frames": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "frameRate": 3,
+      "loop": true,
+      "directions": [
+        "right",
+        "left",
+        "up",
+        "down"
+      ]
+    },
+    "death": {
+      "frames": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "frameRate": 8,
+      "loop": false,
+      "directions": [
+        "right",
+        "left",
+        "up",
+        "down"
+      ]
+    }
+  }
+}

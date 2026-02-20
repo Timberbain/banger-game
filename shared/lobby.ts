@@ -11,7 +11,7 @@ export const LOBBY_CONFIG = {
   COUNTDOWN_SECONDS: 3,
 };
 
-export const VALID_ROLES = ["paran", "faran", "baran"] as const;
+export const VALID_ROLES = ['paran', 'faran', 'baran'] as const;
 
 export const ROLE_LIMITS = {
   paran: 1,

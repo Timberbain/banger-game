@@ -1,26 +1,34 @@
 #!/usr/bin/env python3
 """
-Generate composite tileset PNGs and arena map JSONs for 3 themed arenas.
+Generate unified tileset PNG and arena map JSONs for 3 themed arenas.
 
 Produces:
-  - 3 composite tilesets (256x448, 8x14 grid of 32x32 tiles)
+  - 1 unified tileset (256x1408, 8x44 grid of 32x32 tiles, 352 total)
   - 3 map JSONs (50x38 tiles, 3 layers: Ground, WallFronts, Walls)
 
-Composite tileset layout (firstgid=1):
-  Rows 0-5 (IDs 1-48): Wall canopy auto-tiles (collision, indestructible)
-  Rows 6-11 (IDs 49-96): Wall front face auto-tiles (visual only)
-  Row 12 (IDs 97-104): Ground (97-100), Obstacle canopy (101-103), empty (104)
-  Row 13 (IDs 105-112): Decoration (105-108), Obstacle front (109-111), empty (112)
+Unified tileset layout (firstgid=1):
+  Rows  0-5  (IDs   1- 48): Hedge wall canopy auto-tiles
+  Rows  6-11 (IDs  49- 96): Hedge wall front faces
+  Rows 12-17 (IDs  97-144): Brick wall canopy auto-tiles
+  Rows 18-23 (IDs 145-192): Brick wall front faces
+  Rows 24-29 (IDs 193-240): Wood wall canopy auto-tiles
+  Rows 30-35 (IDs 241-288): Wood wall front faces
+  Row  36    (IDs 289-296): Rock obstacle full sprites (8 variants, 32x32)
+  Row  37    (IDs 297-304): (empty/reserved)
+  Row  38    (IDs 305-312): Hedge floor (4) + deco (4)
+  Row  39    (IDs 313-320): Brick floor (4) + deco (4)
+  Row  40    (IDs 321-328): Wood floor (4) + deco (4)
+  Row  41    (IDs 329-336): Plain color (6) + empty (2)
+  Rows 42-43 (IDs 337-352): Extra topdown floors (16)
 
 Auto-tiling:
   Uses 8-neighbor rules from tileset_reference.json applied to 16x32 reference
-  tilesets. Each 16x32 sprite is split into canopy (top 16px) and front face
-  (bottom 16px), both upscaled 2x to 32x32.
+  tilesets. Theme offset applied: resolved = spriteIndex + 1 + WALL_THEME_OFFSET[theme]
 
 Pseudo-3D depth:
   3 tile layers render bottom-to-top: Ground -> WallFronts -> Walls.
-  Front face tiles are placed one row below the wall, creating a south-facing
-  pseudo-3D effect. Canopies naturally occlude front faces from the row above.
+  Front face tiles placed one row below wall canopy, creating south-facing 3D effect.
+  Rocks use full 32x32 single-tile sprites (no front face).
 
 Arena themes:
   - Hedge Garden: open corridors, scattered hedge clusters, Paran-favoring
@@ -37,6 +45,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 ASSETS_DIR = os.path.join(PROJECT_ROOT, "assets", "tilesets")
 WALLS_DIR = os.path.join(ASSETS_DIR, "walls")
+OBSTACLES_DIR = os.path.join(ASSETS_DIR, "obstacles")
 TILESETS_DIR = os.path.join(PROJECT_ROOT, "client", "public", "tilesets")
 MAPS_DIR = os.path.join(PROJECT_ROOT, "client", "public", "maps")
 
@@ -49,21 +58,34 @@ MAP_W = 50
 MAP_H = 38
 
 # Layout sentinel: walls are marked with this during layout, then auto-tiled
-WALL_ID = -1  # Sentinel resolved to auto-tile IDs 1-48 after layout
+WALL_ID = -1  # Sentinel resolved to themed auto-tile IDs after layout
 
-# Final tile IDs in map data (firstgid=1, 0=empty)
-GROUND_IDS = [97, 98, 99, 100]
-HEAVY_ID = 101
-MEDIUM_ID = 102
-LIGHT_ID = 103
-DECO_IDS = [105, 106, 107, 108]
-
-# Obstacle canopy set for neighbor detection during auto-tiling
-OBSTACLE_IDS = {HEAVY_ID, MEDIUM_ID, LIGHT_ID}
+# Theme offsets (canopy tile ID = spriteIndex + 1 + offset)
+THEME_OFFSETS = {'hedge': 0, 'brick': 96, 'wood': 192}
 
 # Front face offsets
 WALL_FRONT_OFFSET = 48    # wall front ID = canopy ID + 48
-OBSTACLE_FRONT_OFFSET = 8  # obstacle front ID = canopy ID + 8
+ROCK_FRONT_OFFSET = 8     # rock front ID = canopy ID + 8
+
+# Rock canopy IDs (289-296)
+ROCK_CANOPY_MIN = 289
+ROCK_CANOPY_MAX = 296
+
+# Rock tier mapping: {rock_id: hp}
+ROCK_TIER_HP = {
+    289: 5, 290: 5, 291: 5,   # Heavy
+    292: 3, 293: 3, 294: 3,   # Medium
+    295: 2, 296: 2,            # Light
+}
+
+# Rock selection per tier for variety across maps
+HEAVY_ROCKS = [289, 290, 291]
+MEDIUM_ROCKS = [292, 293, 294]
+LIGHT_ROCKS = [295, 296]
+
+# Obstacle canopy set for neighbor detection during auto-tiling
+OBSTACLE_IDS = set(range(ROCK_CANOPY_MIN, ROCK_CANOPY_MAX + 1))
+
 
 # ============================================================
 # Tile extraction helpers
@@ -111,12 +133,18 @@ def apply_opacity(img, factor):
 # ============================================================
 
 def load_source_images():
-    """Load ground atlas and reference wall tilesets."""
+    """Load ground atlas, reference wall tilesets, and rock obstacle images."""
     ground = Image.open(os.path.join(ASSETS_DIR, "32x32 topdown tileset Spreadsheet V1-1.png"))
     hedge = Image.open(os.path.join(WALLS_DIR, "hedge_tileset.png"))
     brick = Image.open(os.path.join(WALLS_DIR, "brick_tileset.png"))
     wood = Image.open(os.path.join(WALLS_DIR, "wood_tileset.png"))
-    return ground, hedge, brick, wood
+
+    rocks = []
+    for i in range(1, 9):
+        rock_path = os.path.join(OBSTACLES_DIR, f"Rock{i}_3.png")
+        rocks.append(Image.open(rock_path).convert("RGBA"))
+
+    return ground, hedge, brick, wood, rocks
 
 
 def load_autotile_rules():
@@ -128,97 +156,113 @@ def load_autotile_rules():
 
 
 # ============================================================
-# Composite tileset generation
+# Unified tileset generation
 # ============================================================
 
-def create_composite_tileset(ref_img, ground_tiles, deco_tiles, output_path, theme_name):
+def create_unified_tileset(hedge_img, brick_img, wood_img, ground_img, rocks, output_path):
     """
-    Create a 256x448 composite tileset (8 cols x 14 rows of 32x32 tiles).
-
-    ref_img: 128x192 reference tileset (8 cols x 6 rows of 16x32 sprites)
-    ground_tiles: list of 4 PIL Image tiles (32x32)
-    deco_tiles: list of 4 PIL Image tiles (32x32)
+    Create a 256x1408 unified tileset (8 cols x 44 rows of 32x32 tiles).
+    Contains all 3 wall themes, 8 rock variants, themed floors, plain colors, extra floors.
     """
-    composite = Image.new("RGBA", (8 * TILE, 14 * TILE), (0, 0, 0, 0))
+    composite = Image.new("RGBA", (8 * TILE, 44 * TILE), (0, 0, 0, 0))
 
-    # Extract all 48 sprites, split into canopy+front, upscale to 32x32
-    canopies = []
-    fronts = []
-    for i in range(48):
-        sprite = extract_sprite_16x32(ref_img, i)
-        canopy, front = split_sprite(sprite)
-        canopies.append(upscale_2x(canopy))
-        fronts.append(upscale_2x(front))
-
-    # Rows 0-5: canopy auto-tiles (IDs 1-48)
-    for i in range(48):
-        col = i % 8
-        row = i // 8
-        composite.paste(canopies[i], (col * TILE, row * TILE))
-
-    # Rows 6-11: front face auto-tiles (IDs 49-96)
-    for i in range(48):
-        col = i % 8
-        row = 6 + i // 8
-        composite.paste(fronts[i], (col * TILE, row * TILE))
-
-    # Row 12, cols 0-3: ground tiles (IDs 97-100)
-    for i, tile in enumerate(ground_tiles[:4]):
-        composite.paste(tile, (i * TILE, 12 * TILE))
-
-    # Row 12, cols 4-6: obstacle canopies (IDs 101-103) Heavy/Medium/Light
-    # Use isolated_single sprite (index 0) canopy with opacity tinting
-    obstacle_canopy = canopies[0]
-    for j, opacity in enumerate([1.0, 0.8, 0.6]):
-        tinted = apply_opacity(obstacle_canopy, opacity)
-        composite.paste(tinted, ((4 + j) * TILE, 12 * TILE))
-
-    # Row 13, cols 0-3: decoration tiles (IDs 105-108)
-    for i, tile in enumerate(deco_tiles[:4]):
-        composite.paste(tile, (i * TILE, 13 * TILE))
-
-    # Row 13, cols 4-6: obstacle front faces (IDs 109-111) Heavy/Medium/Light
-    obstacle_front = fronts[0]
-    for j, opacity in enumerate([1.0, 0.8, 0.6]):
-        tinted = apply_opacity(obstacle_front, opacity)
-        composite.paste(tinted, ((4 + j) * TILE, 13 * TILE))
-
-    composite.save(output_path)
-    print(f"  Created {output_path} ({composite.size[0]}x{composite.size[1]}, {theme_name} theme)")
-
-
-def generate_all_tilesets(ground_img, hedge_img, brick_img, wood_img):
-    """Generate all 3 composite tilesets."""
-
-    themes = {
+    # Theme configs: ground tile coords and deco tile coords from the topdown atlas
+    theme_configs = {
         'hedge': {
             'ref': hedge_img,
+            'row_offset': 0,   # Rows 0-5 canopy, 6-11 front
             'ground': [(0, 0), (1, 0), (0, 1), (3, 1)],
             'deco': [(4, 0), (5, 0), (4, 1), (5, 1)],
-            'output': 'arena_hedge.png',
+            'floor_row': 38,   # Row 38: IDs 305-312
         },
         'brick': {
             'ref': brick_img,
+            'row_offset': 12,  # Rows 12-17 canopy, 18-23 front
             'ground': [(6, 2), (6, 3), (7, 2), (7, 3)],
             'deco': [(5, 2), (5, 3), (4, 2), (4, 3)],
-            'output': 'arena_brick.png',
+            'floor_row': 39,   # Row 39: IDs 313-320
         },
         'wood': {
             'ref': wood_img,
+            'row_offset': 24,  # Rows 24-29 canopy, 30-35 front
             'ground': [(2, 0), (3, 0), (4, 0), (5, 0)],
             'deco': [(6, 0), (7, 0), (6, 1), (7, 1)],
-            'output': 'arena_wood.png',
+            'floor_row': 40,   # Row 40: IDs 321-328
         },
     }
 
-    for theme_name, cfg in themes.items():
+    # Generate wall tiles for each theme
+    for theme_name, cfg in theme_configs.items():
+        ref_img = cfg['ref']
+        canopy_start_row = cfg['row_offset']
+        front_start_row = cfg['row_offset'] + 6
+
+        # Extract all 48 sprites, split into canopy+front, upscale to 32x32
+        canopies = []
+        fronts = []
+        for i in range(48):
+            sprite = extract_sprite_16x32(ref_img, i)
+            canopy, front = split_sprite(sprite)
+            canopies.append(upscale_2x(canopy))
+            fronts.append(upscale_2x(front))
+
+        # Canopy rows
+        for i in range(48):
+            col = i % 8
+            row = canopy_start_row + i // 8
+            composite.paste(canopies[i], (col * TILE, row * TILE))
+
+        # Front face rows
+        for i in range(48):
+            col = i % 8
+            row = front_start_row + i // 8
+            composite.paste(fronts[i], (col * TILE, row * TILE))
+
+        # Floor + deco tiles
+        floor_row = cfg['floor_row']
         ground_tiles = [extract_tile_32(ground_img, c, r) for c, r in cfg['ground']]
         deco_tiles = [extract_tile_32(ground_img, c, r) for c, r in cfg['deco']]
-        create_composite_tileset(
-            cfg['ref'], ground_tiles, deco_tiles,
-            os.path.join(TILESETS_DIR, cfg['output']),
-            theme_name
-        )
+
+        for i, tile in enumerate(ground_tiles[:4]):
+            composite.paste(tile, (i * TILE, floor_row * TILE))
+        for i, tile in enumerate(deco_tiles[:4]):
+            composite.paste(tile, ((4 + i) * TILE, floor_row * TILE))
+
+    # Row 36: Rock full sprites (8 variants, IDs 289-296)
+    for i, rock in enumerate(rocks):
+        # Paste full 32x32 rock sprite directly (no split/upscale)
+        composite.paste(rock, (i * TILE, 36 * TILE))
+
+    # Row 37: (empty/reserved, IDs 297-304)
+
+    # Row 41: Plain color fills (6 colors + 2 empty)
+    plain_colors = [
+        (60, 60, 60, 255),      # dark gray
+        (120, 120, 120, 255),   # light gray
+        (100, 70, 40, 255),     # brown
+        (180, 160, 120, 255),   # tan
+        (50, 100, 50, 255),     # green
+        (50, 80, 130, 255),     # blue
+    ]
+    for i, color in enumerate(plain_colors):
+        plain_tile = Image.new("RGBA", (TILE, TILE), color)
+        composite.paste(plain_tile, (i * TILE, 41 * TILE))
+
+    # Rows 42-43: Extra topdown floor tiles (16 tiles, IDs 337-352)
+    extra_floor_coords = [
+        # Row 42: 8 tiles
+        (0, 2), (1, 2), (2, 2), (3, 2), (0, 3), (1, 3), (2, 3), (3, 3),
+        # Row 43: 8 tiles
+        (8, 0), (9, 0), (8, 1), (9, 1), (10, 0), (11, 0), (10, 1), (11, 1),
+    ]
+    for i, (c, r) in enumerate(extra_floor_coords):
+        tile = extract_tile_32(ground_img, c, r)
+        col = i % 8
+        row = 42 + i // 8
+        composite.paste(tile, (col * TILE, row * TILE))
+
+    composite.save(output_path)
+    print(f"  Created {output_path} ({composite.size[0]}x{composite.size[1]}, unified tileset)")
 
 
 # ============================================================
@@ -248,10 +292,10 @@ def get_neighbor_state(data, w, h, x, y):
     return neighbors
 
 
-def resolve_autotile(data, w, h, rules):
+def resolve_autotile(data, w, h, rules, theme_offset):
     """
-    Two-pass auto-tiling: compute all tile resolutions from original neighbor state,
-    then apply. This avoids order-dependent issues from raster scan.
+    Two-pass auto-tiling with theme offset.
+    Resolves wall sentinels (-1) to themed canopy IDs.
     """
     resolutions = {}  # (x, y) -> canopy_id
 
@@ -263,7 +307,7 @@ def resolve_autotile(data, w, h, rules):
             neighbors = get_neighbor_state(data, w, h, x, y)
 
             # Evaluate rules in order, first match wins
-            canopy_id = 1  # default: isolated_single (sprite 0 -> ID 1)
+            canopy_id = 1 + theme_offset  # default: isolated_single
             for rule in rules:
                 rule_match = True
                 for dir_name, required in rule['neighbors'].items():
@@ -271,7 +315,7 @@ def resolve_autotile(data, w, h, rules):
                         rule_match = False
                         break
                 if rule_match:
-                    canopy_id = rule['spriteIndex'] + 1  # firstgid=1
+                    canopy_id = rule['spriteIndex'] + 1 + theme_offset
                     break
 
             resolutions[(x, y)] = canopy_id
@@ -281,12 +325,17 @@ def resolve_autotile(data, w, h, rules):
         data[y * w + x] = canopy_id
 
 
-def generate_front_faces(walls_data, w, h):
+def generate_front_faces(walls_data, w, h, theme_offset):
     """
     Generate WallFronts layer from Walls layer.
     For each solid tile, place front face at (x, y+1) if y+1 is empty.
+    Handles themed wall ranges and rock range.
     """
     fronts_data = [0] * (w * h)
+
+    # Wall canopy range for this theme
+    wall_min = 1 + theme_offset
+    wall_max = 48 + theme_offset
 
     for y in range(h):
         for x in range(w):
@@ -301,13 +350,10 @@ def generate_front_faces(walls_data, w, h):
             if below != 0:
                 continue  # occluded by canopy below
 
-            # Determine front face ID
-            if 1 <= tile <= 48:
-                # Wall auto-tile -> front face
+            # Determine front face ID (walls only; rocks are full single-tile sprites)
+            if wall_min <= tile <= wall_max:
+                # Wall auto-tile -> themed front face
                 fronts_data[(y + 1) * w + x] = tile + WALL_FRONT_OFFSET
-            elif tile in OBSTACLE_IDS:
-                # Obstacle -> front face
-                fronts_data[(y + 1) * w + x] = tile + OBSTACLE_FRONT_OFFSET
 
     return fronts_data
 
@@ -316,26 +362,40 @@ def generate_front_faces(walls_data, w, h):
 # Map generation helpers
 # ============================================================
 
-def make_ground_layer(width, height, seed=42):
-    """Generate ground layer with weighted random distribution of ground tile IDs + decorations."""
+def make_ground_layer(width, height, theme, seed=42):
+    """Generate ground layer with theme-specific floor and deco tile IDs."""
+    # Theme-specific tile IDs
+    floor_ids = {
+        'hedge': [305, 306, 307, 308],
+        'brick': [313, 314, 315, 316],
+        'wood': [321, 322, 323, 324],
+    }
+    deco_ids = {
+        'hedge': [309, 310, 311, 312],
+        'brick': [317, 318, 319, 320],
+        'wood': [325, 326, 327, 328],
+    }
+    floors = floor_ids[theme]
+    decos = deco_ids[theme]
+
     rng = random.Random(seed)
     data = []
     for _ in range(width * height):
         r = rng.random()
         if r < 0.60:
-            data.append(GROUND_IDS[0])   # 60% primary
+            data.append(floors[0])   # 60% primary
         elif r < 0.80:
-            data.append(GROUND_IDS[1])   # 20% secondary
+            data.append(floors[1])   # 20% secondary
         elif r < 0.90:
-            data.append(GROUND_IDS[2])   # 10% tertiary
+            data.append(floors[2])   # 10% tertiary
         elif r < 0.95:
-            data.append(GROUND_IDS[3])   # 5% quaternary
+            data.append(floors[3])   # 5% quaternary
         else:
-            data.append(rng.choice(DECO_IDS))  # 5% decoration
+            data.append(rng.choice(decos))  # 5% decoration
     return data
 
 
-def make_walls_layer(width, height, layout_fn):
+def make_walls_layer(width, height, layout_fn, theme, rock_choices):
     """Generate walls layer: perimeter walls + interior layout from layout function."""
     data = [0] * (width * height)
 
@@ -348,7 +408,7 @@ def make_walls_layer(width, height, layout_fn):
         data[y * width + (width - 1)] = WALL_ID   # Right col
 
     # Interior layout from theme-specific function
-    layout_fn(data, width, height)
+    layout_fn(data, width, height, rock_choices)
 
     return data
 
@@ -377,14 +437,18 @@ def fill_vline(data, w, h, x, y1, y2, tile_id):
 
 
 # ============================================================
-# Theme-specific map layouts
+# Theme-specific map layouts (use rock_choices for obstacle variety)
 # ============================================================
 
-def layout_hedge_garden(data, w, h):
+def layout_hedge_garden(data, w, h, rc):
     """
     Hedge Garden: Open garden with scattered hedge clusters, 2 long corridors,
     large central clearing, obstacle clusters in corners. Favors Paran speed runs.
     """
+    HEAVY = rc['heavy']
+    MEDIUM = rc['medium']
+    LIGHT = rc['light']
+
     # North-South corridor walls (left third, col 12-13)
     fill_vline(data, w, h, 12, 2, 14, WALL_ID)
     fill_vline(data, w, h, 13, 2, 14, WALL_ID)
@@ -398,58 +462,62 @@ def layout_hedge_garden(data, w, h):
     fill_hline(data, w, h, 30, 47, 18, WALL_ID)
 
     # Corner hedge clusters - top-left
-    fill_rect(data, w, h, 3, 3, 6, 6, HEAVY_ID)
-    fill_rect(data, w, h, 3, 8, 5, 10, MEDIUM_ID)
-    fill_rect(data, w, h, 8, 3, 10, 5, MEDIUM_ID)
+    fill_rect(data, w, h, 3, 3, 6, 6, HEAVY)
+    fill_rect(data, w, h, 3, 8, 5, 10, MEDIUM)
+    fill_rect(data, w, h, 8, 3, 10, 5, MEDIUM)
 
     # Corner hedge clusters - top-right
-    fill_rect(data, w, h, 43, 3, 46, 6, HEAVY_ID)
-    fill_rect(data, w, h, 43, 8, 45, 10, MEDIUM_ID)
-    fill_rect(data, w, h, 39, 3, 41, 5, MEDIUM_ID)
+    fill_rect(data, w, h, 43, 3, 46, 6, HEAVY)
+    fill_rect(data, w, h, 43, 8, 45, 10, MEDIUM)
+    fill_rect(data, w, h, 39, 3, 41, 5, MEDIUM)
 
     # Corner hedge clusters - bottom-left
-    fill_rect(data, w, h, 3, 31, 6, 34, HEAVY_ID)
-    fill_rect(data, w, h, 3, 27, 5, 29, MEDIUM_ID)
-    fill_rect(data, w, h, 8, 32, 10, 34, MEDIUM_ID)
+    fill_rect(data, w, h, 3, 31, 6, 34, HEAVY)
+    fill_rect(data, w, h, 3, 27, 5, 29, MEDIUM)
+    fill_rect(data, w, h, 8, 32, 10, 34, MEDIUM)
 
     # Corner hedge clusters - bottom-right
-    fill_rect(data, w, h, 43, 31, 46, 34, HEAVY_ID)
-    fill_rect(data, w, h, 43, 27, 45, 29, MEDIUM_ID)
-    fill_rect(data, w, h, 39, 32, 41, 34, MEDIUM_ID)
+    fill_rect(data, w, h, 43, 31, 46, 34, HEAVY)
+    fill_rect(data, w, h, 43, 27, 45, 29, MEDIUM)
+    fill_rect(data, w, h, 39, 32, 41, 34, MEDIUM)
 
     # Scattered light obstacles at corridor entrances
-    set_tile(data, w, 11, 15, LIGHT_ID)
-    set_tile(data, w, 14, 15, LIGHT_ID)
-    set_tile(data, w, 11, 22, LIGHT_ID)
-    set_tile(data, w, 14, 22, LIGHT_ID)
-    set_tile(data, w, 19, 16, LIGHT_ID)
-    set_tile(data, w, 29, 16, LIGHT_ID)
-    set_tile(data, w, 19, 19, LIGHT_ID)
-    set_tile(data, w, 29, 19, LIGHT_ID)
+    set_tile(data, w, 11, 15, LIGHT)
+    set_tile(data, w, 14, 15, LIGHT)
+    set_tile(data, w, 11, 22, LIGHT)
+    set_tile(data, w, 14, 22, LIGHT)
+    set_tile(data, w, 19, 16, LIGHT)
+    set_tile(data, w, 29, 16, LIGHT)
+    set_tile(data, w, 19, 19, LIGHT)
+    set_tile(data, w, 29, 19, LIGHT)
 
     # Small wall segments to create interesting angles (right third)
     fill_rect(data, w, h, 35, 8, 37, 8, WALL_ID)
     fill_rect(data, w, h, 35, 29, 37, 29, WALL_ID)
 
     # Medium obstacles near center for some cover
-    fill_rect(data, w, h, 22, 10, 23, 11, MEDIUM_ID)
-    fill_rect(data, w, h, 26, 10, 27, 11, MEDIUM_ID)
-    fill_rect(data, w, h, 22, 26, 23, 27, MEDIUM_ID)
-    fill_rect(data, w, h, 26, 26, 27, 27, MEDIUM_ID)
+    fill_rect(data, w, h, 22, 10, 23, 11, MEDIUM)
+    fill_rect(data, w, h, 26, 10, 27, 11, MEDIUM)
+    fill_rect(data, w, h, 22, 26, 23, 27, MEDIUM)
+    fill_rect(data, w, h, 26, 26, 27, 27, MEDIUM)
 
     # Light obstacles scattered in open areas for minor cover
-    set_tile(data, w, 17, 7, LIGHT_ID)
-    set_tile(data, w, 32, 7, LIGHT_ID)
-    set_tile(data, w, 17, 30, LIGHT_ID)
-    set_tile(data, w, 32, 30, LIGHT_ID)
-    set_tile(data, w, 24, 19, LIGHT_ID)
+    set_tile(data, w, 17, 7, LIGHT)
+    set_tile(data, w, 32, 7, LIGHT)
+    set_tile(data, w, 17, 30, LIGHT)
+    set_tile(data, w, 32, 30, LIGHT)
+    set_tile(data, w, 24, 19, LIGHT)
 
 
-def layout_brick_fortress(data, w, h):
+def layout_brick_fortress(data, w, h, rc):
     """
     Brick Fortress: Fortress layout with thick wall segments forming rooms/chambers,
     narrow doorways between areas, more walls than open space. Favors guardian positioning.
     """
+    HEAVY = rc['heavy']
+    MEDIUM = rc['medium']
+    LIGHT = rc['light']
+
     # Central chamber walls (rectangle from ~18-31 x 14-23)
     fill_hline(data, w, h, 18, 31, 14, WALL_ID)
     fill_hline(data, w, h, 18, 31, 15, WALL_ID)
@@ -499,47 +567,51 @@ def layout_brick_fortress(data, w, h):
     fill_rect(data, w, h, 34, 30, 35, 32, 0)
 
     # Heavy obstacles at doorways of central chamber
-    set_tile(data, w, 22, 13, HEAVY_ID)
-    set_tile(data, w, 27, 13, HEAVY_ID)
-    set_tile(data, w, 22, 24, HEAVY_ID)
-    set_tile(data, w, 27, 24, HEAVY_ID)
-    set_tile(data, w, 17, 17, HEAVY_ID)
-    set_tile(data, w, 17, 20, HEAVY_ID)
-    set_tile(data, w, 32, 17, HEAVY_ID)
-    set_tile(data, w, 32, 20, HEAVY_ID)
+    set_tile(data, w, 22, 13, HEAVY)
+    set_tile(data, w, 27, 13, HEAVY)
+    set_tile(data, w, 22, 24, HEAVY)
+    set_tile(data, w, 27, 24, HEAVY)
+    set_tile(data, w, 17, 17, HEAVY)
+    set_tile(data, w, 17, 20, HEAVY)
+    set_tile(data, w, 32, 17, HEAVY)
+    set_tile(data, w, 32, 20, HEAVY)
 
     # Medium obstacles inside rooms for cover
-    fill_rect(data, w, h, 5, 4, 6, 5, MEDIUM_ID)
-    fill_rect(data, w, h, 10, 7, 11, 8, MEDIUM_ID)
-    fill_rect(data, w, h, 43, 4, 44, 5, MEDIUM_ID)
-    fill_rect(data, w, h, 38, 7, 39, 8, MEDIUM_ID)
-    fill_rect(data, w, h, 5, 32, 6, 33, MEDIUM_ID)
-    fill_rect(data, w, h, 10, 29, 11, 30, MEDIUM_ID)
-    fill_rect(data, w, h, 43, 32, 44, 33, MEDIUM_ID)
-    fill_rect(data, w, h, 38, 29, 39, 30, MEDIUM_ID)
+    fill_rect(data, w, h, 5, 4, 6, 5, MEDIUM)
+    fill_rect(data, w, h, 10, 7, 11, 8, MEDIUM)
+    fill_rect(data, w, h, 43, 4, 44, 5, MEDIUM)
+    fill_rect(data, w, h, 38, 7, 39, 8, MEDIUM)
+    fill_rect(data, w, h, 5, 32, 6, 33, MEDIUM)
+    fill_rect(data, w, h, 10, 29, 11, 30, MEDIUM)
+    fill_rect(data, w, h, 43, 32, 44, 33, MEDIUM)
+    fill_rect(data, w, h, 38, 29, 39, 30, MEDIUM)
 
     # Light obstacles in corridor transitions
-    set_tile(data, w, 16, 6, LIGHT_ID)
-    set_tile(data, w, 33, 6, LIGHT_ID)
-    set_tile(data, w, 16, 31, LIGHT_ID)
-    set_tile(data, w, 33, 31, LIGHT_ID)
+    set_tile(data, w, 16, 6, LIGHT)
+    set_tile(data, w, 33, 6, LIGHT)
+    set_tile(data, w, 16, 31, LIGHT)
+    set_tile(data, w, 33, 31, LIGHT)
 
     # Small wall stubs in corridors for tactical cover
     fill_rect(data, w, h, 24, 3, 25, 5, WALL_ID)
     fill_rect(data, w, h, 24, 32, 25, 34, WALL_ID)
 
     # Light obstacles inside central chamber
-    set_tile(data, w, 23, 17, LIGHT_ID)
-    set_tile(data, w, 26, 17, LIGHT_ID)
-    set_tile(data, w, 23, 20, LIGHT_ID)
-    set_tile(data, w, 26, 20, LIGHT_ID)
+    set_tile(data, w, 23, 17, LIGHT)
+    set_tile(data, w, 26, 17, LIGHT)
+    set_tile(data, w, 23, 20, LIGHT)
+    set_tile(data, w, 26, 20, LIGHT)
 
 
-def layout_timber_yard(data, w, h):
+def layout_timber_yard(data, w, h, rc):
     """
     Timber Yard: Symmetric arena with wooden barriers in cross/X pattern,
     medium-width paths, balanced mix of open and closed areas.
     """
+    HEAVY = rc['heavy']
+    MEDIUM = rc['medium']
+    LIGHT = rc['light']
+
     cx, cy = w // 2, h // 2  # 25, 19
 
     # Vertical spine (center column, with gaps)
@@ -583,73 +655,77 @@ def layout_timber_yard(data, w, h):
         set_tile(data, w, 41 - i, 32 - i, WALL_ID)
 
     # Heavy obstacles near center (4 pillars around center)
-    fill_rect(data, w, h, cx - 4, cy - 4, cx - 3, cy - 3, HEAVY_ID)
-    fill_rect(data, w, h, cx + 2, cy - 4, cx + 3, cy - 3, HEAVY_ID)
-    fill_rect(data, w, h, cx - 4, cy + 2, cx - 3, cy + 3, HEAVY_ID)
-    fill_rect(data, w, h, cx + 2, cy + 2, cx + 3, cy + 3, HEAVY_ID)
+    fill_rect(data, w, h, cx - 4, cy - 4, cx - 3, cy - 3, HEAVY)
+    fill_rect(data, w, h, cx + 2, cy - 4, cx + 3, cy - 3, HEAVY)
+    fill_rect(data, w, h, cx - 4, cy + 2, cx - 3, cy + 3, HEAVY)
+    fill_rect(data, w, h, cx + 2, cy + 2, cx + 3, cy + 3, HEAVY)
 
     # Medium obstacles at quadrant interiors
-    fill_rect(data, w, h, 5, 5, 6, 6, MEDIUM_ID)
-    fill_rect(data, w, h, 4, 13, 5, 14, MEDIUM_ID)
-    fill_rect(data, w, h, 43, 5, 44, 6, MEDIUM_ID)
-    fill_rect(data, w, h, 44, 13, 45, 14, MEDIUM_ID)
-    fill_rect(data, w, h, 5, 31, 6, 32, MEDIUM_ID)
-    fill_rect(data, w, h, 4, 23, 5, 24, MEDIUM_ID)
-    fill_rect(data, w, h, 43, 31, 44, 32, MEDIUM_ID)
-    fill_rect(data, w, h, 44, 23, 45, 24, MEDIUM_ID)
+    fill_rect(data, w, h, 5, 5, 6, 6, MEDIUM)
+    fill_rect(data, w, h, 4, 13, 5, 14, MEDIUM)
+    fill_rect(data, w, h, 43, 5, 44, 6, MEDIUM)
+    fill_rect(data, w, h, 44, 13, 45, 14, MEDIUM)
+    fill_rect(data, w, h, 5, 31, 6, 32, MEDIUM)
+    fill_rect(data, w, h, 4, 23, 5, 24, MEDIUM)
+    fill_rect(data, w, h, 43, 31, 44, 32, MEDIUM)
+    fill_rect(data, w, h, 44, 23, 45, 24, MEDIUM)
 
     # Light obstacles at corridor gap entrances
-    set_tile(data, w, cx - 2, 8, LIGHT_ID)
-    set_tile(data, w, cx + 1, 8, LIGHT_ID)
-    set_tile(data, w, cx - 2, 29, LIGHT_ID)
-    set_tile(data, w, cx + 1, 29, LIGHT_ID)
-    set_tile(data, w, 9, cy - 2, LIGHT_ID)
-    set_tile(data, w, 9, cy + 1, LIGHT_ID)
-    set_tile(data, w, 40, cy - 2, LIGHT_ID)
-    set_tile(data, w, 40, cy + 1, LIGHT_ID)
+    set_tile(data, w, cx - 2, 8, LIGHT)
+    set_tile(data, w, cx + 1, 8, LIGHT)
+    set_tile(data, w, cx - 2, 29, LIGHT)
+    set_tile(data, w, cx + 1, 29, LIGHT)
+    set_tile(data, w, 9, cy - 2, LIGHT)
+    set_tile(data, w, 9, cy + 1, LIGHT)
+    set_tile(data, w, 40, cy - 2, LIGHT)
+    set_tile(data, w, 40, cy + 1, LIGHT)
 
     # Destructible barriers at spine gaps (can be broken through)
-    set_tile(data, w, cx - 1, 8, MEDIUM_ID)
-    set_tile(data, w, cx, 8, MEDIUM_ID)
-    set_tile(data, w, cx - 1, 29, MEDIUM_ID)
-    set_tile(data, w, cx, 29, MEDIUM_ID)
-    set_tile(data, w, 9, cy - 1, MEDIUM_ID)
-    set_tile(data, w, 9, cy, MEDIUM_ID)
-    set_tile(data, w, 40, cy - 1, MEDIUM_ID)
-    set_tile(data, w, 40, cy, MEDIUM_ID)
+    set_tile(data, w, cx - 1, 8, MEDIUM)
+    set_tile(data, w, cx, 8, MEDIUM)
+    set_tile(data, w, cx - 1, 29, MEDIUM)
+    set_tile(data, w, cx, 29, MEDIUM)
+    set_tile(data, w, 9, cy - 1, MEDIUM)
+    set_tile(data, w, 9, cy, MEDIUM)
+    set_tile(data, w, 40, cy - 1, MEDIUM)
+    set_tile(data, w, 40, cy, MEDIUM)
 
     # Light obstacles in open quadrant areas for minor cover
-    set_tile(data, w, 15, 6, LIGHT_ID)
-    set_tile(data, w, 34, 6, LIGHT_ID)
-    set_tile(data, w, 15, 31, LIGHT_ID)
-    set_tile(data, w, 34, 31, LIGHT_ID)
+    set_tile(data, w, 15, 6, LIGHT)
+    set_tile(data, w, 34, 6, LIGHT)
+    set_tile(data, w, 15, 31, LIGHT)
+    set_tile(data, w, 34, 31, LIGHT)
 
 
 # ============================================================
 # Map JSON generation
 # ============================================================
 
-def generate_map_json(theme_name, tileset_name, tileset_image, layout_fn, output_path, rules, seed=42):
-    """Generate a 3-layer Tiled-compatible map JSON file."""
-    # Generate raw walls layer (with sentinels for walls, direct IDs for obstacles)
-    walls_data = make_walls_layer(MAP_W, MAP_H, layout_fn)
+def generate_map_json(theme, layout_fn, output_path, rules, seed=42, rock_seed=1):
+    """Generate a 3-layer Tiled-compatible map JSON file with unified tileset."""
+    theme_offset = THEME_OFFSETS[theme]
 
-    # Auto-tile: resolve wall sentinels (-1) to canopy IDs (1-48)
-    resolve_autotile(walls_data, MAP_W, MAP_H, rules)
+    # Choose rock variants for this map (different per map for variety)
+    rng = random.Random(rock_seed)
+    rock_choices = {
+        'heavy': rng.choice(HEAVY_ROCKS),
+        'medium': rng.choice(MEDIUM_ROCKS),
+        'light': rng.choice(LIGHT_ROCKS),
+    }
+
+    # Generate raw walls layer (with sentinels for walls, rock IDs for obstacles)
+    walls_data = make_walls_layer(MAP_W, MAP_H, layout_fn, theme, rock_choices)
+
+    # Auto-tile: resolve wall sentinels (-1) to themed canopy IDs
+    resolve_autotile(walls_data, MAP_W, MAP_H, rules, theme_offset)
 
     # Generate front faces layer from resolved walls
-    fronts_data = generate_front_faces(walls_data, MAP_W, MAP_H)
+    fronts_data = generate_front_faces(walls_data, MAP_W, MAP_H, theme_offset)
 
-    # Generate ground layer
-    ground_data = make_ground_layer(MAP_W, MAP_H, seed=seed)
+    # Generate ground layer with theme-specific floor tiles
+    ground_data = make_ground_layer(MAP_W, MAP_H, theme, seed=seed)
 
-    # Under walls and front faces, use primary ground tile for clean look
-    for i in range(len(walls_data)):
-        if walls_data[i] != 0:
-            ground_data[i] = GROUND_IDS[0]
-    for i in range(len(fronts_data)):
-        if fronts_data[i] != 0:
-            ground_data[i] = GROUND_IDS[0]
+    # Ground terrain shows through transparent parts of wall/rock sprites
 
     map_json = {
         "compressionlevel": -1,
@@ -669,13 +745,13 @@ def generate_map_json(theme_name, tileset_name, tileset_image, layout_fn, output
             {
                 "firstgid": 1,
                 "columns": 8,
-                "image": f"../tilesets/{tileset_image}",
+                "image": "../tilesets/arena_unified.png",
                 "imagewidth": 256,
-                "imageheight": 448,
+                "imageheight": 1408,
                 "margin": 0,
-                "name": tileset_name,
+                "name": "arena_unified",
                 "spacing": 0,
-                "tilecount": 112,
+                "tilecount": 352,
                 "tilewidth": TILE,
                 "tileheight": TILE
             }
@@ -724,11 +800,14 @@ def generate_map_json(theme_name, tileset_name, tileset_image, layout_fn, output
         json.dump(map_json, f, indent=2)
 
     # Count tiles for stats
-    wall_count = sum(1 for t in walls_data if 1 <= t <= 48)
+    wall_min = 1 + theme_offset
+    wall_max = 48 + theme_offset
+    wall_count = sum(1 for t in walls_data if wall_min <= t <= wall_max)
     obstacle_count = sum(1 for t in walls_data if t in OBSTACLE_IDS)
     front_count = sum(1 for t in fronts_data if t != 0)
     empty_count = sum(1 for t in walls_data if t == 0)
     print(f"  Created {output_path} ({MAP_W}x{MAP_H}, walls={wall_count}, obstacles={obstacle_count}, fronts={front_count}, open={empty_count})")
+    print(f"    Rock choices: heavy={rock_choices['heavy']}, medium={rock_choices['medium']}, light={rock_choices['light']}")
 
 
 def verify_no_sealed_rooms(data, w, h):
@@ -778,8 +857,14 @@ def verify_no_sealed_rooms(data, w, h):
 # ============================================================
 
 def _is_solid_for_spawn(tile_id):
-    """Check if a tile is solid (wall auto-tile 1-48 or obstacle 101-103)."""
-    return (1 <= tile_id <= 48) or tile_id in OBSTACLE_IDS
+    """Check if a tile is solid (themed wall canopy or rock obstacle)."""
+    # All 3 wall theme ranges
+    if (1 <= tile_id <= 48) or (97 <= tile_id <= 144) or (193 <= tile_id <= 240):
+        return True
+    # Rock obstacles
+    if ROCK_CANOPY_MIN <= tile_id <= ROCK_CANOPY_MAX:
+        return True
+    return False
 
 
 def find_safe_spawn(data, w, h, region, buffer=1):
@@ -820,8 +905,6 @@ def validate_spawns():
     """
     Validate spawn positions for all maps. For each map, checks that known
     spawn coordinates land on open ground with 1-tile buffer clearance.
-
-    Also searches each region to confirm safe spawns exist.
     """
     # Per-map spawn points (pixel coords) and their expected tile positions
     map_spawns = {
@@ -891,41 +974,42 @@ def validate_spawns():
 # ============================================================
 
 if __name__ == "__main__":
-    print("Generating arena assets...")
+    print("Generating arena assets (unified tileset)...")
     print()
 
     print("[1/3] Loading source images + auto-tile rules...")
-    ground_img, hedge_img, brick_img, wood_img = load_source_images()
+    ground_img, hedge_img, brick_img, wood_img, rocks = load_source_images()
     rules = load_autotile_rules()
     print(f"  Ground atlas: {ground_img.size}")
     print(f"  Hedge ref: {hedge_img.size}, Brick ref: {brick_img.size}, Wood ref: {wood_img.size}")
+    print(f"  Rock images: {len(rocks)} loaded (32x32 each)")
     print(f"  Auto-tile rules: {len(rules)} rules loaded")
 
     print()
-    print("[2/3] Generating composite tilesets (256x448, 8x14 grid)...")
+    print("[2/3] Generating unified tileset (256x1408, 8x44 grid)...")
     print()
-    generate_all_tilesets(ground_img, hedge_img, brick_img, wood_img)
+    create_unified_tileset(
+        hedge_img, brick_img, wood_img, ground_img, rocks,
+        os.path.join(TILESETS_DIR, "arena_unified.png")
+    )
 
     print()
     print("[3/3] Generating 3-layer map JSONs (Ground + WallFronts + Walls)...")
     print()
     generate_map_json(
-        "hedge_garden", "arena_hedge", "arena_hedge.png",
-        layout_hedge_garden,
+        "hedge", layout_hedge_garden,
         os.path.join(MAPS_DIR, "hedge_garden.json"),
-        rules, seed=100
+        rules, seed=100, rock_seed=10
     )
     generate_map_json(
-        "brick_fortress", "arena_brick", "arena_brick.png",
-        layout_brick_fortress,
+        "brick", layout_brick_fortress,
         os.path.join(MAPS_DIR, "brick_fortress.json"),
-        rules, seed=200
+        rules, seed=200, rock_seed=20
     )
     generate_map_json(
-        "timber_yard", "arena_wood", "arena_wood.png",
-        layout_timber_yard,
+        "wood", layout_timber_yard,
         os.path.join(MAPS_DIR, "timber_yard.json"),
-        rules, seed=300
+        rules, seed=300, rock_seed=30
     )
 
     print()
@@ -934,7 +1018,7 @@ if __name__ == "__main__":
         map_path = os.path.join(MAPS_DIR, f"{map_name}.json")
         with open(map_path) as f:
             d = json.load(f)
-        # Walls layer is now the 3rd layer (index 2)
+        # Walls layer is the 3rd layer (index 2)
         walls = d["layers"][2]["data"]
         ok = verify_no_sealed_rooms(walls, MAP_W, MAP_H)
         print(f"  {map_name}: {'PASS - all areas reachable' if ok else 'FAIL - sealed rooms found'}")
@@ -942,30 +1026,6 @@ if __name__ == "__main__":
     print()
     print("  --- Validating spawn positions ---")
     validate_spawns()
-
-    print()
-    print("  --- Embedding collision shapes ---")
-    collision_map = {
-        "hedge_garden": "arena_hedge_collision.json",
-        "brick_fortress": "arena_brick_collision.json",
-        "timber_yard": "arena_wood_collision.json",
-    }
-    for map_name, coll_file in collision_map.items():
-        coll_path = os.path.join(TILESETS_DIR, coll_file)
-        map_path = os.path.join(MAPS_DIR, f"{map_name}.json")
-        if os.path.exists(coll_path):
-            with open(coll_path) as f:
-                coll_data = json.load(f)
-            with open(map_path) as f:
-                map_json = json.load(f)
-            if "properties" not in map_json["tilesets"][0]:
-                map_json["tilesets"][0]["properties"] = {}
-            map_json["tilesets"][0]["properties"]["collisionShapes"] = coll_data
-            with open(map_path, "w") as f:
-                json.dump(map_json, f, indent=2)
-            print(f"  {map_name}: embedded {len(coll_data)} collision shapes")
-        else:
-            print(f"  {map_name}: collision file not found ({coll_file}), skipping")
 
     print()
     print("All arena assets generated successfully!")

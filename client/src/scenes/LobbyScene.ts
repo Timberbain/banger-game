@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Client, Room } from 'colyseus.js';
-import { LOBBY_CONFIG, VALID_ROLES } from '../../../shared/lobby';
-import { CHARACTERS } from '../../../shared/characters';
+import { LOBBY_CONFIG } from '../../../shared/lobby';
+import { CHARACTERS, CHARACTER_DISPLAY } from '../../../shared/characters';
 import { AudioManager } from '../systems/AudioManager';
 import {
   Colors,
@@ -10,9 +10,11 @@ import {
   Panels,
   Decorative,
   Spacing,
+  StatBar,
   charColor,
   charColorNum,
 } from '../ui/designTokens';
+import { createLayeredButton } from '../ui/createLayeredButton';
 
 export class LobbyScene extends Phaser.Scene {
   private client!: Client;
@@ -20,11 +22,16 @@ export class LobbyScene extends Phaser.Scene {
   private currentView: 'menu' | 'lobby' = 'menu';
   private playerName: string = 'Player';
   private selectedRole: string | null = null;
+  private matchmakingSelectedRole: string | null = null;
 
   // UI elements storage for cleanup
   private uiElements: Phaser.GameObjects.GameObject[] = [];
   private htmlInput: HTMLInputElement | null = null;
   private characterPanelUpdaters: (() => void)[] = [];
+
+  // Controls tooltip
+  private tooltipElements: Phaser.GameObjects.GameObject[] = [];
+  private tooltipVisible: boolean = false;
 
   // Audio
   private audioManager: AudioManager | null = null;
@@ -248,6 +255,7 @@ export class LobbyScene extends Phaser.Scene {
   private showMainMenu() {
     this.clearUI();
     this.selectedRole = null;
+    this.matchmakingSelectedRole = null;
     sessionStorage.removeItem('bangerLobbyRoom');
     this.currentView = 'menu';
 
@@ -264,44 +272,6 @@ export class LobbyScene extends Phaser.Scene {
     // Dark overlay for readability
     const overlay = this.add.rectangle(cx, cy, w, h, Colors.bg.deepNum, Colors.bg.overlayAlpha);
     this.uiElements.push(overlay);
-
-    // Subtle vine decorations (scaled to new resolution)
-    // const vineGfx = this.add.graphics();
-    // vineGfx.lineStyle(
-    //   Decorative.vine.thickness,
-    //   Decorative.vine.color,
-    //   Decorative.vine.alpha,
-    // );
-    // vineGfx.beginPath();
-    // vineGfx.moveTo(40, 100);
-    // vineGfx.lineTo(55, 220);
-    // vineGfx.lineTo(35, 340);
-    // vineGfx.lineTo(60, 460);
-    // vineGfx.lineTo(40, 580);
-    // vineGfx.strokePath();
-    // vineGfx.beginPath();
-    // vineGfx.moveTo(w - 40, 100);
-    // vineGfx.lineTo(w - 55, 220);
-    // vineGfx.lineTo(w - 35, 340);
-    // vineGfx.lineTo(w - 60, 460);
-    // vineGfx.lineTo(w - 40, 580);
-    // vineGfx.strokePath();
-    // // Small golden solar dots
-    // vineGfx.fillStyle(
-    //   Decorative.solarDots.color,
-    //   Decorative.solarDots.alphaMin,
-    // );
-    // for (let i = 0; i < 15; i++) {
-    //   vineGfx.fillCircle(
-    //     Phaser.Math.Between(80, w - 80),
-    //     Phaser.Math.Between(80, h - 80),
-    //     Phaser.Math.FloatBetween(
-    //       Decorative.solarDots.radiusMin,
-    //       Decorative.solarDots.radiusMax,
-    //     ),
-    //   );
-    // }
-    // this.uiElements.push(vineGfx);
 
     // Title -- golden with green stroke
     const title = this.add
@@ -324,59 +294,42 @@ export class LobbyScene extends Phaser.Scene {
     lineGfx.lineBetween(cx - 200, 175, cx + 200, 175);
     this.uiElements.push(lineGfx);
 
-    // Menu buttons -- using design token button presets
+    // Menu buttons -- 3 options with layered depth
     const menuItems = [
       {
         text: 'Create Private Room',
-        preset: Buttons.primary,
-        y: 260,
+        bgNum: Colors.accent.vineNum,
+        hoverNum: Colors.accent.vineHoverNum,
+        y: 280,
         handler: () => this.createPrivateRoom(),
       },
       {
         text: 'Join Private Room',
-        preset: Buttons.primary,
-        y: 340,
+        bgNum: Colors.accent.vineNum,
+        hoverNum: Colors.accent.vineHoverNum,
+        y: 370,
         handler: () => this.showJoinInput(),
       },
       {
         text: 'Find Match',
-        preset: Buttons.accent,
-        y: 420,
+        bgNum: Colors.accent.solarNum,
+        hoverNum: Colors.accent.skyNum,
+        y: 460,
         handler: () => this.showRoleSelectForMatchmaking(),
-      },
-      {
-        text: 'How to Play',
-        preset: Buttons.secondary,
-        y: 500,
-        handler: () => this.scene.start('HelpScene'),
       },
     ];
 
     menuItems.forEach((btn) => {
-      const button = this.add
-        .text(cx, btn.y, btn.text, {
-          fontSize: btn.preset.fontSize,
-          color: btn.preset.text,
-          fontFamily: 'monospace',
-          fontStyle: 'bold',
-          backgroundColor: btn.preset.bg,
-          padding: { x: Spacing.lg, y: Spacing.md },
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
-
-      button.on('pointerover', () => {
-        button.setBackgroundColor(btn.preset.hover);
+      const handle = createLayeredButton(this, cx, btn.y, btn.text, {
+        size: 'lg',
+        bgNum: btn.bgNum,
+        hoverNum: btn.hoverNum,
+        onClick: () => {
+          if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+          btn.handler();
+        },
       });
-      button.on('pointerout', () => {
-        button.setBackgroundColor(btn.preset.bg);
-      });
-      button.on('pointerdown', () => {
-        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
-        btn.handler();
-      });
-
-      this.uiElements.push(button);
+      handle.elements.forEach((el) => this.uiElements.push(el));
     });
 
     // Volume controls at bottom of menu
@@ -466,52 +419,35 @@ export class LobbyScene extends Phaser.Scene {
 
     this.htmlInput.focus();
 
-    // Join button -- primary preset
-    const joinButton = this.add
-      .text(cx, 440, 'Join', {
-        fontSize: Buttons.primary.fontSize,
-        color: Buttons.primary.text,
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        backgroundColor: Buttons.primary.bg,
-        padding: { x: 32, y: 12 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    joinButton.on('pointerover', () => joinButton.setBackgroundColor(Buttons.primary.hover));
-    joinButton.on('pointerout', () => joinButton.setBackgroundColor(Buttons.primary.bg));
-    joinButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
-      if (this.htmlInput) {
-        const code = this.htmlInput.value.trim().toUpperCase();
-        if (code.length === LOBBY_CONFIG.ROOM_CODE_LENGTH) {
-          this.joinPrivateRoom(code);
+    // Join button -- primary layered
+    const joinHandle = createLayeredButton(this, cx, 440, 'Join', {
+      size: 'md',
+      bgNum: Buttons.primary.bgNum,
+      hoverNum: Buttons.primary.hoverNum,
+      onClick: () => {
+        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+        if (this.htmlInput) {
+          const code = this.htmlInput.value.trim().toUpperCase();
+          if (code.length === LOBBY_CONFIG.ROOM_CODE_LENGTH) {
+            this.joinPrivateRoom(code);
+          }
         }
-      }
+      },
     });
+    joinHandle.elements.forEach((el) => this.uiElements.push(el));
 
-    this.uiElements.push(joinButton);
-
-    // Back button -- secondary preset
-    const backButton = this.add
-      .text(cx, 520, 'Back', {
-        fontSize: Buttons.secondary.fontSize,
-        color: Colors.text.secondary,
-        fontFamily: 'monospace',
-        backgroundColor: Buttons.secondary.bg,
-        padding: { x: 20, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    backButton.on('pointerover', () => backButton.setBackgroundColor(Buttons.secondary.hover));
-    backButton.on('pointerout', () => backButton.setBackgroundColor(Buttons.secondary.bg));
-    backButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
-      this.showMainMenu();
+    // Back button -- secondary layered
+    const backHandle = createLayeredButton(this, cx, 520, 'Back', {
+      size: 'sm',
+      bgNum: Buttons.secondary.bgNum,
+      hoverNum: Buttons.secondary.hoverNum,
+      textColor: Colors.text.secondary,
+      onClick: () => {
+        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+        this.showMainMenu();
+      },
     });
-    this.uiElements.push(backButton);
+    backHandle.elements.forEach((el) => this.uiElements.push(el));
 
     // Enter key to submit
     this.input.keyboard?.once('keydown-ENTER', () => {
@@ -564,8 +500,11 @@ export class LobbyScene extends Phaser.Scene {
     }
   }
 
+  // ─── MATCHMAKING ─────────────────────────────────────
+
   private showRoleSelectForMatchmaking() {
     this.clearUI();
+    this.matchmakingSelectedRole = null;
 
     const cx = this.cameras.main.centerX;
 
@@ -574,68 +513,101 @@ export class LobbyScene extends Phaser.Scene {
 
     // Title
     const title = this.add
-      .text(cx, 180, 'Select Preferred Role', {
+      .text(cx, 65, 'SELECT YOUR ROLE', {
         ...TextStyle.heroHeading,
         fontFamily: 'monospace',
       })
       .setOrigin(0.5);
     this.uiElements.push(title);
 
-    // Role buttons -- use character colors from tokens
-    const roles = [
-      { role: 'paran', label: 'Paran (1v2)', y: 270 },
-      { role: 'faran', label: 'Faran (Guardian)', y: 360 },
-      { role: 'baran', label: 'Baran (Guardian)', y: 450 },
+    // Gold divider
+    const divGfx = this.add.graphics();
+    divGfx.lineStyle(
+      Decorative.divider.thickness,
+      Decorative.divider.color,
+      Decorative.divider.alpha,
+    );
+    divGfx.lineBetween(340, 88, 940, 88);
+    this.uiElements.push(divGfx);
+
+    // Team labels
+    this.addTeamLabels();
+
+    // ? button
+    this.addHelpButton();
+
+    // Character panels with local selection logic
+    const panelConfigs = [
+      { role: 'faran', cx: 240 },
+      { role: 'paran', cx: 640 },
+      { role: 'baran', cx: 1040 },
     ];
 
-    roles.forEach((r) => {
-      const roleColor = charColor(r.role);
-      const button = this.add
-        .text(cx, r.y, r.label, {
-          fontSize: '22px',
-          color: Colors.text.primary,
-          fontFamily: 'monospace',
-          fontStyle: 'bold',
-          backgroundColor: Colors.bg.elevated,
-          padding: { x: 28, y: 14 },
-          stroke: '#000000',
-          strokeThickness: 2,
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
+    const panelUpdaters: Array<() => void> = [];
 
-      // Gold left accent bar for each role
-      const accentBar = this.add.rectangle(cx - 120, r.y, 4, 40, charColorNum(r.role));
-      this.uiElements.push(accentBar);
+    // Queue button (accent style, initially disabled)
+    const queueHandle = createLayeredButton(this, 1060, 650, 'Select role', {
+      size: 'md',
+      bgNum: Buttons.disabled.bgNum,
+      hoverNum: Buttons.disabled.hoverNum,
+      textColor: Buttons.disabled.text,
+      onClick: () => {
+        if (this.matchmakingSelectedRole) {
+          if (this.audioManager) this.audioManager.playWAVSFX('select_2');
+          this.joinMatchmaking(this.matchmakingSelectedRole);
+        }
+      },
+    });
+    queueHandle.elements.forEach((el) => this.uiElements.push(el));
 
-      button.on('pointerover', () => button.setBackgroundColor(Buttons.secondary.hover));
-      button.on('pointerout', () => button.setBackgroundColor(Colors.bg.elevated));
-      button.on('pointerdown', () => {
+    const updateQueueButton = () => {
+      if (this.matchmakingSelectedRole) {
+        const roleName =
+          this.matchmakingSelectedRole.charAt(0).toUpperCase() +
+          this.matchmakingSelectedRole.slice(1);
+        queueHandle.setText(`Queue as ${roleName}`);
+        queueHandle.setStyle(Buttons.accent.bgNum, Buttons.accent.hoverNum, Buttons.accent.text);
+        queueHandle.face.setInteractive({ useHandCursor: true });
+      } else {
+        queueHandle.setText('Select role');
+        queueHandle.setStyle(
+          Buttons.disabled.bgNum,
+          Buttons.disabled.hoverNum,
+          Buttons.disabled.text,
+        );
+      }
+    };
+
+    panelConfigs.forEach((cfg) => {
+      const result = this.createCharacterPanel(cfg.role, cfg.cx, () => {
         if (this.audioManager) this.audioManager.playWAVSFX('select_1');
-        this.joinMatchmaking(r.role);
+        this.matchmakingSelectedRole = this.matchmakingSelectedRole === cfg.role ? null : cfg.role;
+        panelUpdaters.forEach((fn) => fn());
+        updateQueueButton();
       });
-      this.uiElements.push(button);
+
+      result.elements.forEach((el) => this.uiElements.push(el));
+
+      panelUpdaters.push(() => {
+        result.update(this.matchmakingSelectedRole === cfg.role, true);
+      });
     });
 
-    // Back button
-    const backButton = this.add
-      .text(cx, 580, 'Back', {
-        fontSize: Buttons.secondary.fontSize,
-        color: Colors.text.secondary,
-        fontFamily: 'monospace',
-        backgroundColor: Buttons.secondary.bg,
-        padding: { x: 20, y: 8 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+    // VS markers
+    this.addVsMarkers();
 
-    backButton.on('pointerover', () => backButton.setBackgroundColor(Buttons.secondary.hover));
-    backButton.on('pointerout', () => backButton.setBackgroundColor(Buttons.secondary.bg));
-    backButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
-      this.showMainMenu();
+    // Back button -- secondary layered
+    const backHandle = createLayeredButton(this, 160, 650, 'Back', {
+      size: 'sm',
+      bgNum: Buttons.secondary.bgNum,
+      hoverNum: Buttons.secondary.hoverNum,
+      textColor: Colors.text.secondary,
+      onClick: () => {
+        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+        this.showMainMenu();
+      },
     });
-    this.uiElements.push(backButton);
+    backHandle.elements.forEach((el) => this.uiElements.push(el));
   }
 
   private async joinMatchmaking(preferredRole: string) {
@@ -646,7 +618,27 @@ export class LobbyScene extends Phaser.Scene {
     // Background
     this.addSceneBg();
 
-    const statusText = this.addStatusText(cx, 330, 'Searching for match...', Colors.status.warning);
+    // Character sprite showing selected role
+    const roleSprite = this.add.sprite(cx, 230, preferredRole);
+    roleSprite.play(`${preferredRole}-idle`);
+    roleSprite.setScale(3);
+    this.uiElements.push(roleSprite);
+
+    // Role name
+    const roleName = preferredRole.charAt(0).toUpperCase() + preferredRole.slice(1);
+    const roleLabel = this.add
+      .text(cx, 290, `Queuing as ${roleName}`, {
+        fontSize: '18px',
+        color: charColor(preferredRole),
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(roleLabel);
+
+    const statusText = this.addStatusText(cx, 350, 'Searching for match...', Colors.status.warning);
 
     // Add spinner animation
     let dots = 0;
@@ -661,7 +653,7 @@ export class LobbyScene extends Phaser.Scene {
 
     // Queue size display
     const queueText = this.add
-      .text(cx, 380, '', {
+      .text(cx, 400, '', {
         fontSize: '16px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
@@ -671,30 +663,21 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.uiElements.push(queueText);
 
-    // Cancel button -- danger preset
-    const cancelButton = this.add
-      .text(cx, 480, 'Cancel', {
-        fontSize: Buttons.danger.fontSize,
-        color: Buttons.danger.text,
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        backgroundColor: Buttons.danger.bg,
-        padding: { x: 24, y: 10 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    cancelButton.on('pointerover', () => cancelButton.setBackgroundColor(Buttons.danger.hover));
-    cancelButton.on('pointerout', () => cancelButton.setBackgroundColor(Buttons.danger.bg));
-    cancelButton.on('pointerdown', () => {
-      spinnerInterval.destroy();
-      if (this.room) {
-        this.room.leave();
-        this.room = null;
-      }
-      this.showMainMenu();
+    // Cancel button -- danger layered
+    const cancelHandle = createLayeredButton(this, cx, 500, 'Cancel', {
+      size: 'md',
+      bgNum: Buttons.danger.bgNum,
+      hoverNum: Buttons.danger.hoverNum,
+      onClick: () => {
+        spinnerInterval.destroy();
+        if (this.room) {
+          this.room.leave();
+          this.room = null;
+        }
+        this.showMainMenu();
+      },
     });
-    this.uiElements.push(cancelButton);
+    cancelHandle.elements.forEach((el) => this.uiElements.push(el));
 
     try {
       // Join the matchmaking room (shared instance for all queuing players)
@@ -767,8 +750,9 @@ export class LobbyScene extends Phaser.Scene {
       );
 
       // Update cancel to also leave matchmaking room
-      cancelButton.removeAllListeners('pointerdown');
-      cancelButton.on('pointerdown', () => {
+      cancelHandle.face.removeAllListeners('pointerdown');
+      cancelHandle.face.on('pointerdown', () => {
+        cancelHandle.face.y = cancelHandle.face.y; // keep position
         spinnerInterval.destroy();
         matchmakingRoom.leave();
         this.showMainMenu();
@@ -782,6 +766,8 @@ export class LobbyScene extends Phaser.Scene {
     }
   }
 
+  // ─── LOBBY VIEW ──────────────────────────────────────
+
   private showLobbyView() {
     if (!this.room) return;
 
@@ -794,22 +780,22 @@ export class LobbyScene extends Phaser.Scene {
     // Solarpunk dark green background
     this.addSceneBg();
 
-    // Room code display -- use listener because state may not be synced yet
+    // Room code display -- left-aligned at top for private rooms
     let codeLabel: Phaser.GameObjects.Text | null = null;
 
     const updateRoomCode = (value: string) => {
       if (value && this.room?.state.isPrivate) {
         if (!codeLabel) {
           codeLabel = this.add
-            .text(cx, 45, `Room Code: ${value}`, {
-              fontSize: '28px',
+            .text(30, 30, `Room Code: ${value}`, {
+              fontSize: '22px',
               color: Colors.gold.primary,
               fontStyle: 'bold',
               fontFamily: 'monospace',
               stroke: '#000000',
               strokeThickness: 3,
             })
-            .setOrigin(0.5);
+            .setOrigin(0, 0);
           this.uiElements.push(codeLabel);
         } else {
           codeLabel.setText(`Room Code: ${value}`);
@@ -827,6 +813,31 @@ export class LobbyScene extends Phaser.Scene {
       updateRoomCode(value);
     });
 
+    // ? help button
+    this.addHelpButton();
+
+    // Title
+    const title = this.add
+      .text(cx, 65, 'SELECT YOUR ROLE', {
+        ...TextStyle.heroHeading,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(title);
+
+    // Gold divider
+    const divGfx = this.add.graphics();
+    divGfx.lineStyle(
+      Decorative.divider.thickness,
+      Decorative.divider.color,
+      Decorative.divider.alpha,
+    );
+    divGfx.lineBetween(340, 88, 940, 88);
+    this.uiElements.push(divGfx);
+
+    // Team labels
+    this.addTeamLabels();
+
     // Store lobby reconnection token for browser refresh recovery
     if (this.room.reconnectionToken) {
       sessionStorage.setItem(
@@ -839,27 +850,31 @@ export class LobbyScene extends Phaser.Scene {
       );
     }
 
-    // Character selection section
+    // Character selection section (Center Stage layout)
     this.createCharacterSelection();
 
-    // Player list
-    this.createPlayerList();
+    // VS markers
+    this.addVsMarkers();
 
-    // Ready button
-    this.createReadyButton();
+    // Player roster strip
+    this.createRosterStrip();
 
-    // Countdown display (initially hidden)
+    // Lobby buttons (Back + Ready)
+    this.createLobbyButtons();
+
+    // Countdown display (initially hidden) — centered overlay, large
     const countdownText = this.add
-      .text(cx, 150, '', {
-        fontSize: '64px',
+      .text(cx, 360, '', {
+        fontSize: '80px',
         color: Colors.gold.primary,
         fontFamily: 'monospace',
         fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 4,
+        strokeThickness: 6,
       })
       .setOrigin(0.5)
-      .setVisible(false);
+      .setVisible(false)
+      .setDepth(100);
     this.uiElements.push(countdownText);
 
     // Listen for countdown changes
@@ -867,6 +882,16 @@ export class LobbyScene extends Phaser.Scene {
       if (value > 0) {
         countdownText.setText(String(value));
         countdownText.setVisible(true);
+        // Scale pulse tween
+        countdownText.setScale(1);
+        this.tweens.add({
+          targets: countdownText,
+          scaleX: 1.3,
+          scaleY: 1.3,
+          duration: 200,
+          yoyo: true,
+          ease: 'Back.easeOut',
+        });
         // Audio: countdown beep
         if (this.audioManager) this.audioManager.playSFX('countdown_beep');
       } else {
@@ -877,7 +902,7 @@ export class LobbyScene extends Phaser.Scene {
     // Listen for role errors
     this.room.onMessage('roleError', (message: string) => {
       const errorText = this.add
-        .text(cx, 640, message, {
+        .text(cx, 610, message, {
           fontSize: '16px',
           color: Colors.status.danger,
           fontFamily: 'monospace',
@@ -931,99 +956,28 @@ export class LobbyScene extends Phaser.Scene {
   private createCharacterSelection() {
     if (!this.room) return;
 
-    const cx = this.cameras.main.centerX;
-
     // Clear updater array for fresh character panel registration
     this.characterPanelUpdaters = [];
 
-    const titleY = this.room.state.isPrivate ? 110 : 75;
-    const title = this.add
-      .text(cx, titleY, 'Select Character', {
-        ...TextStyle.heroHeading,
-        fontFamily: 'monospace',
-      })
-      .setOrigin(0.5);
-    this.uiElements.push(title);
-
-    // Character panels -- space evenly across wider screen
-    const panelY = titleY + 100;
-    const spacing = 240;
-    const startX = cx - spacing;
-
-    const characters = [
-      { role: 'paran', name: 'Paran', desc: 'Force - 150HP' },
-      { role: 'faran', name: 'Faran', desc: 'Guardian - 50HP' },
-      { role: 'baran', name: 'Baran', desc: 'Guardian - 50HP' },
+    const panelConfigs = [
+      { role: 'faran', cx: 240 },
+      { role: 'paran', cx: 640 },
+      { role: 'baran', cx: 1040 },
     ];
 
-    characters.forEach((char, index) => {
-      const x = startX + index * spacing;
-
-      // Character panel background -- using Panels.card preset
-      const panel = this.add.rectangle(x, panelY, 160, 130, Panels.card.bg);
-      panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
-      panel.setInteractive({ useHandCursor: true });
-      this.uiElements.push(panel);
-
-      // Character sprite (idle animation) instead of colored square
-      const sprite = this.add.sprite(x, panelY - 15, char.role);
-      sprite.play(`${char.role}-idle`);
-      sprite.setScale(2);
-      this.uiElements.push(sprite);
-
-      // Character name -- role-colored with stroke
-      const nameText = this.add
-        .text(x, panelY + 30, char.name, {
-          fontSize: '16px',
-          color: charColor(char.role),
-          fontFamily: 'monospace',
-          fontStyle: 'bold',
-          stroke: '#000000',
-          strokeThickness: 2,
-        })
-        .setOrigin(0.5);
-      this.uiElements.push(nameText);
-
-      // Character description
-      const descText = this.add
-        .text(x, panelY + 50, char.desc, {
-          fontSize: '12px',
-          color: Colors.text.secondary,
-          fontFamily: 'monospace',
-        })
-        .setOrigin(0.5);
-      this.uiElements.push(descText);
-
-      // Click handler
-      panel.on('pointerdown', () => {
-        if (this.isRoleAvailable(char.role)) {
+    panelConfigs.forEach((cfg) => {
+      const result = this.createCharacterPanel(cfg.role, cfg.cx, () => {
+        if (this.isRoleAvailable(cfg.role)) {
           if (this.audioManager) this.audioManager.playWAVSFX('select_1');
-          this.selectRole(char.role);
+          this.selectRole(cfg.role);
         }
       });
 
+      result.elements.forEach((el) => this.uiElements.push(el));
+
       // Update panel appearance based on selection and availability
       const updatePanel = () => {
-        const isSelected = this.selectedRole === char.role;
-        const isAvailable = this.isRoleAvailable(char.role);
-
-        if (isSelected) {
-          panel.setStrokeStyle(Panels.card.selectedWidth, Panels.card.selectedBorder);
-        } else if (!isAvailable) {
-          panel.setAlpha(Panels.card.disabledAlpha);
-          sprite.setAlpha(Panels.card.disabledAlpha);
-          nameText.setAlpha(Panels.card.disabledAlpha);
-          descText.setAlpha(Panels.card.disabledAlpha);
-          panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
-          panel.disableInteractive();
-        } else {
-          panel.setAlpha(1);
-          sprite.setAlpha(1);
-          nameText.setAlpha(1);
-          descText.setAlpha(1);
-          panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
-          panel.setInteractive({ useHandCursor: true });
-        }
+        result.update(this.selectedRole === cfg.role, this.isRoleAvailable(cfg.role));
       };
 
       // Register this panel's updater for optimistic UI updates
@@ -1033,14 +987,11 @@ export class LobbyScene extends Phaser.Scene {
       if (this.room) {
         this.room.state.players.onAdd((player: any) => {
           updatePanel();
-          // Register onChange on NEWLY ADDED players too
           player.onChange(() => updatePanel());
         });
-        // Register on existing players
         this.room.state.players.forEach((player: any) => {
           player.onChange(() => updatePanel());
         });
-        // Also listen for removals (role becomes available again)
         this.room.state.players.onRemove(() => updatePanel());
       }
 
@@ -1048,85 +999,172 @@ export class LobbyScene extends Phaser.Scene {
     });
   }
 
-  private createPlayerList() {
+  private createRosterStrip() {
     if (!this.room) return;
 
-    const cx = this.cameras.main.centerX;
+    // Background strip
+    const stripBg = this.add.rectangle(640, 558, 880, 45, Panels.card.bg);
+    stripBg.setStrokeStyle(2, Colors.accent.vineNum);
+    this.uiElements.push(stripBg);
 
-    const titleY = this.room.state.isPrivate ? 350 : 310;
-    const title = this.add
-      .text(cx, titleY, 'Players', {
-        ...TextStyle.heroHeading,
-        fontSize: '20px',
-        fontFamily: 'monospace',
-      })
-      .setOrigin(0.5);
-    this.uiElements.push(title);
+    // Fixed role slots
+    const slots: { role: string; x: number }[] = [
+      { role: 'faran', x: 330 },
+      { role: 'paran', x: 640 },
+      { role: 'baran', x: 950 },
+    ];
 
-    const listStartY = titleY + 40;
-    const playerTexts: Map<string, Phaser.GameObjects.Text> = new Map();
+    // Track slot text objects for rebuilding
+    const slotElements: Phaser.GameObjects.GameObject[] = [];
 
-    const updatePlayerList = () => {
-      // Clear existing player texts
-      playerTexts.forEach((text) => text.destroy());
-      playerTexts.clear();
+    const updateRoster = () => {
+      // Clear previous slot texts
+      slotElements.forEach((el) => {
+        if (el && (el as any).scene) el.destroy();
+      });
+      slotElements.length = 0;
 
-      // Create new player texts
-      let index = 0;
-      this.room!.state.players.forEach((player: any, sessionId: string) => {
-        const y = listStartY + index * 30;
-        const roleName = player.role
-          ? player.role.charAt(0).toUpperCase() + player.role.slice(1)
-          : 'Selecting...';
-        const readyIcon = player.ready ? '✓' : '○';
-        const readyColor = player.ready ? Colors.status.success : Colors.text.disabled;
-        const connectedStatus = player.connected ? '' : ' [DC]';
+      slots.forEach((slot) => {
+        const roleColor = charColor(slot.role);
+        const roleColorNum = charColorNum(slot.role);
+        const roleName = slot.role.charAt(0).toUpperCase() + slot.role.slice(1);
 
-        const text = this.add
-          .text(cx, y, `${player.name} - ${roleName} ${readyIcon}${connectedStatus}`, {
-            fontSize: '16px',
-            color: readyColor,
+        // Find the player who has this role
+        let playerName = '';
+        let isReady = false;
+        let isLocalPlayer = false;
+
+        this.room!.state.players.forEach((player: any, sessionId: string) => {
+          if (player.role === slot.role) {
+            playerName = player.name || 'Player';
+            isReady = player.ready;
+            isLocalPlayer = sessionId === this.room!.sessionId;
+          }
+        });
+
+        // Colored circle
+        const circle = this.add.graphics();
+        circle.fillStyle(roleColorNum, 1);
+        circle.fillCircle(slot.x - 80, 558, 6);
+        slotElements.push(circle);
+        this.uiElements.push(circle);
+
+        // Role name
+        const roleText = this.add
+          .text(slot.x - 68, 558, `${roleName}:`, {
+            fontSize: '13px',
+            color: roleColor,
             fontFamily: 'monospace',
+            fontStyle: 'bold',
             stroke: '#000000',
             strokeThickness: 2,
           })
-          .setOrigin(0.5);
+          .setOrigin(0, 0.5);
+        slotElements.push(roleText);
+        this.uiElements.push(roleText);
 
-        this.uiElements.push(text);
-        playerTexts.set(sessionId, text);
-        index++;
+        // Player name or waiting
+        if (playerName) {
+          const nameText = this.add
+            .text(slot.x + 2, 558, playerName, {
+              fontSize: '13px',
+              color: Colors.text.primary,
+              fontFamily: 'monospace',
+              stroke: '#000000',
+              strokeThickness: 2,
+            })
+            .setOrigin(0, 0.5);
+          slotElements.push(nameText);
+          this.uiElements.push(nameText);
+
+          // Ready indicator
+          const readyIcon = isReady ? ' \u2713' : ' \u25CB';
+          const readyColor = isReady ? Colors.status.success : Colors.text.disabled;
+          const readyText = this.add
+            .text(slot.x + 72, 558, readyIcon, {
+              fontSize: '14px',
+              color: readyColor,
+              fontFamily: 'monospace',
+              fontStyle: 'bold',
+              stroke: '#000000',
+              strokeThickness: 2,
+            })
+            .setOrigin(0, 0.5);
+          slotElements.push(readyText);
+          this.uiElements.push(readyText);
+        } else {
+          const waitText = this.add
+            .text(slot.x + 2, 558, '(waiting...)', {
+              fontSize: '13px',
+              color: Colors.text.disabled,
+              fontFamily: 'monospace',
+              stroke: '#000000',
+              strokeThickness: 2,
+            })
+            .setOrigin(0, 0.5);
+          slotElements.push(waitText);
+          this.uiElements.push(waitText);
+        }
+
+        // Subtle gold highlight for local player's slot
+        if (isLocalPlayer) {
+          const highlight = this.add.rectangle(slot.x, 558, 200, 35, Colors.gold.primaryNum, 0.08);
+          slotElements.push(highlight);
+          this.uiElements.push(highlight);
+        }
       });
     };
 
-    // Update on player add/remove
+    // Update on player changes
     this.room.state.players.onAdd((player: any) => {
-      updatePlayerList();
-      player.onChange(() => updatePlayerList());
+      updateRoster();
+      player.onChange(() => updateRoster());
     });
-    this.room.state.players.onRemove(() => updatePlayerList());
+    this.room.state.players.onRemove(() => updateRoster());
+    this.room.state.players.forEach((player: any) => {
+      player.onChange(() => updateRoster());
+    });
 
-    updatePlayerList();
+    updateRoster();
   }
 
-  private createReadyButton() {
+  private createLobbyButtons() {
     if (!this.room) return;
 
-    const cx = this.cameras.main.centerX;
+    // Back button (bottom-left) -- secondary layered
+    const backHandle = createLayeredButton(this, 160, 650, 'Back', {
+      size: 'sm',
+      bgNum: Buttons.secondary.bgNum,
+      hoverNum: Buttons.secondary.hoverNum,
+      textColor: Colors.text.secondary,
+      onClick: () => {
+        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+        if (this.room) {
+          this.room.leave();
+          this.room = null;
+        }
+        sessionStorage.removeItem('bangerLobbyRoom');
+        this.showMainMenu();
+      },
+    });
+    backHandle.elements.forEach((el) => this.uiElements.push(el));
 
-    const buttonY = 580;
-    const readyButton = this.add
-      .text(cx, buttonY, 'Ready', {
-        fontSize: Buttons.primary.fontSize,
-        color: Buttons.primary.text,
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        backgroundColor: Buttons.disabled.bg,
-        padding: { x: 32, y: 12 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+    // Ready button (bottom-right) -- initially disabled layered
+    const readyHandle = createLayeredButton(this, 1060, 650, 'Select role', {
+      size: 'md',
+      bgNum: Buttons.disabled.bgNum,
+      hoverNum: Buttons.disabled.hoverNum,
+      textColor: Buttons.disabled.text,
+      onClick: () => {
+        if (this.audioManager) this.audioManager.playWAVSFX('select_2');
+        if (this.room) {
+          this.room.send('toggleReady');
+        }
+      },
+    });
+    readyHandle.elements.forEach((el) => this.uiElements.push(el));
 
-    const localPlayer = this.room.state.players.get(this.room.sessionId);
+    let localPlayer: any = this.room.state.players.get(this.room.sessionId);
 
     const updateButton = () => {
       if (!localPlayer) return;
@@ -1135,15 +1173,16 @@ export class LobbyScene extends Phaser.Scene {
       const isReady = localPlayer.ready;
 
       if (!hasRole) {
-        readyButton.setText('Select a role first');
-        readyButton.setBackgroundColor(Buttons.disabled.bg);
-        readyButton.setColor(Buttons.disabled.text);
-        readyButton.disableInteractive();
+        readyHandle.setText('Select role');
+        readyHandle.setEnabled(false);
+      } else if (isReady) {
+        readyHandle.setText('CANCEL');
+        readyHandle.setStyle(Buttons.success.bgNum, Buttons.success.hoverNum, Buttons.success.text);
+        readyHandle.face.setInteractive({ useHandCursor: true });
       } else {
-        readyButton.setText(isReady ? 'Not Ready' : 'Ready');
-        readyButton.setBackgroundColor(isReady ? Colors.status.success : Buttons.primary.bg);
-        readyButton.setColor(Buttons.primary.text);
-        readyButton.setInteractive({ useHandCursor: true });
+        readyHandle.setText('READY');
+        readyHandle.setStyle(Buttons.primary.bgNum, Buttons.primary.hoverNum, Buttons.primary.text);
+        readyHandle.face.setInteractive({ useHandCursor: true });
       }
     };
 
@@ -1152,15 +1191,336 @@ export class LobbyScene extends Phaser.Scene {
       updateButton();
     }
 
-    readyButton.on('pointerdown', () => {
-      if (this.audioManager) this.audioManager.playWAVSFX('select_2');
-      if (this.room) {
-        this.room.send('toggleReady');
+    // Also listen for player being added (handles race condition where
+    // state patch arrives after createLobbyButtons runs)
+    this.room.state.players.onAdd((player: any, sessionId: string) => {
+      if (sessionId === this.room!.sessionId && !localPlayer) {
+        localPlayer = player;
+        player.onChange(() => updateButton());
+        updateButton();
       }
     });
-
-    this.uiElements.push(readyButton);
   }
+
+  // ─── SHARED UI HELPERS ───────────────────────────────
+
+  /** Create a single character panel with sprite, stats, and description */
+  private createCharacterPanel(
+    role: string,
+    cx: number,
+    onClick: () => void,
+  ): {
+    elements: Phaser.GameObjects.GameObject[];
+    update: (isSelected: boolean, isAvailable: boolean) => void;
+  } {
+    const elements: Phaser.GameObjects.GameObject[] = [];
+    const isParan = role === 'paran';
+    const width = isParan ? Panels.characterCard.paran.width : Panels.characterCard.guardian.width;
+    const height = isParan
+      ? Panels.characterCard.paran.height
+      : Panels.characterCard.guardian.height;
+    const cy = 310;
+    const spriteY = isParan ? 195 : 200;
+    const spriteScale = isParan
+      ? Panels.characterCard.paranSpriteScale
+      : Panels.characterCard.guardianSpriteScale;
+    const nameSize = isParan ? '22px' : '20px';
+    const borderColor = charColorNum(role);
+    const display = CHARACTER_DISPLAY[role];
+    const stats = CHARACTERS[role];
+
+    // Panel background
+    const panel = this.add.rectangle(cx, cy, width, height, Panels.card.bg);
+    panel.setStrokeStyle(Panels.card.borderWidth, borderColor);
+    panel.setInteractive({ useHandCursor: true });
+    elements.push(panel);
+
+    // Character sprite (idle animation)
+    const sprite = this.add.sprite(cx, spriteY, role);
+    sprite.play(`${role}-idle`);
+    sprite.setScale(spriteScale);
+    elements.push(sprite);
+
+    // Character name
+    const nameText = this.add
+      .text(cx, 275, role.charAt(0).toUpperCase() + role.slice(1), {
+        fontSize: nameSize,
+        color: charColor(role),
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5);
+    elements.push(nameText);
+
+    // Tagline
+    const tagText = this.add
+      .text(cx, 295, display.tagline, {
+        fontSize: '12px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        fontStyle: 'italic',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    elements.push(tagText);
+
+    // Stat bars (5 stats between y=320 and y=420)
+    const statDefs = [
+      { label: 'HP', value: stats.maxHealth, max: StatBar.maxValues.hp },
+      { label: 'SPD', value: stats.maxVelocity, max: StatBar.maxValues.speed },
+      { label: 'ACC', value: stats.acceleration, max: StatBar.maxValues.accel },
+      { label: 'ROF', value: 1000 / stats.fireRate, max: StatBar.maxValues.fireRate },
+      { label: 'DMG', value: stats.damage, max: StatBar.maxValues.damage },
+    ];
+
+    statDefs.forEach((stat, i) => {
+      const y = 320 + i * 25;
+      const barElements = this.createStatBar(cx, y, stat.label, stat.value, stat.max, role);
+      barElements.forEach((el) => elements.push(el));
+    });
+
+    // Ability text
+    const abilityText = this.add
+      .text(cx, 450, display.ability, {
+        fontSize: '11px',
+        color: charColor(role),
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    elements.push(abilityText);
+
+    // Risk/team text
+    const riskText = this.add
+      .text(cx, 467, display.risk, {
+        fontSize: '11px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    elements.push(riskText);
+
+    // Click handler
+    panel.on('pointerdown', onClick);
+
+    // Hover effect
+    panel.on('pointerover', () => {
+      panel.setFillStyle(Colors.bg.elevatedNum);
+    });
+    panel.on('pointerout', () => {
+      panel.setFillStyle(Panels.card.bg);
+    });
+
+    // Update function for selection/availability state
+    const update = (isSelected: boolean, isAvailable: boolean) => {
+      const allEls = [panel, sprite, nameText, tagText, abilityText, riskText];
+
+      if (isSelected) {
+        panel.setStrokeStyle(Panels.card.selectedWidth, Panels.card.selectedBorder);
+        allEls.forEach((el) => el.setAlpha(1));
+        panel.setInteractive({ useHandCursor: true });
+      } else if (!isAvailable) {
+        panel.setStrokeStyle(Panels.card.borderWidth, borderColor);
+        allEls.forEach((el) => el.setAlpha(Panels.card.disabledAlpha));
+        panel.disableInteractive();
+      } else {
+        panel.setStrokeStyle(Panels.card.borderWidth, borderColor);
+        allEls.forEach((el) => el.setAlpha(1));
+        panel.setInteractive({ useHandCursor: true });
+      }
+    };
+
+    return { elements, update };
+  }
+
+  /** Create a horizontal stat bar row: label + background + fill */
+  private createStatBar(
+    cx: number,
+    y: number,
+    label: string,
+    value: number,
+    max: number,
+    role: string,
+  ): Phaser.GameObjects.GameObject[] {
+    const elements: Phaser.GameObjects.GameObject[] = [];
+    const barWidth = StatBar.width;
+    const barHeight = StatBar.height;
+    const fillRatio = Math.min(1, value / max);
+
+    // Label (left-aligned within panel)
+    const labelText = this.add
+      .text(cx - 65, y, label, {
+        fontSize: StatBar.labelSize,
+        color: Colors.text.secondary,
+        fontFamily: StatBar.font,
+        stroke: '#000000',
+        strokeThickness: 1,
+      })
+      .setOrigin(0, 0.5);
+    elements.push(labelText);
+
+    // Bar background
+    const barBg = this.add.rectangle(cx - 25, y, barWidth, barHeight, StatBar.bg);
+    barBg.setOrigin(0, 0.5);
+    elements.push(barBg);
+
+    // Bar fill
+    const fillWidth = fillRatio * barWidth;
+    if (fillWidth > 0) {
+      const barFill = this.add.rectangle(cx - 25, y, fillWidth, barHeight, charColorNum(role));
+      barFill.setOrigin(0, 0.5);
+      barFill.setAlpha(0.85);
+      elements.push(barFill);
+    }
+
+    return elements;
+  }
+
+  /** Add team labels above the character panels */
+  private addTeamLabels() {
+    // "GUARDIANS" labels
+    const guardianLeft = this.add
+      .text(240, 108, 'GUARDIAN', {
+        fontSize: '12px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(guardianLeft);
+
+    const guardianRight = this.add
+      .text(1040, 108, 'GUARDIAN', {
+        fontSize: '12px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(guardianRight);
+
+    // "THE FORCE" label
+    const forceLabel = this.add
+      .text(640, 108, 'FORCE OF NATURE', {
+        fontSize: '12px',
+        color: Colors.char.paran,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(forceLabel);
+  }
+
+  /** Add VS markers between panels */
+  private addVsMarkers() {
+    const vsStyle = {
+      fontSize: '18px',
+      color: Colors.gold.primary,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    };
+
+    const vs1 = this.add.text(440, 300, 'VS', vsStyle).setOrigin(0.5);
+    this.uiElements.push(vs1);
+
+    const vs2 = this.add.text(840, 300, 'VS', vsStyle).setOrigin(0.5);
+    this.uiElements.push(vs2);
+  }
+
+  /** Add ? help button at top-right */
+  private addHelpButton() {
+    const helpBtn = this.add
+      .text(1240, 30, '?', {
+        fontSize: '20px',
+        color: Colors.gold.primary,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        backgroundColor: Colors.bg.elevated,
+        padding: { x: 8, y: 4 },
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    helpBtn.on('pointerover', () => helpBtn.setBackgroundColor(Colors.bg.surface));
+    helpBtn.on('pointerout', () => helpBtn.setBackgroundColor(Colors.bg.elevated));
+    helpBtn.on('pointerdown', () => {
+      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+      this.toggleControlsTooltip();
+    });
+    this.uiElements.push(helpBtn);
+  }
+
+  /** Toggle the controls tooltip panel */
+  private toggleControlsTooltip() {
+    if (this.tooltipVisible) {
+      this.dismissControlsTooltip();
+      return;
+    }
+
+    this.tooltipVisible = true;
+
+    // Click-outside dismissal overlay
+    const dismissOverlay = this.add
+      .rectangle(640, 360, 1280, 720, 0x000000, 0)
+      .setInteractive()
+      .setDepth(90);
+    dismissOverlay.on('pointerdown', () => this.dismissControlsTooltip());
+    this.tooltipElements.push(dismissOverlay);
+
+    // Tooltip panel background
+    const panelBg = this.add
+      .rectangle(1060, 200, 300, 150, Colors.bg.deepNum)
+      .setStrokeStyle(2, Colors.gold.primaryNum)
+      .setDepth(91);
+    this.tooltipElements.push(panelBg);
+
+    // Controls text
+    const controls = ['WASD \u2014 Move', 'SPACE \u2014 Shoot', 'TAB \u2014 Spectate'];
+    controls.forEach((line, i) => {
+      const text = this.add
+        .text(1060, 160 + i * 30, line, {
+          fontSize: '14px',
+          color: Colors.text.primary,
+          fontFamily: 'monospace',
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(92);
+      this.tooltipElements.push(text);
+    });
+
+    // Track in uiElements for clearUI cleanup
+    this.tooltipElements.forEach((el) => this.uiElements.push(el));
+  }
+
+  /** Hide controls tooltip */
+  private dismissControlsTooltip() {
+    this.tooltipElements.forEach((el) => {
+      if (el && (el as any).scene) el.destroy();
+    });
+    this.tooltipElements = [];
+    this.tooltipVisible = false;
+  }
+
+  // ─── SELECTION LOGIC ─────────────────────────────────
 
   private selectRole(role: string) {
     if (this.room) {
@@ -1192,6 +1552,8 @@ export class LobbyScene extends Phaser.Scene {
     return count === 0; // Each role can only have one player
   }
 
+  // ─── VOLUME CONTROLS ────────────────────────────────
+
   private createVolumeControls(startY: number) {
     if (!this.audioManager) return;
 
@@ -1211,6 +1573,14 @@ export class LobbyScene extends Phaser.Scene {
         set: (v: number) => this.audioManager!.setSFXVolume(v),
       },
     ];
+
+    // Semi-transparent backdrop panel behind volume sliders
+    const backdrop = this.add.graphics();
+    backdrop.fillStyle(0x000000, 0.45);
+    backdrop.fillRoundedRect(cx - 150, startY - 23, 300, 86, 6);
+    backdrop.lineStyle(1, Colors.gold.brassNum, 0.6);
+    backdrop.strokeRoundedRect(cx - 150, startY - 23, 300, 86, 6);
+    this.uiElements.push(backdrop);
 
     controls.forEach((ctrl, index) => {
       const y = startY + index * 40;
@@ -1300,6 +1670,8 @@ export class LobbyScene extends Phaser.Scene {
     });
   }
 
+  // ─── CLEANUP ─────────────────────────────────────────
+
   private clearUI() {
     // Destroy all UI elements
     this.uiElements.forEach((el) => {
@@ -1313,6 +1685,10 @@ export class LobbyScene extends Phaser.Scene {
       document.body.removeChild(this.htmlInput);
       this.htmlInput = null;
     }
+
+    // Clear tooltip state
+    this.tooltipElements = [];
+    this.tooltipVisible = false;
   }
 
   shutdown() {

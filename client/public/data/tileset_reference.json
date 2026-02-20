@@ -1,0 +1,1520 @@
+{
+  "_description": "Reference file for the A-Mazing Hedge Tileset. Extracted from Unity .unitypackage. Use this to understand tile layout, auto-tiling rules, and how to place hedge tiles correctly.",
+  "name": "A-Mazing Tileset 1 - Hedge",
+  "source": "a_mazing_tileset_1_hedge.unitypackage",
+  "license": "Asset Store package by Flockaroo (published Jan 2021)",
+  "image": {
+    "file": "hedge_tileset.png",
+    "widthPx": 128,
+    "heightPx": 192,
+    "format": "RGBA PNG 8-bit",
+    "background": "transparent"
+  },
+  "tileSize": {
+    "widthPx": 16,
+    "heightPx": 32,
+    "_note": "Each tile is 16px wide and 32px tall. The top 16px is the hedge canopy (top-down view). The bottom 16px is the front face (south-facing side). This gives a pseudo-3D top-down perspective. When a tile has a hedge neighbor to the south, the front face is occluded by the neighbor's canopy."
+  },
+  "grid": {
+    "columns": 8,
+    "rows": 6,
+    "totalSprites": 48,
+    "_note": "Sprites are numbered 0-47, left-to-right then top-to-bottom. Sprite N is at column (N % 8), row (N // 8). Pixel position: x = (N % 8) * 16, y = (N // 8) * 32."
+  },
+  "coordinateSystem": {
+    "_note": "Neighbor directions use standard cardinal/ordinal compass. N=up, S=down, E=right, W=left. In the auto-tile rules, 'present' means the neighbor cell also contains a hedge tile, 'absent' means it does not."
+  },
+  "tiles": [
+    {
+      "index": 0,
+      "name": "isolated_single",
+      "gridCol": 0,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Isolated single hedge tile. No connecting neighbors. Default fallback sprite."
+    },
+    {
+      "index": 1,
+      "name": "end_cap_west",
+      "gridCol": 1,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 16,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "West end cap \u2014 hedge continues east only. Terminates on the left."
+    },
+    {
+      "index": 2,
+      "name": "top_edge_se_inner",
+      "gridCol": 2,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 32,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S with SE inner corner filled."
+    },
+    {
+      "index": 3,
+      "name": "top_right_corner_sw_inner",
+      "gridCol": 3,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 48,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top-right outer corner \u2014 hedge continues W and S, SW inner corner filled."
+    },
+    {
+      "index": 4,
+      "name": "top_left_corner_se_inner",
+      "gridCol": 4,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 64,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top-left outer corner \u2014 hedge continues E and S, SE inner corner filled."
+    },
+    {
+      "index": 5,
+      "name": "top_edge_both_inners",
+      "gridCol": 5,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 80,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S with both SW and SE inner corners filled."
+    },
+    {
+      "index": 6,
+      "name": "top_edge_sw_inner",
+      "gridCol": 6,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 96,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S with SW inner corner filled."
+    },
+    {
+      "index": 7,
+      "name": "end_cap_east",
+      "gridCol": 7,
+      "gridRow": 0,
+      "pixelRect": {
+        "x": 112,
+        "y": 0,
+        "w": 16,
+        "h": 32
+      },
+      "description": "East end cap \u2014 hedge continues west only. Terminates on the right."
+    },
+    {
+      "index": 8,
+      "name": "top_left_corner",
+      "gridCol": 0,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 0,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top-left outer corner \u2014 hedge continues E and S (no inner corner check)."
+    },
+    {
+      "index": 9,
+      "name": "top_edge_no_inners",
+      "gridCol": 1,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 16,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S but both SE and SW inner corners absent."
+    },
+    {
+      "index": 10,
+      "name": "cross_ne_only",
+      "gridCol": 2,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 32,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center cross \u2014 N, S, E, W, NE present; SW, SE, NW absent. Single NE inner corner variant."
+    },
+    {
+      "index": 11,
+      "name": "center_nw_se_inners",
+      "gridCol": 3,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 48,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all cardinals + NW, SE present; NE, SW absent."
+    },
+    {
+      "index": 12,
+      "name": "center_all_except_nw",
+      "gridCol": 4,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 64,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all directions present except NW. Seven of eight neighbors."
+    },
+    {
+      "index": 13,
+      "name": "center_all_8",
+      "gridCol": 5,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 80,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all 8 neighbors present. Fully interior hedge tile."
+    },
+    {
+      "index": 14,
+      "name": "center_nw_sw_inners",
+      "gridCol": 6,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 96,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all cardinals + NW, SW present; NE, SE absent."
+    },
+    {
+      "index": 15,
+      "name": "top_right_corner",
+      "gridCol": 7,
+      "gridRow": 1,
+      "pixelRect": {
+        "x": 112,
+        "y": 32,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Top-right outer corner \u2014 hedge continues W and S (no inner corner check)."
+    },
+    {
+      "index": 16,
+      "name": "right_edge_se_inner",
+      "gridCol": 0,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 0,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Right edge \u2014 hedge continues N, S, E with SE inner corner filled."
+    },
+    {
+      "index": 17,
+      "name": "center_no_inners",
+      "gridCol": 1,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 16,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all 4 cardinals present but no diagonal inners. Cross without corner smoothing."
+    },
+    {
+      "index": 18,
+      "name": "center_all_4_no_diag",
+      "gridCol": 2,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 32,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all 4 cardinals present, no diagonal neighbors. Isolated cross junction."
+    },
+    {
+      "index": 19,
+      "name": "center_all_except_nw_sw",
+      "gridCol": 3,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 48,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except NW and SW. Hedge on N, NE, E, SE, S, W."
+    },
+    {
+      "index": 20,
+      "name": "center_all_except_se",
+      "gridCol": 4,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 64,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except SE. Hedge on N, NE, S, SW, W, NW, E."
+    },
+    {
+      "index": 21,
+      "name": "center_all_except_sw_se",
+      "gridCol": 5,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 80,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except SW and SE. Hedge on N, NE, E, S, W, NW."
+    },
+    {
+      "index": 22,
+      "name": "right_edge_nw_inner",
+      "gridCol": 6,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 96,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Right edge \u2014 hedge continues N, S, W with NW inner corner present."
+    },
+    {
+      "index": 23,
+      "name": "end_cap_south",
+      "gridCol": 7,
+      "gridRow": 2,
+      "pixelRect": {
+        "x": 112,
+        "y": 64,
+        "w": 16,
+        "h": 32
+      },
+      "description": "South end cap \u2014 hedge continues north only. Terminates at the bottom."
+    },
+    {
+      "index": 24,
+      "name": "left_edge_ne_inner",
+      "gridCol": 0,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 0,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Left edge \u2014 hedge continues N, S, E with NE inner corner present."
+    },
+    {
+      "index": 25,
+      "name": "center_all_except_ne_se_sw",
+      "gridCol": 1,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 16,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all 4 cardinals + NW + SE absent + SW absent. Only NE-like configuration."
+    },
+    {
+      "index": 26,
+      "name": "right_edge_no_inners",
+      "gridCol": 2,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 32,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Right edge \u2014 hedge continues N, S, W but NW and SW inner corners absent."
+    },
+    {
+      "index": 27,
+      "name": "left_edge",
+      "gridCol": 3,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 48,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Left edge \u2014 hedge continues N, NE, E, SE, S. All east-side inners filled."
+    },
+    {
+      "index": 28,
+      "name": "center_all_except_ne",
+      "gridCol": 4,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 64,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except NE. Hedge on N, NW, W, SW, S, SE, E."
+    },
+    {
+      "index": 29,
+      "name": "center_all_except_ne_nw",
+      "gridCol": 5,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 80,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except NE and NW. Hedge on N, S, SW, SE, E, W."
+    },
+    {
+      "index": 30,
+      "name": "right_edge_sw_inner",
+      "gridCol": 6,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 96,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Right edge \u2014 hedge continues N, S, W with SW inner corner present."
+    },
+    {
+      "index": 31,
+      "name": "end_cap_north",
+      "gridCol": 7,
+      "gridRow": 3,
+      "pixelRect": {
+        "x": 112,
+        "y": 96,
+        "w": 16,
+        "h": 32
+      },
+      "description": "North end cap \u2014 hedge continues south only. Terminates at the top."
+    },
+    {
+      "index": 32,
+      "name": "left_edge_no_inners",
+      "gridCol": 0,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 0,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Left edge \u2014 hedge continues N, S, E but NE and SE inner corners absent."
+    },
+    {
+      "index": 33,
+      "name": "bottom_edge_no_inners",
+      "gridCol": 1,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 16,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom edge \u2014 hedge continues W, E, N but NE and NW inners absent."
+    },
+    {
+      "index": 34,
+      "name": "center_all_except_ne_nw_sw",
+      "gridCol": 2,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 32,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except NE, NW, SW. Hedge on N, E, SE, S, W."
+    },
+    {
+      "index": 35,
+      "name": "center_all_except_se_nw",
+      "gridCol": 3,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 48,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except SE and NW. Hedge on N, NE, E, S, SW, W."
+    },
+    {
+      "index": 36,
+      "name": "center_all_except_sw",
+      "gridCol": 4,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 64,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Center \u2014 all except SW. Hedge on N, NW, W, NE, E, SE, S."
+    },
+    {
+      "index": 37,
+      "name": "sprite_37_unused",
+      "gridCol": 5,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 80,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Unused sprite (not referenced by any auto-tile rule)."
+    },
+    {
+      "index": 38,
+      "name": "bottom_right_corner",
+      "gridCol": 6,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 96,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom-right outer corner \u2014 hedge continues E and N, NE inner absent."
+    },
+    {
+      "index": 39,
+      "name": "vertical_straight",
+      "gridCol": 7,
+      "gridRow": 4,
+      "pixelRect": {
+        "x": 112,
+        "y": 128,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Vertical straight \u2014 hedge continues N and S only."
+    },
+    {
+      "index": 40,
+      "name": "bottom_left_corner_ne_absent",
+      "gridCol": 0,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 0,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom-left outer corner \u2014 NE absent variant."
+    },
+    {
+      "index": 41,
+      "name": "horizontal_straight",
+      "gridCol": 1,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 16,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Horizontal straight \u2014 hedge continues E and W only."
+    },
+    {
+      "index": 42,
+      "name": "bottom_edge_se_nw_absent",
+      "gridCol": 2,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 32,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom edge \u2014 NE, E present but NW absent variant."
+    },
+    {
+      "index": 43,
+      "name": "bottom_right_corner_nw",
+      "gridCol": 3,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 48,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom-right outer corner \u2014 hedge continues W, NW, N."
+    },
+    {
+      "index": 44,
+      "name": "bottom_left_corner_ne",
+      "gridCol": 4,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 64,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom-left outer corner \u2014 hedge continues E, NE, N."
+    },
+    {
+      "index": 45,
+      "name": "bottom_edge",
+      "gridCol": 5,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 80,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom edge \u2014 hedge continues W, NW, N, NE, E. Full bottom edge."
+    },
+    {
+      "index": 46,
+      "name": "bottom_edge_ne_absent",
+      "gridCol": 6,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 96,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom edge \u2014 hedge continues W, NW, N, E but NE absent."
+    },
+    {
+      "index": 47,
+      "name": "bottom_right_corner_basic",
+      "gridCol": 7,
+      "gridRow": 5,
+      "pixelRect": {
+        "x": 112,
+        "y": 160,
+        "w": 16,
+        "h": 32
+      },
+      "description": "Bottom-right outer corner \u2014 hedge continues N and W (basic, no inner)."
+    }
+  ],
+  "autoTileRules": [
+    {
+      "ruleId": 0,
+      "spriteIndex": 1,
+      "neighbors": {
+        "W": false,
+        "S": false,
+        "N": false,
+        "E": true
+      },
+      "description": "West end cap \u2014 hedge continues east only. Terminates on the left."
+    },
+    {
+      "ruleId": 1,
+      "spriteIndex": 2,
+      "neighbors": {
+        "N": false,
+        "E": true,
+        "S": true,
+        "SE": true,
+        "W": true,
+        "SW": false
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S with SE inner corner filled."
+    },
+    {
+      "ruleId": 2,
+      "spriteIndex": 3,
+      "neighbors": {
+        "W": true,
+        "SW": true,
+        "S": true,
+        "E": false,
+        "N": false
+      },
+      "description": "Top-right outer corner \u2014 hedge continues W and S, SW inner corner filled."
+    },
+    {
+      "ruleId": 3,
+      "spriteIndex": 4,
+      "neighbors": {
+        "E": true,
+        "SE": true,
+        "S": true,
+        "N": false,
+        "W": false
+      },
+      "description": "Top-left outer corner \u2014 hedge continues E and S, SE inner corner filled."
+    },
+    {
+      "ruleId": 4,
+      "spriteIndex": 5,
+      "neighbors": {
+        "N": false,
+        "E": true,
+        "W": true,
+        "SW": true,
+        "S": true,
+        "SE": true
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S with both SW and SE inner corners filled."
+    },
+    {
+      "ruleId": 5,
+      "spriteIndex": 6,
+      "neighbors": {
+        "N": false,
+        "E": true,
+        "S": true,
+        "SW": true,
+        "W": true,
+        "SE": false
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S with SW inner corner filled."
+    },
+    {
+      "ruleId": 6,
+      "spriteIndex": 7,
+      "neighbors": {
+        "W": true,
+        "S": false,
+        "N": false,
+        "E": false
+      },
+      "description": "East end cap \u2014 hedge continues west only. Terminates on the right."
+    },
+    {
+      "ruleId": 7,
+      "spriteIndex": 8,
+      "neighbors": {
+        "E": true,
+        "S": true,
+        "N": false,
+        "W": false
+      },
+      "description": "Top-left outer corner \u2014 hedge continues E and S (no inner corner check)."
+    },
+    {
+      "ruleId": 8,
+      "spriteIndex": 9,
+      "neighbors": {
+        "N": false,
+        "S": true,
+        "W": true,
+        "E": true,
+        "SE": false,
+        "SW": false
+      },
+      "description": "Top edge \u2014 hedge continues W, E, S but both SE and SW inner corners absent."
+    },
+    {
+      "ruleId": 9,
+      "spriteIndex": 10,
+      "neighbors": {
+        "N": true,
+        "S": true,
+        "NE": true,
+        "E": true,
+        "W": true,
+        "SW": false,
+        "SE": false,
+        "NW": false
+      },
+      "description": "Center cross \u2014 N, S, E, W, NE present; SW, SE, NW absent. Single NE inner corner variant."
+    },
+    {
+      "ruleId": 10,
+      "spriteIndex": 11,
+      "neighbors": {
+        "N": true,
+        "S": true,
+        "E": true,
+        "W": true,
+        "NW": true,
+        "SE": true,
+        "NE": false,
+        "SW": false
+      },
+      "description": "Center \u2014 all cardinals + NW, SE present; NE, SW absent."
+    },
+    {
+      "ruleId": 11,
+      "spriteIndex": 12,
+      "neighbors": {
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SE": true,
+        "S": true,
+        "SW": true,
+        "W": true,
+        "NW": false
+      },
+      "description": "Center \u2014 all directions present except NW. Seven of eight neighbors."
+    },
+    {
+      "ruleId": 12,
+      "spriteIndex": 13,
+      "neighbors": {
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SE": true,
+        "S": true,
+        "SW": true,
+        "W": true,
+        "NW": true
+      },
+      "description": "Center \u2014 all 8 neighbors present. Fully interior hedge tile."
+    },
+    {
+      "ruleId": 13,
+      "spriteIndex": 14,
+      "neighbors": {
+        "E": true,
+        "N": true,
+        "NW": true,
+        "W": true,
+        "SW": true,
+        "S": true,
+        "NE": false,
+        "SE": false
+      },
+      "description": "Center \u2014 all cardinals + NW, SW present; NE, SE absent."
+    },
+    {
+      "ruleId": 14,
+      "spriteIndex": 15,
+      "neighbors": {
+        "W": true,
+        "S": true,
+        "E": false,
+        "N": false
+      },
+      "description": "Top-right outer corner \u2014 hedge continues W and S (no inner corner check)."
+    },
+    {
+      "ruleId": 15,
+      "spriteIndex": 16,
+      "neighbors": {
+        "N": true,
+        "S": true,
+        "SE": true,
+        "E": true,
+        "W": false,
+        "NE": false
+      },
+      "description": "Right edge \u2014 hedge continues N, S, E with SE inner corner filled."
+    },
+    {
+      "ruleId": 16,
+      "spriteIndex": 17,
+      "neighbors": {
+        "W": true,
+        "SW": true,
+        "S": true,
+        "E": true,
+        "N": true,
+        "NW": false,
+        "NE": false,
+        "SE": false
+      },
+      "description": "Center \u2014 all 4 cardinals present but no diagonal inners. Cross without corner smoothing."
+    },
+    {
+      "ruleId": 17,
+      "spriteIndex": 18,
+      "neighbors": {
+        "W": true,
+        "E": true,
+        "N": true,
+        "S": true,
+        "SE": false,
+        "NE": false,
+        "NW": false,
+        "SW": false
+      },
+      "description": "Center \u2014 all 4 cardinals present, no diagonal neighbors. Isolated cross junction."
+    },
+    {
+      "ruleId": 18,
+      "spriteIndex": 19,
+      "neighbors": {
+        "W": true,
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SE": true,
+        "S": true,
+        "NW": false,
+        "SW": false
+      },
+      "description": "Center \u2014 all except NW and SW. Hedge on N, NE, E, SE, S, W."
+    },
+    {
+      "ruleId": 19,
+      "spriteIndex": 20,
+      "neighbors": {
+        "S": true,
+        "SW": true,
+        "W": true,
+        "NW": true,
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SE": false
+      },
+      "description": "Center \u2014 all except SE. Hedge on N, NE, S, SW, W, NW, E."
+    },
+    {
+      "ruleId": 20,
+      "spriteIndex": 21,
+      "neighbors": {
+        "S": true,
+        "W": true,
+        "NW": true,
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SW": false,
+        "SE": false
+      },
+      "description": "Center \u2014 all except SW and SE. Hedge on N, NE, E, S, W, NW."
+    },
+    {
+      "ruleId": 21,
+      "spriteIndex": 22,
+      "neighbors": {
+        "S": true,
+        "N": true,
+        "NW": true,
+        "W": true,
+        "E": false,
+        "SW": false
+      },
+      "description": "Right edge \u2014 hedge continues N, S, W with NW inner corner present."
+    },
+    {
+      "ruleId": 22,
+      "spriteIndex": 23,
+      "neighbors": {
+        "N": true,
+        "S": false,
+        "W": false,
+        "E": false
+      },
+      "description": "South end cap \u2014 hedge continues north only. Terminates at the bottom."
+    },
+    {
+      "ruleId": 23,
+      "spriteIndex": 24,
+      "neighbors": {
+        "S": true,
+        "N": true,
+        "NE": true,
+        "E": true,
+        "W": false,
+        "SE": false
+      },
+      "description": "Left edge \u2014 hedge continues N, S, E with NE inner corner present."
+    },
+    {
+      "ruleId": 24,
+      "spriteIndex": 25,
+      "neighbors": {
+        "S": true,
+        "W": true,
+        "NW": true,
+        "N": true,
+        "E": true,
+        "NE": false,
+        "SE": false,
+        "SW": false
+      },
+      "description": "Center \u2014 all 4 cardinals + NW + SE absent + SW absent. Only NE-like configuration."
+    },
+    {
+      "ruleId": 25,
+      "spriteIndex": 26,
+      "neighbors": {
+        "N": true,
+        "S": true,
+        "W": true,
+        "E": false,
+        "SW": false,
+        "NW": false
+      },
+      "description": "Right edge \u2014 hedge continues N, S, W but NW and SW inner corners absent."
+    },
+    {
+      "ruleId": 26,
+      "spriteIndex": 27,
+      "neighbors": {
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SE": true,
+        "S": true,
+        "W": false
+      },
+      "description": "Left edge \u2014 hedge continues N, NE, E, SE, S. All east-side inners filled."
+    },
+    {
+      "ruleId": 27,
+      "spriteIndex": 28,
+      "neighbors": {
+        "N": true,
+        "NW": true,
+        "W": true,
+        "SW": true,
+        "S": true,
+        "SE": true,
+        "E": true,
+        "NE": false
+      },
+      "description": "Center \u2014 all except NE. Hedge on N, NW, W, SW, S, SE, E."
+    },
+    {
+      "ruleId": 28,
+      "spriteIndex": 29,
+      "neighbors": {
+        "N": true,
+        "W": true,
+        "SW": true,
+        "S": true,
+        "SE": true,
+        "E": true,
+        "NE": false,
+        "NW": false
+      },
+      "description": "Center \u2014 all except NE and NW. Hedge on N, S, SW, SE, E, W."
+    },
+    {
+      "ruleId": 29,
+      "spriteIndex": 30,
+      "neighbors": {
+        "N": true,
+        "S": true,
+        "SW": true,
+        "W": true,
+        "E": false,
+        "NW": false
+      },
+      "description": "Right edge \u2014 hedge continues N, S, W with SW inner corner present."
+    },
+    {
+      "ruleId": 30,
+      "spriteIndex": 31,
+      "neighbors": {
+        "S": true,
+        "N": false,
+        "W": false,
+        "E": false
+      },
+      "description": "North end cap \u2014 hedge continues south only. Terminates at the top."
+    },
+    {
+      "ruleId": 31,
+      "spriteIndex": 32,
+      "neighbors": {
+        "S": true,
+        "N": true,
+        "E": true,
+        "W": false,
+        "NE": false,
+        "SE": false
+      },
+      "description": "Left edge \u2014 hedge continues N, S, E but NE and SE inner corners absent."
+    },
+    {
+      "ruleId": 32,
+      "spriteIndex": 33,
+      "neighbors": {
+        "N": true,
+        "W": true,
+        "E": true,
+        "S": false,
+        "NE": false,
+        "NW": false
+      },
+      "description": "Bottom edge \u2014 hedge continues W, E, N but NE and NW inners absent."
+    },
+    {
+      "ruleId": 33,
+      "spriteIndex": 34,
+      "neighbors": {
+        "W": true,
+        "N": true,
+        "E": true,
+        "SE": true,
+        "S": true,
+        "NE": false,
+        "NW": false,
+        "SW": false
+      },
+      "description": "Center \u2014 all except NE, NW, SW. Hedge on N, E, SE, S, W."
+    },
+    {
+      "ruleId": 34,
+      "spriteIndex": 35,
+      "neighbors": {
+        "N": true,
+        "NE": true,
+        "E": true,
+        "S": true,
+        "SW": true,
+        "W": true,
+        "SE": false,
+        "NW": false
+      },
+      "description": "Center \u2014 all except SE and NW. Hedge on N, NE, E, S, SW, W."
+    },
+    {
+      "ruleId": 35,
+      "spriteIndex": 36,
+      "neighbors": {
+        "W": true,
+        "NW": true,
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SE": true,
+        "S": true,
+        "SW": false
+      },
+      "description": "Center \u2014 all except SW. Hedge on N, NW, W, NE, E, SE, S."
+    },
+    {
+      "ruleId": 36,
+      "spriteIndex": 38,
+      "neighbors": {
+        "N": true,
+        "NW": true,
+        "W": true,
+        "SW": true,
+        "S": true,
+        "E": false
+      },
+      "description": "Bottom-right outer corner \u2014 hedge continues E and N, NE inner absent."
+    },
+    {
+      "ruleId": 37,
+      "spriteIndex": 39,
+      "neighbors": {
+        "N": true,
+        "S": true,
+        "E": false,
+        "W": false
+      },
+      "description": "Vertical straight \u2014 hedge continues N and S only."
+    },
+    {
+      "ruleId": 38,
+      "spriteIndex": 40,
+      "neighbors": {
+        "N": true,
+        "E": true,
+        "S": false,
+        "W": false,
+        "NE": false
+      },
+      "description": "Bottom-left outer corner \u2014 NE absent variant."
+    },
+    {
+      "ruleId": 39,
+      "spriteIndex": 41,
+      "neighbors": {
+        "E": true,
+        "W": true,
+        "N": false,
+        "S": false
+      },
+      "description": "Horizontal straight \u2014 hedge continues E and W only."
+    },
+    {
+      "ruleId": 40,
+      "spriteIndex": 42,
+      "neighbors": {
+        "N": true,
+        "NE": true,
+        "E": true,
+        "SE": true,
+        "W": true,
+        "S": false,
+        "NW": false
+      },
+      "description": "Bottom edge \u2014 NE, E present but NW absent variant."
+    },
+    {
+      "ruleId": 41,
+      "spriteIndex": 43,
+      "neighbors": {
+        "W": true,
+        "NW": true,
+        "N": true,
+        "E": false,
+        "S": false
+      },
+      "description": "Bottom-right outer corner \u2014 hedge continues W, NW, N."
+    },
+    {
+      "ruleId": 42,
+      "spriteIndex": 44,
+      "neighbors": {
+        "E": true,
+        "NE": true,
+        "N": true,
+        "W": false,
+        "S": false
+      },
+      "description": "Bottom-left outer corner \u2014 hedge continues E, NE, N."
+    },
+    {
+      "ruleId": 43,
+      "spriteIndex": 45,
+      "neighbors": {
+        "W": true,
+        "NW": true,
+        "N": true,
+        "NE": true,
+        "E": true,
+        "S": false
+      },
+      "description": "Bottom edge \u2014 hedge continues W, NW, N, NE, E. Full bottom edge."
+    },
+    {
+      "ruleId": 44,
+      "spriteIndex": 46,
+      "neighbors": {
+        "E": true,
+        "W": true,
+        "NW": true,
+        "N": true,
+        "S": false,
+        "NE": false
+      },
+      "description": "Bottom edge \u2014 hedge continues W, NW, N, E but NE absent."
+    },
+    {
+      "ruleId": 45,
+      "spriteIndex": 47,
+      "neighbors": {
+        "N": true,
+        "W": true,
+        "S": false,
+        "E": false
+      },
+      "description": "Bottom-right outer corner \u2014 hedge continues N and W (basic, no inner)."
+    },
+    {
+      "ruleId": 46,
+      "spriteIndex": 42,
+      "neighbors": {
+        "N": true,
+        "NE": true,
+        "E": true,
+        "W": true,
+        "S": false,
+        "NW": false,
+        "SE": false
+      },
+      "description": "Bottom edge \u2014 NE inner filled, NW and SE absent variant."
+    }
+  ],
+  "defaultSprite": {
+    "spriteIndex": 0,
+    "description": "Used when no rule matches. Typically an isolated single hedge tile."
+  },
+  "tileCategories": {
+    "_note": "Quick lookup by tile function. Sprite indices for each category.",
+    "endCaps": {
+      "west": {
+        "spriteIndex": 1,
+        "description": "Hedge continues east only"
+      },
+      "east": {
+        "spriteIndex": 7,
+        "description": "Hedge continues west only"
+      },
+      "south": {
+        "spriteIndex": 23,
+        "description": "Hedge continues north only"
+      },
+      "north": {
+        "spriteIndex": 31,
+        "description": "Hedge continues south only"
+      }
+    },
+    "straights": {
+      "horizontal": {
+        "spriteIndex": 41,
+        "description": "Hedge continues E and W"
+      },
+      "vertical": {
+        "spriteIndex": 39,
+        "description": "Hedge continues N and S"
+      }
+    },
+    "outerCorners": {
+      "_note": "Named by which corner of a rectangular hedge shape this tile occupies",
+      "topLeft": [
+        {
+          "spriteIndex": 4,
+          "variant": "SE inner filled"
+        },
+        {
+          "spriteIndex": 8,
+          "variant": "basic (no inner check)"
+        }
+      ],
+      "topRight": [
+        {
+          "spriteIndex": 3,
+          "variant": "SW inner filled"
+        },
+        {
+          "spriteIndex": 15,
+          "variant": "basic (no inner check)"
+        }
+      ],
+      "bottomLeft": [
+        {
+          "spriteIndex": 44,
+          "variant": "NE inner filled"
+        },
+        {
+          "spriteIndex": 40,
+          "variant": "NE absent"
+        }
+      ],
+      "bottomRight": [
+        {
+          "spriteIndex": 43,
+          "variant": "NW inner filled"
+        },
+        {
+          "spriteIndex": 47,
+          "variant": "basic (no inner check)"
+        },
+        {
+          "spriteIndex": 38,
+          "variant": "NE absent"
+        }
+      ]
+    },
+    "edges": {
+      "_note": "Named by which edge of a rectangular hedge shape this tile is on",
+      "top": [
+        {
+          "spriteIndex": 5,
+          "variant": "both SW+SE inners filled"
+        },
+        {
+          "spriteIndex": 2,
+          "variant": "SE inner filled"
+        },
+        {
+          "spriteIndex": 6,
+          "variant": "SW inner filled"
+        },
+        {
+          "spriteIndex": 9,
+          "variant": "no inners (SE+SW absent)"
+        }
+      ],
+      "bottom": [
+        {
+          "spriteIndex": 45,
+          "variant": "full (NW+NE inners filled)"
+        },
+        {
+          "spriteIndex": 42,
+          "variant": "NW absent"
+        },
+        {
+          "spriteIndex": 46,
+          "variant": "NE absent"
+        },
+        {
+          "spriteIndex": 33,
+          "variant": "no inners (NE+NW absent)"
+        }
+      ],
+      "left": [
+        {
+          "spriteIndex": 27,
+          "variant": "NE+SE inners filled"
+        },
+        {
+          "spriteIndex": 24,
+          "variant": "NE inner filled"
+        },
+        {
+          "spriteIndex": 32,
+          "variant": "no inners (NE+SE absent)"
+        }
+      ],
+      "right": [
+        {
+          "spriteIndex": 22,
+          "variant": "NW inner filled"
+        },
+        {
+          "spriteIndex": 16,
+          "variant": "SE inner filled"
+        },
+        {
+          "spriteIndex": 30,
+          "variant": "SW inner filled"
+        },
+        {
+          "spriteIndex": 26,
+          "variant": "no inners (NW+SW absent)"
+        }
+      ]
+    },
+    "center": {
+      "_note": "Interior tiles surrounded on all 4 cardinal sides. Variants differ by which diagonal inner corners are present.",
+      "allInners": {
+        "spriteIndex": 13,
+        "variant": "all 8 neighbors present"
+      },
+      "missingOneInner": [
+        {
+          "spriteIndex": 12,
+          "missing": "NW"
+        },
+        {
+          "spriteIndex": 20,
+          "missing": "SE"
+        },
+        {
+          "spriteIndex": 28,
+          "missing": "NE"
+        },
+        {
+          "spriteIndex": 36,
+          "missing": "SW"
+        }
+      ],
+      "missingTwoInners": [
+        {
+          "spriteIndex": 11,
+          "missing": "NE+SW"
+        },
+        {
+          "spriteIndex": 19,
+          "missing": "NW+SW"
+        },
+        {
+          "spriteIndex": 21,
+          "missing": "SW+SE"
+        },
+        {
+          "spriteIndex": 29,
+          "missing": "NE+NW"
+        },
+        {
+          "spriteIndex": 34,
+          "missing": "SE+NW"
+        },
+        {
+          "spriteIndex": 35,
+          "missing": "NW+SE (variant)"
+        }
+      ],
+      "missingThreeInners": [
+        {
+          "spriteIndex": 10,
+          "missing": "SW+SE+NW (only NE present)"
+        },
+        {
+          "spriteIndex": 14,
+          "missing": "NE+SE (NW+SW present)"
+        },
+        {
+          "spriteIndex": 17,
+          "missing": "NW+NE+SE (only SW present)"
+        },
+        {
+          "spriteIndex": 25,
+          "missing": "NW+NE+SE+SW... center cross no diag"
+        },
+        {
+          "spriteIndex": 33,
+          "missing": "varies"
+        }
+      ],
+      "noInners": {
+        "spriteIndex": 18,
+        "variant": "all 4 cardinals present, no diagonals"
+      }
+    },
+    "isolated": {
+      "single": {
+        "spriteIndex": 0,
+        "description": "No neighbors (default fallback)"
+      }
+    }
+  },
+  "usageGuide": {
+    "autoTiling": "Rules are evaluated in order (ruleId 0 first). First matching rule determines the sprite. If no rule matches, the default sprite (index 0) is used. Each rule specifies required neighbor conditions: True = hedge must be present in that direction, False = hedge must be absent. Directions not mentioned in a rule are 'don't care' (any value).",
+    "perspective": "Tiles are 16x32 to create a top-down view with visible south-facing front face. The top half (16x16) is the hedge canopy seen from above. The bottom half (16x16) is the front/south-facing wall. Tiles with a hedge neighbor to the south have their front face hidden behind the southern neighbor's canopy.",
+    "innerCorners": "When building 2D hedge shapes larger than single-width corridors, diagonal neighbors matter. A missing diagonal neighbor between two cardinal neighbors creates a visible 'inner corner' notch. The many center tile variants handle these inner corner combinations for seamless rendering.",
+    "forTiledMaps": "To use in Tiled: import hedge_tileset.png as a tileset with 16x32 tile size. Either manually place tiles using the categories above, or implement auto-tiling by iterating over each hedge cell and evaluating the rules against its 8 neighbors.",
+    "forPhaser": "Load as a spritesheet with frameWidth=16, frameHeight=32. Use the autoTileRules to select the correct frame index based on neighbor analysis."
+  }
+}

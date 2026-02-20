@@ -6,9 +6,9 @@ import { AudioManager } from '../systems/AudioManager';
 import { ParticleFactory } from '../systems/ParticleFactory';
 import { InputState } from '../../../shared/physics';
 import { CHARACTERS } from '../../../shared/characters';
-import { MAPS } from '../../../shared/maps';
 import { CollisionGrid } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS } from '../../../shared/obstacles';
+import { getCollisionShapes } from '../../../shared/tileRegistry';
 import { PowerupType, POWERUP_CONFIG, POWERUP_NAMES } from '../../../shared/powerups';
 import { charColorNum } from '../ui/designTokens';
 import { MapMetadata } from '../../../shared/maps';
@@ -20,12 +20,8 @@ const PROJECTILE_FRAME: Record<string, number> = {
   baran: 2,
 };
 
-/** Map of map name to tileset key and image path (composite tilesets: 8x14 grid, 112 tiles each) */
-const MAP_TILESET_INFO: Record<string, { key: string; image: string; name: string }> = {
-  hedge_garden: { key: 'tileset_hedge', image: 'tilesets/arena_hedge.png', name: 'arena_hedge' },
-  brick_fortress: { key: 'tileset_brick', image: 'tilesets/arena_brick.png', name: 'arena_brick' },
-  timber_yard: { key: 'tileset_wood', image: 'tilesets/arena_wood.png', name: 'arena_wood' },
-};
+/** Unified tileset for all maps (8x44 grid, 352 tiles) */
+const UNIFIED_TILESET = { key: 'tileset_unified', name: 'arena_unified' };
 
 /** Map powerup type to texture key for ground item sprites */
 const POWERUP_TEXTURE: Record<number, string> = {
@@ -287,37 +283,13 @@ export class GameScene extends Phaser.Scene {
 
       // Load initial map based on server's mapName (assets preloaded in BootScene)
       this.room.onStateChange.once((state: any) => {
-        const mapName = state.mapName || 'hedge_garden';
-        const mapData = MAPS.find((m) => m.name === mapName);
+        const mapKey = state.mapName || 'hedge_garden';
+        console.log(`Loading map: ${mapKey}`);
 
-        if (!mapData) {
-          console.error(`Unknown map: ${mapName}, falling back to hedge_garden`);
-        }
-
-        // Store map metadata for camera bounds and other systems
-        this.mapMetadata = mapData || MAPS[0];
-
-        const mapKey = mapData?.name || 'hedge_garden';
-
-        console.log(`Loading map: ${mapName}`);
-
-        // Assets preloaded in BootScene -- create tilemap directly
-        // Check cache in case BootScene preload hasn't completed (safety)
-        const tilesetInfo = MAP_TILESET_INFO[mapKey] || Object.values(MAP_TILESET_INFO)[0];
-        this.currentTilesetKey = tilesetInfo.key;
-        if (this.textures.exists(tilesetInfo.key) && this.cache.tilemap.has(mapKey)) {
-          this.createTilemap(mapKey);
-        } else {
-          // Fallback: dynamic load (shouldn't happen with BootScene preload)
-          if (!this.textures.exists(tilesetInfo.key)) {
-            this.load.image(tilesetInfo.key, tilesetInfo.image);
-          }
-          if (!this.cache.tilemap.has(mapKey)) {
-            this.load.tilemapTiledJSON(mapKey, mapData?.file || `maps/${mapKey}.json`);
-          }
-          this.load.once('complete', () => this.createTilemap(mapKey));
-          this.load.start();
-        }
+        // Always load fresh map JSON (tileset image preloaded in BootScene)
+        // mapMetadata is derived from the tilemap inside createTilemap()
+        this.currentTilesetKey = UNIFIED_TILESET.key;
+        this.loadAndCreateTilemap(mapKey);
       });
 
       // Schema-based matchState listener -- sole source of truth for status text
@@ -459,27 +431,14 @@ export class GameScene extends Phaser.Scene {
         // Destroy old tilemap
         this.destroyTilemap();
 
-        // Update map metadata reference
-        const mapData = MAPS.find((m) => m.name === data.mapName);
-        this.mapMetadata = mapData || MAPS[0];
-
-        // Create new tilemap (assets already preloaded in BootScene)
-        this.createTilemap(data.mapName);
-
-        // Update prediction arena bounds for new map
-        if (this.prediction && this.mapMetadata) {
-          this.prediction.setArenaBounds({
-            width: this.mapMetadata.width,
-            height: this.mapMetadata.height,
+        // Load fresh map JSON and create tilemap (mapMetadata derived inside createTilemap)
+        this.loadAndCreateTilemap(data.mapName, () => {
+          this.scene.launch('StageIntroScene', {
+            stageNumber: data.stageNumber,
+            arenaName: data.arenaName,
+            paranWins: data.paranWins,
+            guardianWins: data.guardianWins,
           });
-        }
-
-        // Launch StageIntroScene overlay
-        this.scene.launch('StageIntroScene', {
-          stageNumber: data.stageNumber,
-          arenaName: data.arenaName,
-          paranWins: data.paranWins,
-          guardianWins: data.guardianWins,
         });
       });
 
@@ -644,12 +603,9 @@ export class GameScene extends Phaser.Scene {
                 this.collisionGrid.clearTile(obstacle.tileX, obstacle.tileY);
               }
 
-              // Update tilemap visual: remove obstacle canopy + front face
+              // Update tilemap visual: remove obstacle tile
               if (this.wallsLayer) {
                 this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
-              }
-              if (this.wallFrontsLayer) {
-                this.wallFrontsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY + 1);
               }
             }
           });
@@ -1127,7 +1083,19 @@ export class GameScene extends Phaser.Scene {
     const absVy = Math.abs(vy);
     const moving = absVx > 5 || absVy > 5;
 
-    if (moving) {
+    if (role === 'paran') {
+      // Paran: direction-agnostic anim keys, direction via sprite transform
+      animKey = moving ? 'paran-walk' : 'paran-idle';
+      if (moving) {
+        if (absVx >= absVy) {
+          sprite.flipX = vx < 0;
+          sprite.angle = 0;
+        } else {
+          sprite.flipX = false;
+          sprite.angle = vy > 0 ? 90 : -90;
+        }
+      }
+    } else if (moving) {
       if (absVx >= absVy) {
         animKey = vx > 0 ? `${role}-walk-right` : `${role}-walk-left`;
       } else {
@@ -1155,12 +1123,13 @@ export class GameScene extends Phaser.Scene {
 
     // Create sprite using the role's spritesheet
     const sprite = this.add.sprite(player.x, player.y, role);
-    sprite.setDisplaySize(32, 32); // 64x64 texture displayed at 32x32 world size
+    sprite.setDisplaySize(32, 32);
     sprite.setDepth(10);
-    sprite.play(`${role}-idle`);
+    const idleKey = role === 'paran' ? 'paran-idle' : `${role}-idle`;
+    sprite.play(idleKey);
     this.playerSprites.set(sessionId, sprite);
     this.playerRoles.set(sessionId, role);
-    this.playerAnimKeys.set(sessionId, `${role}-idle`);
+    this.playerAnimKeys.set(sessionId, idleKey);
 
     // Common onChange handler for role and health updates
     player.onChange(() => {
@@ -1609,8 +1578,9 @@ export class GameScene extends Phaser.Scene {
         const sprite = this.playerSprites.get(sessionId);
         if (sprite) {
           sprite.setTexture(player.role);
-          sprite.play(`${player.role}-idle`);
-          this.playerAnimKeys.set(sessionId, `${player.role}-idle`);
+          const newIdleKey = player.role === 'paran' ? 'paran-idle' : `${player.role}-idle`;
+          sprite.play(newIdleKey);
+          this.playerAnimKeys.set(sessionId, newIdleKey);
         }
       }
     }
@@ -1638,6 +1608,10 @@ export class GameScene extends Phaser.Scene {
         const role = this.playerRoles.get(sessionId) || 'faran';
         const deathKey = `${role}-death`;
         if (this.playerAnimKeys.get(sessionId) !== deathKey) {
+          if (role === 'paran') {
+            sprite.flipX = false;
+            sprite.angle = 0;
+          }
           sprite.play(deathKey);
           this.playerAnimKeys.set(sessionId, deathKey);
           // On animation complete, dim the sprite
@@ -1827,27 +1801,14 @@ export class GameScene extends Phaser.Scene {
       // Destroy old tilemap
       this.destroyTilemap();
 
-      // Update map metadata reference
-      const mapData = MAPS.find((m) => m.name === data.mapName);
-      this.mapMetadata = mapData || MAPS[0];
-
-      // Create new tilemap (assets already preloaded in BootScene)
-      this.createTilemap(data.mapName);
-
-      // Update prediction arena bounds for new map
-      if (this.prediction && this.mapMetadata) {
-        this.prediction.setArenaBounds({
-          width: this.mapMetadata.width,
-          height: this.mapMetadata.height,
+      // Load fresh map JSON and create tilemap (mapMetadata derived inside createTilemap)
+      this.loadAndCreateTilemap(data.mapName, () => {
+        this.scene.launch('StageIntroScene', {
+          stageNumber: data.stageNumber,
+          arenaName: data.arenaName,
+          paranWins: data.paranWins,
+          guardianWins: data.guardianWins,
         });
-      }
-
-      // Launch StageIntroScene overlay
-      this.scene.launch('StageIntroScene', {
-        stageNumber: data.stageNumber,
-        arenaName: data.arenaName,
-        paranWins: data.paranWins,
-        guardianWins: data.guardianWins,
       });
     });
 
@@ -2016,9 +1977,6 @@ export class GameScene extends Phaser.Scene {
           if (this.wallsLayer) {
             this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
           }
-          if (this.wallFrontsLayer) {
-            this.wallFrontsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY + 1);
-          }
         }
         obstacle.onChange(() => {
           if (obstacle.destroyed) {
@@ -2027,9 +1985,6 @@ export class GameScene extends Phaser.Scene {
             }
             if (this.wallsLayer) {
               this.wallsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY);
-            }
-            if (this.wallFrontsLayer) {
-              this.wallFrontsLayer.putTileAt(0, obstacle.tileX, obstacle.tileY + 1);
             }
           }
         });
@@ -2190,8 +2145,15 @@ export class GameScene extends Phaser.Scene {
       sprite.clearTint();
       const role = this.playerRoles.get(sessionId);
       if (role) {
-        sprite.play(`${role}-idle`);
-        this.playerAnimKeys.set(sessionId, `${role}-idle`);
+        if (role === 'paran') {
+          sprite.flipX = false;
+          sprite.angle = 0;
+          sprite.play('paran-idle');
+          this.playerAnimKeys.set(sessionId, 'paran-idle');
+        } else {
+          sprite.play(`${role}-idle`);
+          this.playerAnimKeys.set(sessionId, `${role}-idle`);
+        }
       }
     });
 
@@ -2368,19 +2330,51 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private loadAndCreateTilemap(mapKey: string, onCreated?: () => void): void {
+    const filePath = `maps/${mapKey}.json`;
+
+    // Clear stale cache so Phaser fetches fresh JSON
+    if (this.cache.tilemap.has(mapKey)) {
+      this.cache.tilemap.remove(mapKey);
+    }
+
+    this.load.tilemapTiledJSON(mapKey, filePath);
+    this.load.once('complete', () => {
+      this.createTilemap(mapKey);
+      if (onCreated) onCreated();
+    });
+    this.load.start();
+  }
+
   private createTilemap(mapKey: string): void {
     const map = this.make.tilemap({ key: mapKey });
 
     // Store tilemap reference for destroy on stage transition
     this.currentTilemap = map;
 
-    // Get the tileset name from the map JSON (per-map tileset names)
-    const tilesetInfo = MAP_TILESET_INFO[mapKey] || Object.values(MAP_TILESET_INFO)[0];
-    const tileset = map.addTilesetImage(tilesetInfo.name, tilesetInfo.key);
+    // Derive map metadata from the tilemap (JSON is the single source of truth)
+    this.mapMetadata = {
+      name: mapKey,
+      displayName: mapKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      file: `maps/${mapKey}.json`,
+      wallTheme: 'hedge' as any,
+      width: map.widthInPixels,
+      height: map.heightInPixels,
+      spawnPoints: {
+        paran: { x: 0, y: 0 },
+        guardians: [
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+        ],
+      },
+    };
+
+    // Use unified tileset for all maps
+    const tileset = map.addTilesetImage(UNIFIED_TILESET.name, UNIFIED_TILESET.key);
 
     if (!tileset) {
       console.error(
-        `Failed to load tileset for map ${mapKey} (name=${tilesetInfo.name}, key=${tilesetInfo.key})`,
+        `Failed to load tileset for map ${mapKey} (name=${UNIFIED_TILESET.name}, key=${UNIFIED_TILESET.key})`,
       );
       return;
     }
@@ -2406,8 +2400,6 @@ export class GameScene extends Phaser.Scene {
     if (mapData) {
       const wallLayerData = mapData.data.layers.find((l: any) => l.name === 'Walls');
       if (wallLayerData) {
-        const collisionShapes = mapData.data.tilesets?.[0]?.properties?.collisionShapes || {};
-
         this.collisionGrid = new CollisionGrid(
           wallLayerData.data,
           mapData.data.width,
@@ -2415,7 +2407,7 @@ export class GameScene extends Phaser.Scene {
           mapData.data.tilewidth,
           OBSTACLE_TILE_IDS.destructible,
           OBSTACLE_TILE_IDS.indestructible,
-          collisionShapes,
+          getCollisionShapes(),
         );
 
         // Pass collision grid to prediction system

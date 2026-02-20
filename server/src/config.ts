@@ -1,4 +1,4 @@
-import { NETWORK } from "../../shared/physics";
+import { NETWORK } from '../../shared/physics';
 
 export const SERVER_CONFIG = {
   port: process.env.PORT ? parseInt(process.env.PORT) : 2567,

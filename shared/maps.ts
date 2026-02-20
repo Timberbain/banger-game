@@ -1,65 +1,73 @@
 /**
- * Map metadata registry
- * Shared between client and server for consistent map loading and spawn points
+ * Map metadata types and parser.
+ * Metadata is embedded in Tiled JSON map files as custom properties.
+ * Server discovers maps from filesystem; client derives metadata from Phaser tilemap.
  */
+
+import type { WallTheme } from './tileRegistry';
 
 export interface MapMetadata {
   name: string;
   displayName: string;
-  file: string;         // Path relative to client public dir
-  tileset: string;      // Tileset key name (matches Tiled tileset name)
-  width: number;        // Arena width in pixels (50 tiles * 32px = 1600)
-  height: number;       // Arena height in pixels (38 tiles * 32px = 1216)
+  file: string; // Path relative to client public dir
+  wallTheme: WallTheme; // Wall art theme (hedge/brick/wood)
+  width: number; // Arena width in pixels
+  height: number; // Arena height in pixels
   spawnPoints: {
     paran: { x: number; y: number };
     guardians: [{ x: number; y: number }, { x: number; y: number }];
   };
 }
 
-export const MAPS: MapMetadata[] = [
-  {
-    name: "hedge_garden",
-    displayName: "Hedge Garden",
-    file: "maps/hedge_garden.json",
-    tileset: "arena_hedge",
-    width: 1600,   // 50 * 32
-    height: 1216,  // 38 * 32
-    spawnPoints: {
-      paran: { x: 800, y: 480 },       // tile (25, 15) - center of large open area
-      guardians: [
-        { x: 512, y: 96 },             // faran: tile (16, 3) - open corridor north
-        { x: 960, y: 736 }             // baran: tile (30, 23) - open area south-east
-      ]
-    }
-  },
-  {
-    name: "brick_fortress",
-    displayName: "Brick Fortress",
-    file: "maps/brick_fortress.json",
-    tileset: "arena_brick",
-    width: 1600,
-    height: 1216,
-    spawnPoints: {
-      paran: { x: 768, y: 384 },       // tile (24, 12) - open corridor above central chamber
-      guardians: [
-        { x: 288, y: 96 },             // faran: tile (9, 3) - inside top-left room
-        { x: 1088, y: 640 }            // baran: tile (34, 20) - open corridor near bottom-right room
-      ]
-    }
-  },
-  {
-    name: "timber_yard",
-    displayName: "Timber Yard",
-    file: "maps/timber_yard.json",
-    tileset: "arena_wood",
-    width: 1600,
-    height: 1216,
-    spawnPoints: {
-      paran: { x: 640, y: 384 },       // tile (20, 12) - open area left of vertical spine gap
-      guardians: [
-        { x: 128, y: 96 },             // faran: tile (4, 3) - open corner top-left
-        { x: 1216, y: 640 }            // baran: tile (38, 20) - open area right of horizontal spine
-      ]
+/**
+ * Parse MapMetadata from a Tiled JSON object.
+ * Reads embedded properties (mapName, displayName, wallTheme, spawnPoints).
+ * Returns null if spawnPoints property is missing (map not playable).
+ */
+export function parseMapMetadata(mapJson: any, fileName: string): MapMetadata | null {
+  const props = new Map<string, string>();
+  if (Array.isArray(mapJson.properties)) {
+    for (const p of mapJson.properties) {
+      props.set(p.name, p.value);
     }
   }
-];
+
+  // Derive dimensions from tile grid
+  const width = mapJson.width * (mapJson.tilewidth || 32);
+  const height = mapJson.height * (mapJson.tileheight || 32);
+
+  // Parse spawn points — required for a playable map
+  const spawnRaw = props.get('spawnPoints');
+  if (!spawnRaw) return null;
+
+  let spawnData: any;
+  try {
+    spawnData = JSON.parse(spawnRaw);
+  } catch {
+    return null;
+  }
+
+  if (!spawnData.paran || !spawnData.guardians?.[0] || !spawnData.guardians?.[1]) {
+    return null;
+  }
+
+  const baseName = fileName.replace(/\.json$/, '');
+
+  return {
+    name: props.get('mapName') || baseName,
+    displayName:
+      props.get('displayName') ||
+      baseName.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    file: `maps/${fileName}`,
+    wallTheme: (props.get('wallTheme') as WallTheme) || 'hedge',
+    width,
+    height,
+    spawnPoints: {
+      paran: { x: spawnData.paran.x, y: spawnData.paran.y },
+      guardians: [
+        { x: spawnData.guardians[0].x, y: spawnData.guardians[0].y },
+        { x: spawnData.guardians[1].x, y: spawnData.guardians[1].y },
+      ],
+    },
+  };
+}

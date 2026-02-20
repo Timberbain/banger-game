@@ -8,10 +8,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Character spritesheets (64x64 frames, 36 frames each in horizontal strip)
+    // Paran spritesheet (32x32 frames, 4x3 grid, hand-drawn pac-man)
     this.load.spritesheet('paran', 'sprites/paran.png', {
-      frameWidth: 64,
-      frameHeight: 64,
+      frameWidth: 32,
+      frameHeight: 32,
     });
     this.load.spritesheet('faran', 'sprites/faran.png', {
       frameWidth: 64,
@@ -51,13 +51,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('icon_gravestone', 'icons/gravestone.png');
     this.load.image('potion_green', 'icons/potion-green.png');
 
-    // Preload all arena tilesets and tilemaps for instant stage transitions
-    this.load.image('tileset_hedge', 'tilesets/arena_hedge.png');
-    this.load.image('tileset_brick', 'tilesets/arena_brick.png');
-    this.load.image('tileset_wood', 'tilesets/arena_wood.png');
-    this.load.tilemapTiledJSON('hedge_garden', 'maps/hedge_garden.json');
-    this.load.tilemapTiledJSON('brick_fortress', 'maps/brick_fortress.json');
-    this.load.tilemapTiledJSON('timber_yard', 'maps/timber_yard.json');
+    // Preload unified tileset (tilemaps loaded dynamically in GameScene for fresh data)
+    this.load.image('tileset_unified', 'tilesets/arena_unified.png');
   }
 
   create() {
@@ -99,9 +94,56 @@ export class BootScene extends Phaser.Scene {
 
     this.registry.set('audioManager', audioManager);
 
-    // Create character animations for all 3 roles (36-frame layout per character)
-    const roles = ['paran', 'faran', 'baran'];
-    for (const role of roles) {
+    // Paran animations (32x32 grid spritesheet, direction via sprite transform)
+    this.anims.create({
+      key: 'paran-walk',
+      frames: [
+        { key: 'paran', frame: 0 },
+        { key: 'paran', frame: 1 },
+        { key: 'paran', frame: 2 },
+        { key: 'paran', frame: 3 },
+        { key: 'paran', frame: 2 },
+        { key: 'paran', frame: 1 },
+      ],
+      frameRate: 8,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'paran-idle',
+      frames: [
+        { key: 'paran', frame: 0 },
+        { key: 'paran', frame: 3 },
+      ],
+      frameRate: 3,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'paran-shoot',
+      frames: [
+        { key: 'paran', frame: 5 },
+        { key: 'paran', frame: 9 },
+        { key: 'paran', frame: 5 },
+      ],
+      frameRate: 3,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: 'paran-death',
+      frames: [
+        { key: 'paran', frame: 5 },
+        { key: 'paran', frame: 6 },
+        { key: 'paran', frame: 7 },
+        { key: 'paran', frame: 8 },
+        { key: 'paran', frame: 9 },
+        { key: 'paran', frame: 10 },
+      ],
+      frameRate: 8,
+      repeat: 0,
+    });
+
+    // Guardian animations (64x64 horizontal strip, 36 frames each)
+    const guardianRoles = ['faran', 'baran'];
+    for (const role of guardianRoles) {
       // Walk Down: frames 0-5 (6 frames)
       this.anims.create({
         key: `${role}-walk-down`,

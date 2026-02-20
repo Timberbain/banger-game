@@ -70,11 +70,11 @@ The skill expression for Paran is navigation under pressure. The skill expressio
 
 ## Balance Levers
 
-| Lever | What it controls |
-|---|---|
+| Lever                      | What it controls                                              |
+| -------------------------- | ------------------------------------------------------------- |
 | Paran's acceleration curve | How long it takes to become dangerous again after a collision |
-| Paran's attack cooldown | How much each miss costs |
-| Guardian health | How many mistakes guardians can survive |
-| Projectile speed | How dodgeable attacks are |
-| Projectile damage | Time-to-kill for both sides |
-| Arena obstacles | How many collision threats Paran must navigate |
+| Paran's attack cooldown    | How much each miss costs                                      |
+| Guardian health            | How many mistakes guardians can survive                       |
+| Projectile speed           | How dodgeable attacks are                                     |
+| Projectile damage          | Time-to-kill for both sides                                   |
+| Arena obstacles            | How many collision threats Paran must navigate                |

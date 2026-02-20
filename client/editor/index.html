@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Banger — Arena Editor</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="editor-root">
+      <div id="toolbar">
+        <div class="toolbar-group">
+          <button id="btn-new" class="toolbar-btn" title="New Arena (Ctrl+N)">New</button>
+          <button id="btn-load" class="toolbar-btn" title="Load Map">Load &#9662;</button>
+          <button id="btn-save" class="toolbar-btn" title="Save WIP (Ctrl+S)">Save</button>
+          <button id="btn-export" class="toolbar-btn primary" title="Export Tiled JSON">
+            Export
+          </button>
+        </div>
+        <div class="toolbar-group">
+          <!-- Theme dropdown removed: walls are now per-tile themed -->
+        </div>
+        <div class="toolbar-group">
+          <button id="btn-undo" class="toolbar-btn" title="Undo (Ctrl+Z)">Undo</button>
+          <button id="btn-redo" class="toolbar-btn" title="Redo (Ctrl+Shift+Z)">Redo</button>
+        </div>
+        <div class="toolbar-group right">
+          <label class="toolbar-toggle">
+            <input type="checkbox" id="chk-grid" checked />
+            Grid
+          </label>
+          <label class="toolbar-toggle">
+            <input type="checkbox" id="chk-collision" />
+            Collision
+          </label>
+        </div>
+      </div>
+
+      <div id="main-area">
+        <div id="palette">
+          <div class="palette-section">
+            <div class="palette-header">Tools</div>
+            <div class="palette-tools">
+              <button class="palette-btn active" data-tool="wall-hedge" title="Hedge Wall (W)">
+                <span class="swatch wall-hedge"></span>Hedge
+              </button>
+              <button class="palette-btn" data-tool="wall-brick" title="Brick Wall (B)">
+                <span class="swatch wall-brick"></span>Brick
+              </button>
+              <button class="palette-btn" data-tool="wall-wood" title="Wood Wall (D)">
+                <span class="swatch wall-wood"></span>Wood
+              </button>
+              <button class="palette-btn" data-tool="heavy" title="Heavy Obstacle (H)">
+                <span class="swatch heavy"></span>Heavy
+              </button>
+              <button class="palette-btn" data-tool="medium" title="Medium Obstacle (M)">
+                <span class="swatch medium"></span>Medium
+              </button>
+              <button class="palette-btn" data-tool="light" title="Light Obstacle (L)">
+                <span class="swatch light"></span>Light
+              </button>
+              <button class="palette-btn" data-tool="eraser" title="Eraser (E)">
+                <span class="swatch eraser"></span>Eraser
+              </button>
+              <button class="palette-btn" data-tool="spawn-paran" title="Paran Spawn (1)">
+                <span class="swatch spawn-paran"></span>Paran
+              </button>
+              <button class="palette-btn" data-tool="spawn-guardian1" title="Guardian 1 Spawn (2)">
+                <span class="swatch spawn-g1"></span>Guard 1
+              </button>
+              <button class="palette-btn" data-tool="spawn-guardian2" title="Guardian 2 Spawn (3)">
+                <span class="swatch spawn-g2"></span>Guard 2
+              </button>
+            </div>
+          </div>
+          <div class="palette-section">
+            <div class="palette-header">Ground</div>
+            <div id="ground-palette" class="palette-ground"></div>
+          </div>
+        </div>
+
+        <div id="viewport">
+          <canvas id="editor-canvas"></canvas>
+          <div id="load-dropdown" class="dropdown hidden">
+            <button class="dropdown-item" data-map="hedge_garden">Hedge Garden</button>
+            <button class="dropdown-item" data-map="brick_fortress">Brick Fortress</button>
+            <button class="dropdown-item" data-map="timber_yard">Timber Yard</button>
+            <hr />
+            <button class="dropdown-item" id="btn-upload">Upload JSON...</button>
+            <input type="file" id="file-upload" accept=".json" class="hidden" />
+          </div>
+        </div>
+
+        <div id="properties">
+          <div class="prop-section">
+            <div class="prop-header">Arena</div>
+            <div class="prop-row">
+              <label>Size:</label>
+              <span id="prop-size">50 x 38</span>
+            </div>
+            <div class="prop-row">
+              <label>Name:</label>
+              <input id="prop-name" type="text" value="custom_arena" maxlength="32" />
+            </div>
+            <div class="prop-row">
+              <label>Display:</label>
+              <input id="prop-display" type="text" value="Custom Arena" maxlength="48" />
+            </div>
+          </div>
+          <div class="prop-section">
+            <div class="prop-header">Spawns</div>
+            <div class="prop-row">
+              <span class="spawn-dot paran"></span>
+              <label>Paran:</label>
+              <span id="spawn-paran">--</span>
+            </div>
+            <div class="prop-row">
+              <span class="spawn-dot guardian1"></span>
+              <label>Guard 1:</label>
+              <span id="spawn-guardian1">--</span>
+            </div>
+            <div class="prop-row">
+              <span class="spawn-dot guardian2"></span>
+              <label>Guard 2:</label>
+              <span id="spawn-guardian2">--</span>
+            </div>
+          </div>
+          <div class="prop-section">
+            <div class="prop-header">Validation</div>
+            <div id="validation-list">
+              <div class="validation-item" id="val-perimeter">
+                <span class="val-icon">--</span> Perimeter
+              </div>
+              <div class="validation-item" id="val-connectivity">
+                <span class="val-icon">--</span> Connectivity
+              </div>
+              <div class="validation-item" id="val-spawns">
+                <span class="val-icon">--</span> Spawns: 0/3
+              </div>
+            </div>
+          </div>
+          <div class="prop-section hidden" id="collision-editor-section">
+            <div class="prop-header">Collision Editor</div>
+            <div id="collision-editor-content">
+              <canvas id="collision-preview" width="128" height="128"></canvas>
+              <div class="collision-inputs">
+                <div class="collision-row">
+                  <label>X:</label>
+                  <input type="number" id="col-x" min="0" max="32" value="0" />
+                  <label>Y:</label>
+                  <input type="number" id="col-y" min="0" max="32" value="0" />
+                </div>
+                <div class="collision-row">
+                  <label>W:</label>
+                  <input type="number" id="col-w" min="0" max="32" value="32" />
+                  <label>H:</label>
+                  <input type="number" id="col-h" min="0" max="32" value="32" />
+                </div>
+                <div class="collision-row">
+                  <button id="col-reset" class="toolbar-btn" title="Reset to default">Reset</button>
+                  <span id="col-tile-id" class="text-secondary"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="statusbar">
+        <span id="status-tile">Tile: --</span>
+        <span id="status-zoom">Zoom: 100%</span>
+        <span id="status-tool">Tool: Wall</span>
+        <span id="status-validation">--</span>
+      </div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

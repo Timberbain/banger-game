@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Colors, TextStyle, Buttons, Decorative, Panels, charColor } from '../ui/designTokens';
+import { createLayeredButton } from '../ui/createLayeredButton';
 
 /**
  * HelpScene - Controls tutorial screen with keyboard maps and role descriptions.
@@ -22,14 +23,16 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(bg);
 
     // Title
-    const title = this.add.text(cx, 50, 'HOW TO PLAY', {
-      fontSize: '32px',
-      color: Colors.accent.vine,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      stroke: Colors.bg.deep,
-      strokeThickness: 3,
-    }).setOrigin(0.5);
+    const title = this.add
+      .text(cx, 50, 'HOW TO PLAY', {
+        fontSize: '32px',
+        color: Colors.accent.vine,
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: Colors.bg.deep,
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5);
     this.uiElements.push(title);
 
     // Decorative line under title
@@ -39,11 +42,13 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(gfx);
 
     // --- Controls Section (single line) ---
-    const controlsText = this.add.text(cx, 100, 'WASD to move  |  SPACE to shoot  |  TAB to spectate', {
-      fontSize: '14px',
-      color: Colors.text.secondary,
-      fontFamily: 'monospace',
-    }).setOrigin(0.5);
+    const controlsText = this.add
+      .text(cx, 100, 'WASD to move  |  SPACE to shoot  |  TAB to spectate', {
+        fontSize: '14px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
     this.uiElements.push(controlsText);
 
     // --- Role panels (3 columns) -- spaced for 1280 width ---
@@ -66,19 +71,13 @@ export class HelpScene extends Phaser.Scene {
         role: 'faran',
         name: 'Faran',
         tagline: 'The sharpshooter',
-        lines: [
-          'Nimble guardian with a rapid-fire blaster',
-          'Team up with Baran to corner Paran',
-        ],
+        lines: ['Nimble guardian with a rapid-fire blaster', 'Team up with Baran to corner Paran'],
       },
       {
         role: 'baran',
         name: 'Baran',
         tagline: 'The heavy hitter',
-        lines: [
-          'Armored guardian packing serious firepower',
-          'Team up with Faran to corner Paran',
-        ],
+        lines: ['Armored guardian packing serious firepower', 'Team up with Faran to corner Paran'],
       },
     ];
 
@@ -98,96 +97,108 @@ export class HelpScene extends Phaser.Scene {
         this.uiElements.push(sprite);
       } catch (_e) {
         // Fallback: colored circle if sprite not available
-        const circle = this.add.circle(x, rolesY + 45, 16, Phaser.Display.Color.HexStringToColor(charColor(r.role)).color);
+        const circle = this.add.circle(
+          x,
+          rolesY + 45,
+          16,
+          Phaser.Display.Color.HexStringToColor(charColor(r.role)).color,
+        );
         this.uiElements.push(circle);
       }
 
       // Role name
-      const nameText = this.add.text(x, rolesY + 85, r.name, {
-        fontSize: '18px',
-        color: charColor(r.role),
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
+      const nameText = this.add
+        .text(x, rolesY + 85, r.name, {
+          fontSize: '18px',
+          color: charColor(r.role),
+          fontFamily: 'monospace',
+          fontStyle: 'bold',
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5);
       this.uiElements.push(nameText);
 
       // Role tagline
-      const taglineText = this.add.text(x, rolesY + 105, r.tagline, {
-        fontSize: '13px',
-        color: Colors.text.secondary,
-        fontFamily: 'monospace',
-        fontStyle: 'italic',
-      }).setOrigin(0.5);
+      const taglineText = this.add
+        .text(x, rolesY + 105, r.tagline, {
+          fontSize: '13px',
+          color: Colors.text.secondary,
+          fontFamily: 'monospace',
+          fontStyle: 'italic',
+        })
+        .setOrigin(0.5);
       this.uiElements.push(taglineText);
 
       // Playful description lines
       r.lines.forEach((line, lineIdx) => {
-        const descText = this.add.text(x, rolesY + 128 + lineIdx * 28, line, {
-          fontSize: '13px',
-          color: Colors.text.secondary,
-          fontFamily: 'monospace',
-          wordWrap: { width: 250 },
-        }).setOrigin(0.5);
+        const descText = this.add
+          .text(x, rolesY + 128 + lineIdx * 28, line, {
+            fontSize: '13px',
+            color: Colors.text.secondary,
+            fontFamily: 'monospace',
+            wordWrap: { width: 250 },
+          })
+          .setOrigin(0.5);
         this.uiElements.push(descText);
       });
     });
 
     // --- Win Conditions Section ---
     const winY = 510;
-    const winTitle = this.add.text(cx, winY, 'Win Conditions', {
-      ...TextStyle.heroHeading,
-      fontSize: '20px',
-      fontFamily: 'monospace',
-    }).setOrigin(0.5);
+    const winTitle = this.add
+      .text(cx, winY, 'Win Conditions', {
+        ...TextStyle.heroHeading,
+        fontSize: '20px',
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
     this.uiElements.push(winTitle);
 
     const winConditions = [
       { text: 'Paran wins by eliminating both guardians', color: Colors.char.paran },
-      { text: 'Guardians win by taking down Paran or surviving the clock', color: Colors.char.faran },
+      {
+        text: 'Guardians win by taking down Paran or surviving the clock',
+        color: Colors.char.faran,
+      },
     ];
     winConditions.forEach((wc, i) => {
-      const t = this.add.text(cx, winY + 28 + i * 24, wc.text, {
-        fontSize: '14px',
-        color: wc.color,
-        fontFamily: 'monospace',
-        stroke: '#000000',
-        strokeThickness: 1,
-      }).setOrigin(0.5);
+      const t = this.add
+        .text(cx, winY + 28 + i * 24, wc.text, {
+          fontSize: '14px',
+          color: wc.color,
+          fontFamily: 'monospace',
+          stroke: '#000000',
+          strokeThickness: 1,
+        })
+        .setOrigin(0.5);
       this.uiElements.push(t);
     });
 
     // Arena tip
-    const tipText = this.add.text(cx, winY + 65, 'The arena is alive -- smash through obstacles or use them as cover!', {
-      fontSize: '12px',
-      color: Colors.accent.vine,
-      fontFamily: 'monospace',
-    }).setOrigin(0.5);
+    const tipText = this.add
+      .text(cx, winY + 65, 'The arena is alive -- smash through obstacles or use them as cover!', {
+        fontSize: '12px',
+        color: Colors.accent.vine,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
     this.uiElements.push(tipText);
 
-    // --- Back Button ---
-    const backButton = this.add.text(cx, 640, 'Back to Lobby', {
-      fontSize: '20px',
-      color: Buttons.primary.text,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      backgroundColor: Buttons.primary.bg,
-      padding: { x: 24, y: 10 },
-    })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-
-    backButton.on('pointerover', () => backButton.setBackgroundColor(Buttons.primary.hover));
-    backButton.on('pointerout', () => backButton.setBackgroundColor(Buttons.primary.bg));
-    backButton.on('pointerdown', () => {
-      this.scene.start('LobbyScene');
+    // --- Back Button --- layered
+    const backHandle = createLayeredButton(this, cx, 640, 'Back to Lobby', {
+      size: 'md',
+      bgNum: Buttons.primary.bgNum,
+      hoverNum: Buttons.primary.hoverNum,
+      onClick: () => {
+        this.scene.start('LobbyScene');
+      },
     });
-    this.uiElements.push(backButton);
+    backHandle.elements.forEach((el) => this.uiElements.push(el));
   }
 
   shutdown() {
-    this.uiElements.forEach(el => {
+    this.uiElements.forEach((el) => {
       if (el && el.scene) el.destroy();
     });
     this.uiElements = [];

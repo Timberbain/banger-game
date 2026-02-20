@@ -5,10 +5,11 @@ import { ObstacleState } from '../schema/Obstacle';
 import { SERVER_CONFIG, GAME_CONFIG } from '../config';
 import { applyMovementPhysics, updateFacingDirection, PHYSICS } from '../../../shared/physics';
 import { CHARACTERS, COMBAT } from '../../../shared/characters';
-import { MAPS, MapMetadata } from '../../../shared/maps';
+import { parseMapMetadata, MapMetadata } from '../../../shared/maps';
 import { LOBBY_CONFIG } from '../../../shared/lobby';
 import { CollisionGrid, resolveCollisions } from '../../../shared/collisionGrid';
 import { OBSTACLE_TILE_IDS, OBSTACLE_TIER_HP } from '../../../shared/obstacles';
+import { getCollisionShapes } from '../../../shared/tileRegistry';
 import {
   PowerupType,
   POWERUP_CONFIG,
@@ -20,6 +21,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const MATCH_DURATION_MS = 5 * 60 * 1000; // 5 minutes per stage -- guardians win on timeout
+
+/** Discover playable maps from JSON files at module load */
+function discoverMaps(): MapMetadata[] {
+  const mapsDir = path.join(__dirname, '../../../client/public/maps');
+  const files = fs.readdirSync(mapsDir).filter((f: string) => f.endsWith('.json'));
+  const maps: MapMetadata[] = [];
+  for (const file of files) {
+    const json = JSON.parse(fs.readFileSync(path.join(mapsDir, file), 'utf-8'));
+    const meta = parseMapMetadata(json, file);
+    if (meta) maps.push(meta);
+  }
+  console.log(`Discovered ${maps.length} maps: ${maps.map((m) => m.displayName).join(', ')}`);
+  return maps;
+}
+
+const DISCOVERED_MAPS = discoverMaps();
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
@@ -80,13 +97,13 @@ export class GameRoom extends Room<GameState> {
    * Called in onCreate so stageArenas[0] is available for initial map loading.
    */
   private selectArenas(): void {
-    const indices = MAPS.map((_, i) => i);
+    const indices = DISCOVERED_MAPS.map((_, i) => i);
     // Fisher-Yates shuffle
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    this.stageArenas = indices.map((i) => MAPS[i]);
+    this.stageArenas = indices.slice(0, 3).map((i) => DISCOVERED_MAPS[i]);
     console.log(`Stage arenas selected: ${this.stageArenas.map((m) => m.displayName).join(', ')}`);
   }
 
@@ -99,8 +116,6 @@ export class GameRoom extends Room<GameState> {
     const mapJson = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
     const wallLayer = mapJson.layers.find((l: any) => l.name === 'Walls');
 
-    const collisionShapes = mapJson.tilesets?.[0]?.properties?.collisionShapes || {};
-
     this.collisionGrid = new CollisionGrid(
       wallLayer.data,
       mapJson.width,
@@ -108,7 +123,7 @@ export class GameRoom extends Room<GameState> {
       mapJson.tilewidth,
       OBSTACLE_TILE_IDS.destructible,
       OBSTACLE_TILE_IDS.indestructible,
-      collisionShapes,
+      getCollisionShapes(),
     );
 
     // Initialize destructible obstacles in state for client sync

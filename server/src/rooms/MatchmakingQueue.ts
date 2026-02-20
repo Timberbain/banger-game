@@ -18,7 +18,7 @@ export class MatchmakingQueue {
     this.removeFromQueue(sessionId);
 
     // Add to appropriate queue
-    if (preferredRole === "paran") {
+    if (preferredRole === 'paran') {
       this.paranQueue.push(sessionId);
     } else {
       // faran and baran both go to guardian queue
@@ -28,7 +28,7 @@ export class MatchmakingQueue {
     // Track timestamp for timeout
     this.queueTimestamps.set(sessionId, Date.now());
 
-    console.log(`Added ${sessionId} to ${preferredRole === "paran" ? "paran" : "guardian"} queue`);
+    console.log(`Added ${sessionId} to ${preferredRole === 'paran' ? 'paran' : 'guardian'} queue`);
   }
 
   /**
@@ -36,8 +36,8 @@ export class MatchmakingQueue {
    * @param sessionId Player session ID
    */
   removeFromQueue(sessionId: string): void {
-    this.paranQueue = this.paranQueue.filter(id => id !== sessionId);
-    this.guardianQueue = this.guardianQueue.filter(id => id !== sessionId);
+    this.paranQueue = this.paranQueue.filter((id) => id !== sessionId);
+    this.guardianQueue = this.guardianQueue.filter((id) => id !== sessionId);
     this.queueTimestamps.delete(sessionId);
   }
 
@@ -49,16 +49,13 @@ export class MatchmakingQueue {
     if (this.paranQueue.length >= 1 && this.guardianQueue.length >= 2) {
       // Pop 1 paran and 2 guardians
       const paran = this.paranQueue.shift()!;
-      const guardians = [
-        this.guardianQueue.shift()!,
-        this.guardianQueue.shift()!,
-      ];
+      const guardians = [this.guardianQueue.shift()!, this.guardianQueue.shift()!];
 
       // Remove timestamps
       this.queueTimestamps.delete(paran);
-      guardians.forEach(g => this.queueTimestamps.delete(g));
+      guardians.forEach((g) => this.queueTimestamps.delete(g));
 
-      console.log(`Match formed: ${paran} vs ${guardians.join(", ")}`);
+      console.log(`Match formed: ${paran} vs ${guardians.join(', ')}`);
 
       return { paran, guardians };
     }
@@ -93,7 +90,7 @@ export class MatchmakingQueue {
     });
 
     // Remove timed-out players
-    timedOut.forEach(sessionId => this.removeFromQueue(sessionId));
+    timedOut.forEach((sessionId) => this.removeFromQueue(sessionId));
 
     return timedOut;
   }

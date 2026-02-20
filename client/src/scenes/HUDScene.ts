@@ -8,6 +8,7 @@ import {
   TextStyle,
   CooldownBar,
   Layout,
+  HudBackdrop,
   charColor,
   charColorNum,
 } from '../ui/designTokens';
@@ -904,8 +905,14 @@ export class HUDScene extends Phaser.Scene {
     const panelH = 80;
     const panelX = this.W / 2 - panelW / 2;
     const panelY = this.H * 0.03 - 16; // Above timer center
-    this.topCenterBackdrop.fillStyle(0x000000, 0.4);
-    this.topCenterBackdrop.fillRoundedRect(panelX, panelY, panelW, panelH, 8);
+    this.topCenterBackdrop.fillStyle(HudBackdrop.fill, HudBackdrop.fillAlpha);
+    this.topCenterBackdrop.fillRoundedRect(panelX, panelY, panelW, panelH, HudBackdrop.radius);
+    this.topCenterBackdrop.lineStyle(
+      HudBackdrop.borderWidth,
+      HudBackdrop.borderColor,
+      HudBackdrop.borderAlpha,
+    );
+    this.topCenterBackdrop.strokeRoundedRect(panelX, panelY, panelW, panelH, HudBackdrop.radius);
   }
 
   // =====================
@@ -1174,9 +1181,9 @@ export class HUDScene extends Phaser.Scene {
 
     this.minimapGfx.clear();
 
-    // 1. Semi-transparent black background
-    this.minimapGfx.fillStyle(0x000000, 0.4);
-    this.minimapGfx.fillRect(mmX, mmY, mmW, mmH);
+    // 1. Semi-transparent black background with rounded corners
+    this.minimapGfx.fillStyle(HudBackdrop.fill, HudBackdrop.fillAlpha);
+    this.minimapGfx.fillRoundedRect(mmX, mmY, mmW, mmH, HudBackdrop.radius);
 
     // 2. Wall blocks (dark gray)
     this.minimapGfx.fillStyle(0x444444, 0.8);
@@ -1229,9 +1236,13 @@ export class HUDScene extends Phaser.Scene {
       return true;
     });
 
-    // 6. Border outline
-    this.minimapGfx.lineStyle(1, 0xffffff, 0.3);
-    this.minimapGfx.strokeRect(mmX, mmY, mmW, mmH);
+    // 6. Border outline (brass accent)
+    this.minimapGfx.lineStyle(
+      HudBackdrop.borderWidth,
+      HudBackdrop.borderColor,
+      HudBackdrop.borderAlpha,
+    );
+    this.minimapGfx.strokeRoundedRect(mmX, mmY, mmW, mmH, HudBackdrop.radius);
   }
 
   // =====================

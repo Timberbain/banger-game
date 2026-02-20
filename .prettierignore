@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.json
+.planning/
+.claude/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.wav
+*.mp3
+*.ogg
+*.ttf
+*.woff
+*.woff2

@@ -1,12 +1,12 @@
-import express from "express";
-import { createServer } from "http";
-import { Server, matchMaker } from "colyseus";
-import { monitor } from "@colyseus/monitor";
-import cors from "cors";
-import { GameRoom } from "./rooms/GameRoom";
-import { LobbyRoom } from "./rooms/LobbyRoom";
-import { MatchmakingRoom } from "./rooms/MatchmakingRoom";
-import { SERVER_CONFIG } from "./config";
+import express from 'express';
+import { createServer } from 'http';
+import { Server, matchMaker } from 'colyseus';
+import { monitor } from '@colyseus/monitor';
+import cors from 'cors';
+import { GameRoom } from './rooms/GameRoom';
+import { LobbyRoom } from './rooms/LobbyRoom';
+import { MatchmakingRoom } from './rooms/MatchmakingRoom';
+import { SERVER_CONFIG } from './config';
 
 const app = express();
 const httpServer = createServer(app);
@@ -30,13 +30,13 @@ const gameServer = new Server({
 });
 
 // Register lobby room
-gameServer.define("lobby_room", LobbyRoom);
+gameServer.define('lobby_room', LobbyRoom);
 
 // Register matchmaking room
-gameServer.define("matchmaking_room", MatchmakingRoom);
+gameServer.define('matchmaking_room', MatchmakingRoom);
 
 // Register game room
-gameServer.define("game_room", GameRoom);
+gameServer.define('game_room', GameRoom);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -57,10 +57,10 @@ app.get('/rooms/find', async (req, res) => {
 
   try {
     // Query all lobby rooms
-    const rooms = await matchMaker.query({ name: "lobby_room" });
+    const rooms = await matchMaker.query({ name: 'lobby_room' });
 
     // Find room with matching code in metadata
-    const matchingRoom = rooms.find(room => room.metadata?.roomCode === code);
+    const matchingRoom = rooms.find((room) => room.metadata?.roomCode === code);
 
     if (!matchingRoom) {
       return res.status(404).json({ error: 'Room not found' });
@@ -74,7 +74,7 @@ app.get('/rooms/find', async (req, res) => {
 });
 
 // Add Colyseus monitor for dev debugging
-app.use("/colyseus", monitor());
+app.use('/colyseus', monitor());
 
 // Process-level error safety net -- prevent unhandled errors from crashing server
 process.on('uncaughtException', (err) => {

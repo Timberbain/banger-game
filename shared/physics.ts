@@ -13,7 +13,7 @@ export const PHYSICS = {
 
 /** Default arena bounds (fallback). Server and client should use map-specific bounds from MapMetadata instead. */
 export const ARENA = {
-  width: 1600,  // 50 tiles x 32px = 1600
+  width: 1600, // 50 tiles x 32px = 1600
   height: 1216, // 38 tiles x 32px = 1216
 };
 
@@ -44,7 +44,7 @@ export function applyMovementPhysics(
   player: { x: number; y: number; vx: number; vy: number; angle: number; role?: string },
   input: InputState,
   dt: number,
-  stats?: { acceleration: number; drag: number; maxVelocity: number }
+  stats?: { acceleration: number; drag: number; maxVelocity: number },
 ): void {
   // Use character-specific stats or fallback to PHYSICS defaults
   const acceleration = stats?.acceleration ?? PHYSICS.acceleration;
@@ -149,9 +149,7 @@ export function applyMovementPhysics(
  *
  * @param player - Object with { vx, vy, angle }
  */
-export function updateFacingDirection(
-  player: { vx: number; vy: number; angle: number }
-): void {
+export function updateFacingDirection(player: { vx: number; vy: number; angle: number }): void {
   const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
 
   // Only update facing if moving above threshold

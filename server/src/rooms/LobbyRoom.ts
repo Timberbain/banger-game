@@ -1,8 +1,8 @@
-import { Room, Client, matchMaker } from "colyseus";
-import { LobbyState, LobbyPlayer } from "../schema/LobbyState";
-import { generateRoomCode } from "../utils/roomCode";
-import { LOBBY_CONFIG, VALID_ROLES, ROLE_LIMITS } from "../../../shared/lobby";
-import { matchmakingQueue } from "./MatchmakingQueue";
+import { Room, Client, matchMaker } from 'colyseus';
+import { LobbyState, LobbyPlayer } from '../schema/LobbyState';
+import { generateRoomCode } from '../utils/roomCode';
+import { LOBBY_CONFIG, VALID_ROLES, ROLE_LIMITS } from '../../../shared/lobby';
+import { matchmakingQueue } from './MatchmakingQueue';
 
 /**
  * Pre-match lobby room
@@ -26,7 +26,7 @@ export class LobbyRoom extends Room<LobbyState> {
     }
 
     // Register message handlers
-    this.onMessage("selectRole", (client, message) => {
+    this.onMessage('selectRole', (client, message) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
@@ -34,7 +34,7 @@ export class LobbyRoom extends Room<LobbyState> {
 
       // Validate role
       if (!VALID_ROLES.includes(role)) {
-        client.send("roleError", { error: "Invalid role" });
+        client.send('roleError', { error: 'Invalid role' });
         return;
       }
 
@@ -47,7 +47,7 @@ export class LobbyRoom extends Room<LobbyState> {
       });
 
       if (roleTaken) {
-        client.send("roleError", { error: "Role already taken" });
+        client.send('roleError', { error: 'Role already taken' });
         return;
       }
 
@@ -58,11 +58,11 @@ export class LobbyRoom extends Room<LobbyState> {
       console.log(`Player ${client.sessionId} selected role: ${role}`);
     });
 
-    this.onMessage("deselectRole", (client) => {
+    this.onMessage('deselectRole', (client) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
-      player.role = "";
+      player.role = '';
       player.ready = false;
 
       console.log(`Player ${client.sessionId} deselected role`);
@@ -75,7 +75,7 @@ export class LobbyRoom extends Room<LobbyState> {
       }
     });
 
-    this.onMessage("toggleReady", (client, message) => {
+    this.onMessage('toggleReady', (client, message) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
@@ -91,7 +91,7 @@ export class LobbyRoom extends Room<LobbyState> {
       this.checkReadyToStart();
     });
 
-    this.onMessage("joinQueue", (client, message) => {
+    this.onMessage('joinQueue', (client, message) => {
       const { preferredRole } = message;
       if (!VALID_ROLES.includes(preferredRole)) {
         return;
@@ -99,7 +99,7 @@ export class LobbyRoom extends Room<LobbyState> {
       matchmakingQueue.addToQueue(client.sessionId, preferredRole);
     });
 
-    this.onMessage("leaveQueue", (client, message) => {
+    this.onMessage('leaveQueue', (client, message) => {
       matchmakingQueue.removeFromQueue(client.sessionId);
     });
 
@@ -110,13 +110,13 @@ export class LobbyRoom extends Room<LobbyState> {
         // TODO: Create lobby room for matched players
         // This requires creating reservations for specific clients, which is complex
         // For now, just log that a match was found
-        console.log("Match found via matchmaking:", match);
+        console.log('Match found via matchmaking:', match);
       }
 
       // Check for timeouts
       const timedOut = matchmakingQueue.checkTimeouts(LOBBY_CONFIG.QUEUE_TIMEOUT);
       if (timedOut.length > 0) {
-        console.log("Players timed out from queue:", timedOut);
+        console.log('Players timed out from queue:', timedOut);
       }
     }, 1000);
 
@@ -187,17 +187,17 @@ export class LobbyRoom extends Room<LobbyState> {
     }
 
     // All must be connected
-    if (!players.every(p => p.connected)) {
+    if (!players.every((p) => p.connected)) {
       return;
     }
 
     // All must have a role
-    if (!players.every(p => p.role)) {
+    if (!players.every((p) => p.role)) {
       return;
     }
 
     // All must be ready
-    if (!players.every(p => p.ready)) {
+    if (!players.every((p) => p.ready)) {
       // If someone un-readied during countdown, cancel it
       if (this.countdownInterval) {
         this.countdownInterval.clear();
@@ -214,16 +214,14 @@ export class LobbyRoom extends Room<LobbyState> {
       baran: 0,
     };
 
-    players.forEach(p => {
+    players.forEach((p) => {
       if (p.role in roleCounts) {
         roleCounts[p.role]++;
       }
     });
 
     const validDistribution =
-      roleCounts.paran === 1 &&
-      roleCounts.faran === 1 &&
-      roleCounts.baran === 1;
+      roleCounts.paran === 1 && roleCounts.faran === 1 && roleCounts.baran === 1;
 
     if (!validDistribution) {
       return;
@@ -254,7 +252,7 @@ export class LobbyRoom extends Room<LobbyState> {
       }
     }, 1000);
 
-    console.log("Countdown started");
+    console.log('Countdown started');
   }
 
   /**
@@ -269,13 +267,13 @@ export class LobbyRoom extends Room<LobbyState> {
 
     try {
       // Create GameRoom with lobby-assigned roles
-      const room = await matchMaker.createRoom("game_room", {
+      const room = await matchMaker.createRoom('game_room', {
         fromLobby: true,
         roleAssignments,
       });
 
       // Notify all clients that the game is ready
-      this.broadcast("gameReady", {
+      this.broadcast('gameReady', {
         gameRoomId: room.roomId,
       });
 
@@ -286,7 +284,7 @@ export class LobbyRoom extends Room<LobbyState> {
         this.disconnect();
       }, 5000);
     } catch (error) {
-      console.error("Failed to create game room:", error);
+      console.error('Failed to create game room:', error);
       // Reset countdown on error
       this.state.countdown = 0;
     }

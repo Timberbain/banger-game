@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ParticleFactory } from '../systems/ParticleFactory';
 import { AudioManager } from '../systems/AudioManager';
 import { Colors, TextStyle, Buttons, Decorative, charColor } from '../ui/designTokens';
+import { createLayeredButton } from '../ui/createLayeredButton';
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -276,35 +277,26 @@ export class VictoryScene extends Phaser.Scene {
       }
     }
 
-    // Return to Lobby button -- primary preset (dynamic Y based on content)
+    // Return to Lobby button -- primary layered (dynamic Y based on content)
     const buttonY = Math.max(580, yOffset + 30);
-    const button = this.add
-      .text(cx, buttonY, 'Return to Lobby', {
-        fontSize: Buttons.primary.fontSize,
-        color: Buttons.primary.text,
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        backgroundColor: Buttons.primary.bg,
-        padding: { x: 24, y: 12 },
-      })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(2);
-
-    button.on('pointerover', () => button.setBackgroundColor(Buttons.primary.hover));
-    button.on('pointerout', () => button.setBackgroundColor(Buttons.primary.bg));
-    button.on('pointerdown', () => {
-      // Play button click SFX and fade out result music
-      // Delay returnToLobby until fade completes so isPlayingMusic() returns false
-      // when LobbyScene.create() runs -- allowing lobby music to start
-      if (audioManager) {
-        audioManager.playWAVSFX('select_1');
-        audioManager.fadeOutMusic(500, () => {
+    createLayeredButton(this, cx, buttonY, 'Return to Lobby', {
+      size: 'md',
+      bgNum: Buttons.primary.bgNum,
+      hoverNum: Buttons.primary.hoverNum,
+      depth: 2,
+      onClick: () => {
+        // Play button click SFX and fade out result music
+        // Delay returnToLobby until fade completes so isPlayingMusic() returns false
+        // when LobbyScene.create() runs -- allowing lobby music to start
+        if (audioManager) {
+          audioManager.playWAVSFX('select_1');
+          audioManager.fadeOutMusic(500, () => {
+            this.returnToLobby(room);
+          });
+        } else {
           this.returnToLobby(room);
-        });
-      } else {
-        this.returnToLobby(room);
-      }
+        }
+      },
     });
 
     // --- Particle Effects ---

@@ -4,7 +4,7 @@
  */
 
 // Excludes ambiguous characters (0/O, 1/I/L)
-const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /**
  * Generate a random room code
@@ -12,7 +12,7 @@ const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
  * @returns Random alphanumeric code
  */
 export function generateRoomCode(length: number = 6): string {
-  let code = "";
+  let code = '';
   for (let i = 0; i < length; i++) {
     const randomIndex = Math.floor(Math.random() * CHARS.length);
     code += CHARS[randomIndex];

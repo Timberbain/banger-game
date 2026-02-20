@@ -17,31 +17,51 @@ export const CHARACTERS: Record<string, CharacterStats> = {
   faran: {
     maxHealth: 50,
     acceleration: 800,
-    maxVelocity: 160,
-    drag: 0.4,
+    maxVelocity: 110,
+    drag: 0.8,
     damage: 10,
     fireRate: 200, // 5 shots/sec
-    projectileSpeed: 300,
+    projectileSpeed: 400,
   },
   baran: {
     maxHealth: 50,
     acceleration: 800,
-    maxVelocity: 160,
-    drag: 0.4,
+    maxVelocity: 110,
+    drag: 0.8,
     damage: 10,
     fireRate: 200, // 5 shots/sec
-    projectileSpeed: 300,
+    projectileSpeed: 400,
   },
   paran: {
     maxHealth: 150,
-    acceleration: 300,
-    maxVelocity: 300,
+    acceleration: 20,
+    maxVelocity: 400,
     drag: 0.95,
     damage: 40,
     fireRate: 1000, // 1 shot/sec
     projectileSpeed: 400,
   },
 };
+
+/** Display metadata for character selection panels */
+export const CHARACTER_DISPLAY: Record<string, { tagline: string; ability: string; risk: string }> =
+  {
+    paran: {
+      tagline: 'solo predator',
+      ability: 'Contact kill',
+      risk: 'precision + timing',
+    },
+    faran: {
+      tagline: 'sharpshooter',
+      ability: 'Rapid fire',
+      risk: '+ teamwork',
+    },
+    baran: {
+      tagline: 'heavy hitter',
+      ability: 'Rapid fire',
+      risk: '+ teamwork',
+    },
+  };
 
 export const COMBAT = {
   playerRadius: 12,

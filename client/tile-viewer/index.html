@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Banger — Tileset Inspector</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="viewer-root">
+      <div id="toolbar">
+        <div class="toolbar-group">
+          <span class="toolbar-title">Tileset Inspector</span>
+        </div>
+        <div class="toolbar-group">
+          <span class="toolbar-label">BG:</span>
+          <button class="color-swatch active" data-bg="none" title="Transparent"></button>
+          <button
+            class="color-swatch"
+            data-bg="#0a140d"
+            title="Dark green"
+            style="background: #0a140d"
+          ></button>
+          <button
+            class="color-swatch"
+            data-bg="#ffffff"
+            title="White"
+            style="background: #ffffff"
+          ></button>
+          <button
+            class="color-swatch"
+            data-bg="#000000"
+            title="Black"
+            style="background: #000000"
+          ></button>
+          <button
+            class="color-swatch"
+            data-bg="#808080"
+            title="Gray"
+            style="background: #808080"
+          ></button>
+          <button
+            class="color-swatch"
+            data-bg="#2a5e1e"
+            title="Grass green"
+            style="background: #2a5e1e"
+          ></button>
+        </div>
+        <div class="toolbar-group">
+          <button id="btn-fit" class="toolbar-btn" title="Fit tileset to view (F)">Fit</button>
+          <button id="btn-reset" class="toolbar-btn" title="Reset zoom (0)">1:1</button>
+        </div>
+        <div class="toolbar-group">
+          <span class="toolbar-label">Range:</span>
+          <select id="sel-range" class="toolbar-select">
+            <option value="">-- Jump to --</option>
+          </select>
+        </div>
+        <div class="toolbar-group right">
+          <label class="toolbar-toggle">
+            <input type="checkbox" id="chk-grid" />
+            Grid
+          </label>
+          <label class="toolbar-toggle">
+            <input type="checkbox" id="chk-collision" />
+            Collision
+          </label>
+        </div>
+      </div>
+
+      <div id="main-area">
+        <div id="viewport">
+          <canvas id="viewer-canvas"></canvas>
+        </div>
+
+        <div id="info-panel">
+          <div class="info-section">
+            <div class="info-header">Tileset</div>
+            <div class="info-row">
+              <label>Size:</label>
+              <span>8 x 44 (352 tiles)</span>
+            </div>
+            <div class="info-row">
+              <label>Image:</label>
+              <span>256 x 1408px</span>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <div class="info-header">Tile</div>
+            <div class="info-row">
+              <label>ID:</label>
+              <span id="info-tile-id">--</span>
+            </div>
+            <div class="info-row">
+              <label>Position:</label>
+              <span id="info-tile-pos">--</span>
+            </div>
+            <div class="info-row">
+              <label>Range:</label>
+              <span id="info-tile-range">--</span>
+            </div>
+            <button id="btn-copy-tile" class="info-copy-btn" title="Copy tile info" disabled>
+              Copy
+            </button>
+          </div>
+
+          <div class="info-section">
+            <div class="info-header">Properties</div>
+            <div class="info-row">
+              <label>Category:</label>
+              <span id="info-category">--</span>
+            </div>
+            <div class="info-row">
+              <label>Solid:</label>
+              <span id="info-solid">--</span>
+            </div>
+            <div class="info-row">
+              <label>Destruct:</label>
+              <span id="info-destructible">--</span>
+            </div>
+            <div class="info-row">
+              <label>HP:</label>
+              <span id="info-hp">--</span>
+            </div>
+            <div class="info-row">
+              <label>Collision:</label>
+              <span id="info-collision">--</span>
+            </div>
+            <div class="info-row">
+              <label>Theme:</label>
+              <span id="info-theme">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="statusbar">
+        <span id="status-tile">Hover over a tile</span>
+        <span id="status-zoom">Zoom: 100%</span>
+      </div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
