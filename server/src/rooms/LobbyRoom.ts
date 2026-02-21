@@ -2,6 +2,7 @@ import { Room, Client, matchMaker } from 'colyseus';
 import { LobbyState, LobbyPlayer } from '../schema/LobbyState';
 import { generateRoomCode } from '../utils/roomCode';
 import { LOBBY_CONFIG, VALID_ROLES, ROLE_LIMITS } from '../../../shared/lobby';
+import { LobbyRoomCreateOptions, LobbyRoomJoinOptions } from '../../../shared/roomTypes';
 import { matchmakingQueue } from './MatchmakingQueue';
 
 /**
@@ -13,7 +14,16 @@ export class LobbyRoom extends Room<LobbyState> {
   private countdownInterval?: any;
   private matchmakingCheckInterval?: any;
 
-  onCreate(options: any) {
+  /** Cancel active countdown and reset state */
+  private clearCountdown(): void {
+    if (this.countdownInterval) {
+      this.countdownInterval.clear();
+      this.countdownInterval = undefined;
+      this.state.countdown = 0;
+    }
+  }
+
+  onCreate(options: LobbyRoomCreateOptions) {
     this.setState(new LobbyState());
 
     // Setup private room if requested
@@ -68,11 +78,7 @@ export class LobbyRoom extends Room<LobbyState> {
       console.log(`Player ${client.sessionId} deselected role`);
 
       // Cancel countdown if active (role distribution now invalid)
-      if (this.countdownInterval) {
-        this.countdownInterval.clear();
-        this.countdownInterval = undefined;
-        this.state.countdown = 0;
-      }
+      this.clearCountdown();
     });
 
     this.onMessage('toggleReady', (client, message) => {
@@ -123,7 +129,7 @@ export class LobbyRoom extends Room<LobbyState> {
     console.log(`LobbyRoom created with roomId: ${this.roomId}`);
   }
 
-  onJoin(client: Client, options?: any) {
+  onJoin(client: Client, options?: LobbyRoomJoinOptions) {
     const player = new LobbyPlayer();
 
     // Set player name (truncate to 20 chars, fallback to sessionId prefix)
@@ -168,11 +174,7 @@ export class LobbyRoom extends Room<LobbyState> {
     }
 
     // Cancel countdown if someone left
-    if (this.countdownInterval) {
-      this.countdownInterval.clear();
-      this.countdownInterval = undefined;
-      this.state.countdown = 0;
-    }
+    this.clearCountdown();
   }
 
   /**
@@ -199,11 +201,7 @@ export class LobbyRoom extends Room<LobbyState> {
     // All must be ready
     if (!players.every((p) => p.ready)) {
       // If someone un-readied during countdown, cancel it
-      if (this.countdownInterval) {
-        this.countdownInterval.clear();
-        this.countdownInterval = undefined;
-        this.state.countdown = 0;
-      }
+      this.clearCountdown();
       return;
     }
 
@@ -291,9 +289,7 @@ export class LobbyRoom extends Room<LobbyState> {
   }
 
   onDispose() {
-    if (this.countdownInterval) {
-      this.countdownInterval.clear();
-    }
+    this.clearCountdown();
     if (this.matchmakingCheckInterval) {
       this.matchmakingCheckInterval.clear();
     }

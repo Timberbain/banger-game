@@ -24,6 +24,39 @@
           <button id="btn-undo" class="toolbar-btn" title="Undo (Ctrl+Z)">Undo</button>
           <button id="btn-redo" class="toolbar-btn" title="Redo (Ctrl+Shift+Z)">Redo</button>
         </div>
+        <div class="toolbar-group">
+          <label class="toolbar-toggle mirror-toggle">
+            <input type="checkbox" id="chk-mirror-x" />
+            Mirror X
+          </label>
+          <label class="toolbar-toggle mirror-toggle">
+            <input type="checkbox" id="chk-mirror-y" />
+            Mirror Y
+          </label>
+        </div>
+        <div class="toolbar-group">
+          <button
+            id="btn-distances"
+            class="toolbar-btn overlay-btn"
+            title="Toggle distance overlay"
+          >
+            Distances
+          </button>
+          <button
+            id="btn-cover"
+            class="toolbar-btn overlay-btn"
+            title="Toggle cover density overlay"
+          >
+            Cover
+          </button>
+          <button
+            id="btn-sightlines"
+            class="toolbar-btn overlay-btn"
+            title="Toggle sightlines (click to cycle spawn)"
+          >
+            Sightlines
+          </button>
+        </div>
         <div class="toolbar-group right">
           <label class="toolbar-toggle">
             <input type="checkbox" id="chk-grid" checked />
@@ -70,6 +103,9 @@
               </button>
               <button class="palette-btn" data-tool="spawn-guardian2" title="Guardian 2 Spawn (3)">
                 <span class="swatch spawn-g2"></span>Guard 2
+              </button>
+              <button class="palette-btn" data-tool="select" title="Select Region (S)">
+                <span class="swatch select"></span>Select
               </button>
             </div>
           </div>
@@ -139,6 +175,18 @@
               </div>
             </div>
           </div>
+          <div class="prop-section" id="stamps-section">
+            <div class="prop-header">Stamps</div>
+            <div id="stamp-grid" class="stamp-grid"></div>
+            <button
+              id="btn-save-stamp"
+              class="toolbar-btn stamp-save-btn"
+              title="Save selection as stamp"
+              disabled
+            >
+              Save Selection as Stamp
+            </button>
+          </div>
           <div class="prop-section hidden" id="collision-editor-section">
             <div class="prop-header">Collision Editor</div>
             <div id="collision-editor-content">
@@ -170,6 +218,7 @@
         <span id="status-tile">Tile: --</span>
         <span id="status-zoom">Zoom: 100%</span>
         <span id="status-tool">Tool: Wall</span>
+        <span id="status-mirror"></span>
         <span id="status-validation">--</span>
       </div>
     </div>

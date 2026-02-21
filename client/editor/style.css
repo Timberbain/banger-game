@@ -127,6 +127,48 @@ body {
   accent-color: var(--accent-vine);
 }
 
+.mirror-toggle input[type='checkbox']:checked + span,
+.mirror-toggle:has(input:checked) {
+  color: var(--gold-light);
+}
+
+.mirror-toggle:has(input:checked) {
+  border: 1px solid var(--gold-brass);
+  border-radius: 3px;
+  padding: 2px 6px;
+  background: var(--bg-elevated);
+}
+
+/* ─── OVERLAY BUTTONS ────────────────────────── */
+
+.overlay-btn.active-distances {
+  border-color: var(--accent-solar);
+  background: var(--accent-solar);
+  color: white;
+}
+
+.overlay-btn.active-cover {
+  border-color: var(--status-success);
+  background: #2a6b2a;
+  color: white;
+}
+
+.overlay-btn.active-sightlines {
+  border-color: var(--char-paran);
+  background: #6b5a1a;
+  color: white;
+}
+
+.overlay-btn.active-sightlines.sightline-g1 {
+  border-color: var(--char-faran);
+  background: #6b1a1a;
+}
+
+.overlay-btn.active-sightlines.sightline-g2 {
+  border-color: var(--char-baran);
+  background: #1a6b2a;
+}
+
 /* ─── MAIN AREA ───────────────────────────────── */
 
 #main-area {
@@ -232,6 +274,10 @@ body {
 .swatch.spawn-g2 {
   background: var(--char-baran);
   border-radius: 50%;
+}
+.swatch.select {
+  background: transparent;
+  border: 2px dashed var(--accent-solar);
 }
 
 .palette-ground {
@@ -457,6 +503,67 @@ body {
 
 .text-secondary {
   color: var(--text-secondary);
+}
+
+/* ─── STAMPS ─────────────────────────────────── */
+
+.stamp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.stamp-btn {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent-vine);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 10px;
+  padding: 4px 2px;
+  cursor: pointer;
+  text-align: center;
+  min-height: 32px;
+  word-break: break-word;
+}
+
+.stamp-btn:hover {
+  border-color: var(--gold-primary);
+  background: var(--accent-vine);
+}
+
+.stamp-btn .stamp-delete {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--status-danger);
+  color: white;
+  border: none;
+  font-size: 9px;
+  line-height: 14px;
+  cursor: pointer;
+  display: none;
+  padding: 0;
+}
+
+.stamp-btn:hover .stamp-delete {
+  display: block;
+}
+
+.stamp-save-btn {
+  width: 100%;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.stamp-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .hidden {

@@ -300,8 +300,12 @@ export function getCollisionShapes(): Record<string, CollisionShape> {
   return shapes;
 }
 
-/** Get all indestructible tile IDs as a Set */
+let cachedIndestructible: Set<number> | null = null;
+let cachedDestructible: Set<number> | null = null;
+
+/** Get all indestructible tile IDs as a Set (cached after first call) */
 export function getIndestructibleTileIds(): Set<number> {
+  if (cachedIndestructible) return cachedIndestructible;
   const registry = buildTileRegistry();
   const ids = new Set<number>();
   registry.forEach((props, id) => {
@@ -309,11 +313,13 @@ export function getIndestructibleTileIds(): Set<number> {
       ids.add(id);
     }
   });
+  cachedIndestructible = ids;
   return ids;
 }
 
-/** Get all destructible tile IDs as a Set */
+/** Get all destructible tile IDs as a Set (cached after first call) */
 export function getDestructibleTileIds(): Set<number> {
+  if (cachedDestructible) return cachedDestructible;
   const registry = buildTileRegistry();
   const ids = new Set<number>();
   registry.forEach((props, id) => {
@@ -321,6 +327,7 @@ export function getDestructibleTileIds(): Set<number> {
       ids.add(id);
     }
   });
+  cachedDestructible = ids;
   return ids;
 }
 

@@ -4,6 +4,7 @@ import { PredictionSystem } from '../systems/Prediction';
 import { InterpolationSystem } from '../systems/Interpolation';
 import { AudioManager } from '../systems/AudioManager';
 import { ParticleFactory } from '../systems/ParticleFactory';
+import { MessageRouter } from '../systems/MessageRouter';
 import { InputState } from '../../../shared/physics';
 import { CHARACTERS } from '../../../shared/characters';
 import { CollisionGrid } from '../../../shared/collisionGrid';
@@ -146,6 +147,9 @@ export class GameScene extends Phaser.Scene {
   // Low-health tint pulse for remote players
   private lowHealthPulseTweens: Map<string, Phaser.Time.TimerEvent> = new Map();
 
+  // MessageRouter: prevents listener accumulation across scene restarts
+  private messageRouter: MessageRouter | null = null;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -215,6 +219,8 @@ export class GameScene extends Phaser.Scene {
     this.hasProjectileBuff = false;
     this.gravestoneSprites = [];
     this.lowHealthPulseTweens = new Map();
+    if (this.messageRouter) this.messageRouter.clear();
+    this.messageRouter = null;
 
     // Reset camera state for scene reuse
     const cam = this.cameras.main;
@@ -269,6 +275,7 @@ export class GameScene extends Phaser.Scene {
       }
 
       this.connected = true;
+      this.messageRouter = new MessageRouter(this.room);
 
       // Store reconnection token
       if (this.room.reconnectionToken) {
@@ -327,12 +334,12 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Keep matchStart handler for backward compatibility (Schema listener handles display)
-      this.room.onMessage('matchStart', () => {
+      this.messageRouter.on('matchStart', () => {
         console.log('matchStart received (handled by Schema listener)');
       });
 
       // Listen for match end broadcast (includes final stats)
-      this.room.onMessage('matchEnd', (data: any) => {
+      this.messageRouter.on('matchEnd', (data: any) => {
         this.finalStats = data.stats;
         this.matchWinner = data.winner;
         this.matchEnded = true;
@@ -378,7 +385,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Stage End: lock controls, start iris wipe CLOSE
-      this.room.onMessage('stageEnd', (data: any) => {
+      this.messageRouter.on('stageEnd', (data: any) => {
         this.controlsLocked = true;
         this.inStageTransition = true; // Block position updates
 
@@ -418,7 +425,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Stage Transition: swap tilemap (screen already obscured by iris), show intro overlay
-      this.room.onMessage('stageTransition', (data: any) => {
+      this.messageRouter.on('stageTransition', (data: any) => {
         // Screen should already be fully obscured by iris mask from stageEnd
         // If iris hasn't finished closing yet, force it
         if (this.irisShape) {
@@ -443,7 +450,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Stage Start: dismiss intro, expand iris to reveal new arena + overview
-      this.room.onMessage('stageStart', (data: any) => {
+      this.messageRouter.on('stageStart', (data: any) => {
         // Stop stage intro overlay
         this.scene.stop('StageIntroScene');
 
@@ -668,7 +675,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Powerup collection feedback: SFX, floating text, buff aura
-      this.room.onMessage('powerupCollect', (data: any) => {
+      this.messageRouter.on('powerupCollect', (data: any) => {
         // Play pickup SFX
         if (this.audioManager) this.audioManager.playSFX('powerup_pickup');
 
@@ -712,11 +719,11 @@ export class GameScene extends Phaser.Scene {
         }
       });
 
-      this.room.onMessage('powerupDespawn', (_data: any) => {
+      this.messageRouter.on('powerupDespawn', (_data: any) => {
         if (this.audioManager) this.audioManager.playSFX('powerup_despawn');
       });
 
-      this.room.onMessage('buffExpired', (data: any) => {
+      this.messageRouter.on('buffExpired', (data: any) => {
         this.stopBuffAura(data.playerId, Number(data.type));
         // Clear projectile buff tracking for local player
         if (
@@ -728,7 +735,7 @@ export class GameScene extends Phaser.Scene {
       });
 
       // Kill event: spawn gravestone at death location
-      this.room.onMessage(
+      this.messageRouter.on(
         'kill',
         (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
           if (!this.room) return;
@@ -1674,6 +1681,11 @@ export class GameScene extends Phaser.Scene {
   private attachRoomListeners() {
     if (!this.room) return;
 
+    // Re-create MessageRouter if needed (reconnection after scene restart)
+    if (!this.messageRouter) {
+      this.messageRouter = new MessageRouter(this.room);
+    }
+
     // Schema-based matchState listener -- sole source of truth for status text
     this.room.state.listen('matchState', (value: string) => {
       if (this.matchEnded) return;
@@ -1705,11 +1717,11 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Keep matchStart handler for backward compatibility (Schema listener handles display)
-    this.room.onMessage('matchStart', () => {
+    this.messageRouter.on('matchStart', () => {
       console.log('matchStart received (handled by Schema listener)');
     });
 
-    this.room.onMessage('matchEnd', (data: any) => {
+    this.messageRouter.on('matchEnd', (data: any) => {
       this.finalStats = data.stats;
       this.matchWinner = data.winner;
       this.matchEnded = true;
@@ -1752,7 +1764,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Stage End: lock controls, start iris wipe CLOSE (reconnect path)
-    this.room.onMessage('stageEnd', (data: any) => {
+    this.messageRouter.on('stageEnd', (data: any) => {
       this.controlsLocked = true;
       this.inStageTransition = true; // Block position updates
 
@@ -1789,7 +1801,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Stage Transition: swap tilemap (screen already obscured by iris), show intro overlay (reconnect path)
-    this.room.onMessage('stageTransition', (data: any) => {
+    this.messageRouter.on('stageTransition', (data: any) => {
       // Screen should already be fully obscured by iris mask from stageEnd
       if (this.irisShape) {
         this.irisShape.setScale(0);
@@ -1813,7 +1825,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Stage Start: dismiss intro, expand iris to reveal new arena + overview (reconnect path)
-    this.room.onMessage('stageStart', (data: any) => {
+    this.messageRouter.on('stageStart', (data: any) => {
       // Stop stage intro overlay
       this.scene.stop('StageIntroScene');
 
@@ -2045,7 +2057,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Re-attach powerup broadcast listeners (reconnection)
-    this.room.onMessage('powerupCollect', (data: any) => {
+    this.messageRouter.on('powerupCollect', (data: any) => {
       if (this.audioManager) this.audioManager.playSFX('powerup_pickup');
 
       const playerSprite = this.playerSprites.get(data.playerId);
@@ -2083,11 +2095,11 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    this.room.onMessage('powerupDespawn', (_data: any) => {
+    this.messageRouter.on('powerupDespawn', (_data: any) => {
       if (this.audioManager) this.audioManager.playSFX('powerup_despawn');
     });
 
-    this.room.onMessage('buffExpired', (data: any) => {
+    this.messageRouter.on('buffExpired', (data: any) => {
       this.stopBuffAura(data.playerId, Number(data.type));
       // Clear projectile buff tracking for local player -- reconnect path
       if (data.playerId === this.room!.sessionId && Number(data.type) === PowerupType.PROJECTILE) {
@@ -2096,7 +2108,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Kill event: spawn gravestone at death location (reconnect path)
-    this.room.onMessage(
+    this.messageRouter.on(
       'kill',
       (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
         if (!this.room) return;

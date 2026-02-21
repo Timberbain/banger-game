@@ -20,6 +20,7 @@ export const ARENA = {
 export const NETWORK = {
   tickRate: 60,
   fixedTimeStep: 1000 / 60, // 16.67ms
+  fixedDtSeconds: 1 / 60, // 0.01667s — deterministic timestep for physics
   interpolationDelay: 100, // ms behind server time for remote rendering
 };
 
@@ -29,6 +30,16 @@ export interface InputState {
   up: boolean;
   down: boolean;
   fire?: boolean;
+}
+
+/** Compute speed (magnitude of velocity vector) */
+export function getSpeed(vx: number, vy: number): number {
+  return Math.sqrt(vx * vx + vy * vy);
+}
+
+/** Compute squared speed (avoids sqrt — use for threshold comparisons) */
+export function getSpeedSquared(vx: number, vy: number): number {
+  return vx * vx + vy * vy;
 }
 
 /**
@@ -65,7 +76,7 @@ export function applyMovementPhysics(
     // 1. Cardinal-only movement: if both axes have input, filter to one axis
     if (ax !== 0 && ay !== 0) {
       // Get current velocity direction
-      const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+      const currentSpeed = getSpeed(player.vx, player.vy);
 
       // If moving with significant velocity, prioritize the perpendicular axis (allows turning)
       if (currentSpeed > PHYSICS.minVelocity) {
@@ -92,7 +103,7 @@ export function applyMovementPhysics(
     }
 
     // 3. Instant turning: preserve speed magnitude, redirect to new input direction
-    const currentSpeed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+    const currentSpeed = getSpeed(player.vx, player.vy);
     if (currentSpeed > PHYSICS.minVelocity) {
       // Redirect velocity: set to input direction with preserved speed
       const inputMagnitude = Math.sqrt(ax * ax + ay * ay);
@@ -131,7 +142,7 @@ export function applyMovementPhysics(
   if (Math.abs(player.vy) < PHYSICS.minVelocity) player.vy = 0;
 
   // Clamp to maxVelocity
-  const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+  const speed = getSpeed(player.vx, player.vy);
   if (speed > maxVelocity) {
     const scale = maxVelocity / speed;
     player.vx *= scale;
@@ -150,7 +161,7 @@ export function applyMovementPhysics(
  * @param player - Object with { vx, vy, angle }
  */
 export function updateFacingDirection(player: { vx: number; vy: number; angle: number }): void {
-  const speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+  const speed = getSpeed(player.vx, player.vy);
 
   // Only update facing if moving above threshold
   if (speed > PHYSICS.facingThreshold) {

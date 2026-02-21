@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Colors, TextStyle } from '../ui/designTokens';
+import { drawGoldDivider } from '../ui/UIFactory';
 
 export class StageIntroScene extends Phaser.Scene {
   constructor() {
@@ -57,9 +58,7 @@ export class StageIntroScene extends Phaser.Scene {
       .setDepth(1);
 
     // Gold divider
-    const gfx = this.add.graphics();
-    gfx.lineStyle(2, Colors.gold.primaryNum, 0.7);
-    gfx.lineBetween(cx - 200, cy + 90, cx + 200, cy + 90);
+    const gfx = drawGoldDivider(this, cx - 200, cy + 90, cx + 200, cy + 90, 0.7);
     gfx.setDepth(1);
 
     // "Get ready..." subtitle

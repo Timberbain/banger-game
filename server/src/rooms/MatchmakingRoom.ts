@@ -1,6 +1,7 @@
 import { Room, Client, matchMaker } from 'colyseus';
 import { Schema, type, MapSchema } from '@colyseus/schema';
 import { VALID_ROLES } from '../../../shared/lobby';
+import { MatchmakingRoomJoinOptions } from '../../../shared/roomTypes';
 
 export class QueuePlayer extends Schema {
   @type('string') preferredRole: string = '';
@@ -18,7 +19,7 @@ export class MatchmakingRoom extends Room<MatchmakingState> {
 
   private matchCheckInterval?: any;
 
-  onCreate(options: any) {
+  onCreate() {
     this.setState(new MatchmakingState());
 
     // Check for matches every second
@@ -29,7 +30,7 @@ export class MatchmakingRoom extends Room<MatchmakingState> {
     console.log('MatchmakingRoom created');
   }
 
-  onJoin(client: Client, options?: any) {
+  onJoin(client: Client, options?: MatchmakingRoomJoinOptions) {
     const player = new QueuePlayer();
     player.preferredRole = options?.preferredRole || 'faran';
     player.name = options?.name || client.sessionId.substring(0, 20);

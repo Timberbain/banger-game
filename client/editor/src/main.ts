@@ -15,6 +15,21 @@ import { TilePalette } from './ui/TilePalette';
 import { PropertyPanel } from './ui/PropertyPanel';
 import { StatusBar } from './ui/StatusBar';
 import { CollisionEditor } from './ui/CollisionEditor';
+import {
+  type ClipboardData,
+  copyRegion,
+  clearRegion,
+  pasteClipboard,
+  rotateClipboard90CW,
+  flipClipboardH,
+} from './Clipboard';
+import { StampLibrary } from './StampLibrary';
+import {
+  computeSpawnDistances,
+  computeCoverDensity,
+  computeSightlines,
+  type SpawnDistances,
+} from './BalanceAnalyzer';
 
 // --- State ---
 
@@ -60,6 +75,7 @@ function scheduleRegenerate(): void {
     validationResult = validate(state);
     propPanel.update();
     propPanel.updateValidation(validationResult);
+    invalidateAnalysis();
   }, 16);
 }
 
@@ -67,10 +83,134 @@ function scheduleRegenerate(): void {
 
 let isPainting = false;
 let isPanning = false;
+let isSelecting = false;
 let lastPanX = 0;
 let lastPanY = 0;
 let cursorTile: { x: number; y: number } | null = null;
 let shiftDragStart: { x: number; y: number } | null = null;
+
+// Clipboard & paste mode
+let clipboard: ClipboardData | null = null;
+let pasteMode = false;
+let pasteClip: ClipboardData | null = null;
+
+// Stamp library
+const stampLibrary = new StampLibrary();
+
+// Balance analysis overlays
+let showDistances = false;
+let showCover = false;
+let showSightlines = false;
+let sightlineSpawn: 'paran' | 'guardian1' | 'guardian2' = 'paran';
+
+// Cached analysis data (invalidated on grid change)
+let cachedDistances: Map<number, SpawnDistances> | null = null;
+let cachedCover: Float32Array | null = null;
+let cachedSightlines: Set<number> | null = null;
+let analysisGridVersion = 0;
+let lastAnalysisVersion = -1;
+
+function invalidateAnalysis(): void {
+  analysisGridVersion++;
+}
+
+function recomputeAnalysisIfNeeded(): void {
+  if (lastAnalysisVersion === analysisGridVersion) return;
+  lastAnalysisVersion = analysisGridVersion;
+
+  if (showDistances) {
+    cachedDistances = computeSpawnDistances(
+      state.logicalGrid,
+      state.width,
+      state.height,
+      state.spawnPoints,
+    );
+  } else {
+    cachedDistances = null;
+  }
+
+  if (showCover) {
+    cachedCover = computeCoverDensity(state.logicalGrid, state.width, state.height);
+  } else {
+    cachedCover = null;
+  }
+
+  if (showSightlines) {
+    const spawn = state.spawnPoints[sightlineSpawn];
+    if (spawn) {
+      cachedSightlines = computeSightlines(
+        state.logicalGrid,
+        state.width,
+        state.height,
+        spawn.x,
+        spawn.y,
+      );
+    } else {
+      cachedSightlines = null;
+    }
+  } else {
+    cachedSightlines = null;
+  }
+}
+
+function updateOverlayButtons(): void {
+  const btnDist = document.getElementById('btn-distances');
+  const btnCover = document.getElementById('btn-cover');
+  const btnSight = document.getElementById('btn-sightlines');
+
+  if (btnDist) {
+    btnDist.classList.toggle('active-distances', showDistances);
+  }
+  if (btnCover) {
+    btnCover.classList.toggle('active-cover', showCover);
+  }
+  if (btnSight) {
+    btnSight.classList.remove('active-sightlines', 'sightline-g1', 'sightline-g2');
+    if (showSightlines) {
+      btnSight.classList.add('active-sightlines');
+      if (sightlineSpawn === 'guardian1') btnSight.classList.add('sightline-g1');
+      if (sightlineSpawn === 'guardian2') btnSight.classList.add('sightline-g2');
+    }
+  }
+}
+
+function buildStampGrid(): void {
+  const grid = document.getElementById('stamp-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const stamps = stampLibrary.getAll();
+  stamps.forEach((stamp, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'stamp-btn';
+    btn.textContent = stamp.name;
+    btn.title = `${stamp.data.width}x${stamp.data.height}`;
+    btn.addEventListener('click', () => {
+      enterPasteMode({
+        ...stamp.data,
+        tiles: [...stamp.data.tiles],
+        groundOverrides: new Map(stamp.data.groundOverrides),
+      });
+    });
+    if (!stamp.builtIn) {
+      const del = document.createElement('button');
+      del.className = 'stamp-delete';
+      del.textContent = '\u00D7';
+      del.title = 'Delete stamp';
+      del.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        stampLibrary.removeCustom(idx);
+        buildStampGrid();
+      });
+      btn.appendChild(del);
+    }
+    grid.appendChild(btn);
+  });
+}
+
+function updateSaveStampButton(): void {
+  const btn = document.getElementById('btn-save-stamp') as HTMLButtonElement;
+  if (btn) btn.disabled = !state.selection;
+}
 
 function handleMouseDown(e: MouseEvent): void {
   const rect = canvas.getBoundingClientRect();
@@ -91,6 +231,24 @@ function handleMouseDown(e: MouseEvent): void {
 
   const tile = renderer.screenToTile(sx, sy);
 
+  // Paste mode: click commits paste
+  if (pasteMode && pasteClip) {
+    history.push();
+    pasteClipboard(state, pasteClip, tile.x, tile.y);
+    pasteMode = false;
+    pasteClip = null;
+    scheduleRegenerate();
+    updateStatusTool();
+    return;
+  }
+
+  // Select tool: start selection drag
+  if (state.currentTool === 'select') {
+    isSelecting = true;
+    state.selection = { x1: tile.x, y1: tile.y, x2: tile.x, y2: tile.y };
+    return;
+  }
+
   // Shift+click: start rect drag
   if (e.shiftKey) {
     shiftDragStart = tile;
@@ -101,7 +259,7 @@ function handleMouseDown(e: MouseEvent): void {
   // Normal click: paint single tile
   history.push();
   isPainting = true;
-  if (state.applyTool(tile.x, tile.y)) {
+  if (state.applyToolMirrored(tile.x, tile.y)) {
     scheduleRegenerate();
   }
 }
@@ -122,8 +280,15 @@ function handleMouseMove(e: MouseEvent): void {
   cursorTile = tile;
   statusBar.updateTile(tile.x, tile.y);
 
+  // Selection drag
+  if (isSelecting && state.selection) {
+    state.selection.x2 = tile.x;
+    state.selection.y2 = tile.y;
+    return;
+  }
+
   if (isPainting) {
-    if (state.applyTool(tile.x, tile.y)) {
+    if (state.applyToolMirrored(tile.x, tile.y)) {
       scheduleRegenerate();
     }
   }
@@ -133,6 +298,12 @@ function handleMouseUp(e: MouseEvent): void {
   if (isPanning) {
     isPanning = false;
     canvas.style.cursor = 'crosshair';
+    return;
+  }
+
+  // Complete selection drag
+  if (isSelecting) {
+    isSelecting = false;
     return;
   }
 
@@ -150,7 +321,7 @@ function handleMouseUp(e: MouseEvent): void {
 
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) {
-        state.applyTool(x, y);
+        state.applyToolMirrored(x, y);
       }
     }
     shiftDragStart = null;
@@ -198,7 +369,36 @@ const TOOL_HOTKEYS: Record<string, Tool> = {
   '1': 'spawn-paran',
   '2': 'spawn-guardian1',
   '3': 'spawn-guardian2',
+  s: 'select',
 };
+
+const TOOL_NAMES: Record<string, string> = {
+  'wall-hedge': 'Hedge Wall',
+  'wall-brick': 'Brick Wall',
+  'wall-wood': 'Wood Wall',
+  heavy: 'Heavy Obstacle',
+  medium: 'Medium Obstacle',
+  light: 'Light Obstacle',
+  eraser: 'Eraser',
+  ground: 'Ground',
+  'spawn-paran': 'Paran Spawn',
+  'spawn-guardian1': 'Guardian 1 Spawn',
+  'spawn-guardian2': 'Guardian 2 Spawn',
+  select: 'Select',
+};
+
+function updateStatusTool(): void {
+  const label = pasteMode ? 'Paste Mode' : TOOL_NAMES[state.currentTool] || state.currentTool;
+  document.getElementById('status-tool')!.textContent = `Tool: ${label}`;
+}
+
+/** Enter paste mode with given clipboard data */
+export function enterPasteMode(clip: ClipboardData): void {
+  pasteMode = true;
+  pasteClip = clip;
+  state.selection = null;
+  updateStatusTool();
+}
 
 function handleKeyDown(e: KeyboardEvent): void {
   // Don't intercept when typing in inputs
@@ -223,6 +423,43 @@ function handleKeyDown(e: KeyboardEvent): void {
     return;
   }
 
+  // Copy
+  if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+    if (state.selection) {
+      e.preventDefault();
+      const { x1, y1, x2, y2 } = state.selection;
+      clipboard = copyRegion(state, x1, y1, x2, y2);
+    }
+    return;
+  }
+
+  // Cut
+  if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+    if (state.selection) {
+      e.preventDefault();
+      const { x1, y1, x2, y2 } = state.selection;
+      clipboard = copyRegion(state, x1, y1, x2, y2);
+      history.push();
+      clearRegion(state, x1, y1, x2, y2);
+      state.selection = null;
+      scheduleRegenerate();
+    }
+    return;
+  }
+
+  // Paste
+  if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+    if (clipboard) {
+      e.preventDefault();
+      enterPasteMode({
+        ...clipboard,
+        tiles: [...clipboard.tiles],
+        groundOverrides: new Map(clipboard.groundOverrides),
+      });
+    }
+    return;
+  }
+
   // New
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
     e.preventDefault();
@@ -233,26 +470,71 @@ function handleKeyDown(e: KeyboardEvent): void {
     return;
   }
 
+  // Escape: cancel paste mode or clear selection
+  if (e.key === 'Escape') {
+    if (pasteMode) {
+      pasteMode = false;
+      pasteClip = null;
+      updateStatusTool();
+      return;
+    }
+    if (state.selection) {
+      state.selection = null;
+      return;
+    }
+    return;
+  }
+
+  // Paste mode keys
+  if (pasteMode && pasteClip) {
+    if (e.key.toLowerCase() === 'r') {
+      pasteClip = rotateClipboard90CW(pasteClip);
+      return;
+    }
+    if (e.key.toLowerCase() === 'f') {
+      pasteClip = flipClipboardH(pasteClip);
+      return;
+    }
+  }
+
+  // Mirror toggles
+  if (e.key.toLowerCase() === 'x' && !e.ctrlKey && !e.metaKey) {
+    state.mirrorX = !state.mirrorX;
+    syncMirrorUI();
+    return;
+  }
+  if (e.key.toLowerCase() === 'y' && !e.ctrlKey && !e.metaKey) {
+    state.mirrorY = !state.mirrorY;
+    syncMirrorUI();
+    return;
+  }
+
   // Tool hotkeys
   const tool = TOOL_HOTKEYS[e.key.toLowerCase()];
   if (tool) {
     state.currentTool = tool;
+    if (pasteMode && tool !== 'select') {
+      pasteMode = false;
+      pasteClip = null;
+    }
+    state.selection = null;
     palette.updateActiveButton();
-    const toolNames: Record<string, string> = {
-      'wall-hedge': 'Hedge Wall',
-      'wall-brick': 'Brick Wall',
-      'wall-wood': 'Wood Wall',
-      heavy: 'Heavy Obstacle',
-      medium: 'Medium Obstacle',
-      light: 'Light Obstacle',
-      eraser: 'Eraser',
-      ground: 'Ground',
-      'spawn-paran': 'Paran Spawn',
-      'spawn-guardian1': 'Guardian 1 Spawn',
-      'spawn-guardian2': 'Guardian 2 Spawn',
-    };
-    document.getElementById('status-tool')!.textContent = `Tool: ${toolNames[tool] || tool}`;
+    updateStatusTool();
   }
+}
+
+// --- Mirror UI sync ---
+
+function syncMirrorUI(): void {
+  const chkX = document.getElementById('chk-mirror-x') as HTMLInputElement;
+  const chkY = document.getElementById('chk-mirror-y') as HTMLInputElement;
+  if (chkX) chkX.checked = state.mirrorX;
+  if (chkY) chkY.checked = state.mirrorY;
+  const mirrorStatus = [];
+  if (state.mirrorX) mirrorStatus.push('X');
+  if (state.mirrorY) mirrorStatus.push('Y');
+  const el = document.getElementById('status-mirror');
+  if (el) el.textContent = mirrorStatus.length ? `Mirror: ${mirrorStatus.join('+')}` : '';
 }
 
 // --- Render loop ---
@@ -260,6 +542,9 @@ function handleKeyDown(e: KeyboardEvent): void {
 function renderLoop(): void {
   const viewport = document.getElementById('viewport')!;
   renderer.resize(viewport.clientWidth, viewport.clientHeight);
+
+  updateSaveStampButton();
+  recomputeAnalysisIfNeeded();
 
   // Build spawn overlays
   const spawns: SpawnOverlay[] = [];
@@ -276,7 +561,32 @@ function renderLoop(): void {
   renderer.render(layers, state.width, state.height, {
     spawns,
     invalidCells: validationResult.unreachableCells,
-    cursor: cursorTile ? { ...cursorTile, tool: state.currentTool } : null,
+    cursor: cursorTile && !pasteMode ? { ...cursorTile, tool: state.currentTool } : null,
+    mirrorX: state.mirrorX,
+    mirrorY: state.mirrorY,
+    mirrorCursors:
+      cursorTile && !pasteMode ? state.getMirrorPositions(cursorTile.x, cursorTile.y) : [],
+    selection: state.selection,
+    pastePreview:
+      pasteMode && pasteClip && cursorTile
+        ? {
+            tiles: pasteClip.tiles,
+            groundOverrides: pasteClip.groundOverrides,
+            width: pasteClip.width,
+            height: pasteClip.height,
+            originX: cursorTile.x,
+            originY: cursorTile.y,
+          }
+        : null,
+    distances: cachedDistances || undefined,
+    coverDensity: cachedCover || undefined,
+    sightlines: cachedSightlines || undefined,
+    sightlineColor:
+      sightlineSpawn === 'paran'
+        ? '#FFCC00'
+        : sightlineSpawn === 'guardian1'
+          ? '#FF4444'
+          : '#44CC66',
   });
 
   requestAnimationFrame(renderLoop);
@@ -325,6 +635,74 @@ async function init(): Promise<void> {
     palette.buildGroundPalette();
     renderer.collisionOverrides = state.collisionOverrides;
   }
+
+  // Wire overlay buttons
+  const btnDist = document.getElementById('btn-distances');
+  const btnCover = document.getElementById('btn-cover');
+  const btnSight = document.getElementById('btn-sightlines');
+
+  if (btnDist) {
+    btnDist.addEventListener('click', () => {
+      showDistances = !showDistances;
+      invalidateAnalysis();
+      updateOverlayButtons();
+    });
+  }
+  if (btnCover) {
+    btnCover.addEventListener('click', () => {
+      showCover = !showCover;
+      invalidateAnalysis();
+      updateOverlayButtons();
+    });
+  }
+  if (btnSight) {
+    btnSight.addEventListener('click', () => {
+      if (!showSightlines) {
+        showSightlines = true;
+        sightlineSpawn = 'paran';
+      } else {
+        // Cycle through spawns, then turn off
+        if (sightlineSpawn === 'paran') sightlineSpawn = 'guardian1';
+        else if (sightlineSpawn === 'guardian1') sightlineSpawn = 'guardian2';
+        else {
+          showSightlines = false;
+        }
+      }
+      invalidateAnalysis();
+      updateOverlayButtons();
+    });
+  }
+
+  // Build stamp grid
+  buildStampGrid();
+
+  // Wire save-stamp button
+  const btnSaveStamp = document.getElementById('btn-save-stamp');
+  if (btnSaveStamp) {
+    btnSaveStamp.addEventListener('click', () => {
+      if (!state.selection) return;
+      const name = prompt('Stamp name:');
+      if (!name) return;
+      const { x1, y1, x2, y2 } = state.selection;
+      const clip = copyRegion(state, x1, y1, x2, y2);
+      stampLibrary.addCustom(name, clip);
+      buildStampGrid();
+    });
+  }
+
+  // Wire mirror checkboxes
+  const chkMirrorX = document.getElementById('chk-mirror-x') as HTMLInputElement;
+  const chkMirrorY = document.getElementById('chk-mirror-y') as HTMLInputElement;
+  if (chkMirrorX)
+    chkMirrorX.addEventListener('change', () => {
+      state.mirrorX = chkMirrorX.checked;
+      syncMirrorUI();
+    });
+  if (chkMirrorY)
+    chkMirrorY.addEventListener('change', () => {
+      state.mirrorY = chkMirrorY.checked;
+      syncMirrorUI();
+    });
 
   // Wire state change listener
   state.onChange(scheduleRegenerate);

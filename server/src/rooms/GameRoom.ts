@@ -3,7 +3,12 @@ import { GameState, Player, MatchState, PlayerStats, StageSnapshot } from '../sc
 import { Projectile } from '../schema/Projectile';
 import { ObstacleState } from '../schema/Obstacle';
 import { SERVER_CONFIG, GAME_CONFIG } from '../config';
-import { applyMovementPhysics, updateFacingDirection, PHYSICS } from '../../../shared/physics';
+import {
+  applyMovementPhysics,
+  updateFacingDirection,
+  PHYSICS,
+  NETWORK,
+} from '../../../shared/physics';
 import { CHARACTERS, COMBAT } from '../../../shared/characters';
 import { parseMapMetadata, MapMetadata } from '../../../shared/maps';
 import { LOBBY_CONFIG } from '../../../shared/lobby';
@@ -17,10 +22,24 @@ import {
   BUFF_DURATIONS,
 } from '../../../shared/powerups';
 import { PowerupState } from '../schema/Powerup';
+import {
+  GameRoomCreateOptions,
+  GameRoomJoinOptions,
+  TiledMapJSON,
+} from '../../../shared/roomTypes';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const MATCH_DURATION_MS = 5 * 60 * 1000; // 5 minutes per stage -- guardians win on timeout
+
+/** Fixed delta time for deterministic physics (must match client) */
+const FIXED_DT = NETWORK.fixedDtSeconds; // 1/60 seconds
+
+/** Pre-computed squared distance thresholds (avoid Math.sqrt in hot loop) */
+const CONTACT_KILL_DIST_SQ = (COMBAT.playerRadius * 2) ** 2;
+const PROJECTILE_LIFETIME = COMBAT.projectileLifetime;
+const POWERUP_COLLECTION_DIST_SQ = (COMBAT.playerRadius + POWERUP_CONFIG.collectionRadius) ** 2;
+const POWERUP_MIN_SPAWN_DIST_SQ = POWERUP_CONFIG.minSpawnDistance ** 2;
 
 /** Discover playable maps from JSON files at module load */
 function discoverMaps(): MapMetadata[] {
@@ -28,15 +47,13 @@ function discoverMaps(): MapMetadata[] {
   const files = fs.readdirSync(mapsDir).filter((f: string) => f.endsWith('.json'));
   const maps: MapMetadata[] = [];
   for (const file of files) {
-    const json = JSON.parse(fs.readFileSync(path.join(mapsDir, file), 'utf-8'));
+    const json: TiledMapJSON = JSON.parse(fs.readFileSync(path.join(mapsDir, file), 'utf-8'));
     const meta = parseMapMetadata(json, file);
     if (meta) maps.push(meta);
   }
   console.log(`Discovered ${maps.length} maps: ${maps.map((m) => m.displayName).join(', ')}`);
   return maps;
 }
-
-const DISCOVERED_MAPS = discoverMaps();
 
 export class GameRoom extends Room<GameState> {
   maxClients = GAME_CONFIG.maxPlayers;
@@ -97,13 +114,14 @@ export class GameRoom extends Room<GameState> {
    * Called in onCreate so stageArenas[0] is available for initial map loading.
    */
   private selectArenas(): void {
-    const indices = DISCOVERED_MAPS.map((_, i) => i);
+    const maps = discoverMaps();
+    const indices = maps.map((_, i) => i);
     // Fisher-Yates shuffle
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    this.stageArenas = indices.slice(0, 3).map((i) => DISCOVERED_MAPS[i]);
+    this.stageArenas = indices.slice(0, 3).map((i) => maps[i]);
     console.log(`Stage arenas selected: ${this.stageArenas.map((m) => m.displayName).join(', ')}`);
   }
 
@@ -113,8 +131,8 @@ export class GameRoom extends Room<GameState> {
    */
   private loadMap(mapMeta: MapMetadata): void {
     const mapPath = path.join(__dirname, '../../../client/public', mapMeta.file);
-    const mapJson = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
-    const wallLayer = mapJson.layers.find((l: any) => l.name === 'Walls');
+    const mapJson: TiledMapJSON = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
+    const wallLayer = mapJson.layers.find((l) => l.name === 'Walls')!;
 
     this.collisionGrid = new CollisionGrid(
       wallLayer.data,
@@ -154,7 +172,7 @@ export class GameRoom extends Room<GameState> {
     );
   }
 
-  onCreate(options: any) {
+  onCreate(options: GameRoomCreateOptions) {
     this.setState(new GameState());
     this.state.matchState = MatchState.WAITING; // Explicit state initialization
     this.state.currentStage = 1;
@@ -198,9 +216,9 @@ export class GameRoom extends Room<GameState> {
         return; // Silently reject -- don't kick (could be a bug, not necessarily cheating)
       }
 
-      // Extract seq and input state
-      const { seq = 0, ...inputState } = message;
-      const queuedInput = { seq, ...inputState };
+      // Queue the message directly (avoid spread-destructure allocation)
+      if (!('seq' in message)) message.seq = 0;
+      const queuedInput = message;
 
       // Check for WebSocket latency simulation
       const wsLatency = parseInt(process.env.SIMULATE_LATENCY || '0', 10);
@@ -228,7 +246,7 @@ export class GameRoom extends Room<GameState> {
     console.log(`GameRoom created with roomId: ${this.roomId}`);
   }
 
-  onJoin(client: Client, options?: any) {
+  onJoin(client: Client, options?: GameRoomJoinOptions) {
     const player = new Player();
 
     let role: string;
@@ -515,14 +533,13 @@ export class GameRoom extends Room<GameState> {
       const worldX = tileX * tileSize + tileSize / 2;
       const worldY = tileY * tileSize + tileSize / 2;
 
-      // Check minimum distance from all alive players
+      // Check minimum distance from all alive players (squared comparison)
       let tooClose = false;
       this.state.players.forEach((player) => {
         if (player.health <= 0) return;
         const dx = worldX - player.x;
         const dy = worldY - player.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < POWERUP_CONFIG.minSpawnDistance) {
+        if (dx * dx + dy * dy < POWERUP_MIN_SPAWN_DIST_SQ) {
           tooClose = true;
         }
       });
@@ -594,9 +611,8 @@ export class GameRoom extends Room<GameState> {
 
         const dx = powerup.x - player.x;
         const dy = powerup.y - player.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < COMBAT.playerRadius + POWERUP_CONFIG.collectionRadius) {
+        if (dx * dx + dy * dy < POWERUP_COLLECTION_DIST_SQ) {
           this.collectPowerup(sessionId, player, powerup, id);
           toRemove.push(id);
           collected = true;
@@ -670,81 +686,81 @@ export class GameRoom extends Room<GameState> {
       }
 
       // Ensure speedMultiplier is correct: reset to 1 if no speed buff active
-      const hasSpeedBuff = player.activeBuffs.some((b) => b.type === PowerupType.SPEED);
-      if (!hasSpeedBuff && player.speedMultiplier !== 1) {
+      if (!this.hasActiveBuff(player, PowerupType.SPEED) && player.speedMultiplier !== 1) {
         player.speedMultiplier = 1;
       }
     });
   }
 
+  /** Check if a player has an active (non-expired) buff of the given type */
+  private hasActiveBuff(player: Player, buffType: PowerupType): boolean {
+    return player.activeBuffs.some(
+      (b) => b.type === buffType && this.state.serverTime < b.expiresAt,
+    );
+  }
+
   fixedTick(deltaTime: number) {
     // Guard: only run game logic during PLAYING state
     if (this.state.matchState !== MatchState.PLAYING) {
-      // Still increment serverTime during non-PLAYING states
-      // (needed for matchStartTime comparison, stage transition timing, etc.)
       this.state.serverTime += deltaTime;
       return;
     }
 
-    // Increment tick counter
     this.state.tickCount++;
-
-    // Update server time
     this.state.serverTime += deltaTime;
 
-    // Match timer: guardians win if time runs out (forces aggressive Paran play)
-    // Timer resets per stage via matchStartTime reset in startStage()
+    // Match timer: guardians win if time runs out
     if (this.state.serverTime - this.state.matchStartTime >= MATCH_DURATION_MS) {
       this.endStage('guardians');
       return;
     }
 
-    // Fixed delta time for deterministic physics (must match client)
-    const FIXED_DT = 1 / 60; // seconds
+    this.processPlayerInputs();
+    this.processParanContactKills();
+    this.processProjectiles();
+    this.checkWinConditions();
+    this.checkPowerupSpawns();
+    this.checkPowerupCollections();
+    this.updateBuffTimers();
+  }
 
-    // Process all player inputs and resolve tile collisions
+  /**
+   * Drain each player's input queue, apply physics + collision, handle fire.
+   * For players with no inputs this tick, integrate position at current velocity.
+   */
+  private processPlayerInputs(): void {
     this.state.players.forEach((player, sessionId) => {
-      // Ignore dead player input
       if (player.health <= 0) {
-        player.inputQueue = []; // Drain dead player input
-        return; // Skip processing
+        player.inputQueue = [];
+        return;
       }
 
-      // Ignore disconnected player input and freeze them in place
       if (!player.connected) {
         player.vx = 0;
         player.vy = 0;
         player.inputQueue = [];
-        return; // Skip all processing for disconnected player
+        return;
       }
 
-      // Get character stats
       const stats = CHARACTERS[player.role];
-
-      // Apply speed buff: use effective maxVelocity
       const effectiveMaxVelocity = stats.maxVelocity * player.speedMultiplier;
 
-      // Drain input queue
       let processedAny = false;
       while (player.inputQueue.length > 0) {
-        const { seq, fire, ...input } = player.inputQueue.shift()!;
+        const queuedInput = player.inputQueue.shift()!;
+        const seq = queuedInput.seq;
+        const fire = queuedInput.fire;
 
         // Handle fire input
         if (fire && player.health > 0) {
-          // Check for projectile buff
-          const hasProjBuff = player.activeBuffs.some(
-            (b) => b.type === PowerupType.PROJECTILE && this.state.serverTime < b.expiresAt,
-          );
+          const hasProjBuff = this.hasActiveBuff(player, PowerupType.PROJECTILE);
 
-          // Determine effective fire rate (Paran beam has 2x cooldown)
           let effectiveFireRate = stats.fireRate;
           if (hasProjBuff && player.role === 'paran') {
             effectiveFireRate = stats.fireRate * POWERUP_CONFIG.paranBeamCooldownMultiplier;
           }
 
-          // Check cooldown with effective fire rate
           if (this.state.serverTime - player.lastFireTime >= effectiveFireRate) {
-            // Spawn projectile
             const projectile = new Projectile();
             projectile.x = player.x;
             projectile.y = player.y;
@@ -754,14 +770,11 @@ export class GameRoom extends Room<GameState> {
             projectile.damage = stats.damage;
             projectile.spawnTime = this.state.serverTime;
 
-            // Apply projectile buff effects
             if (hasProjBuff) {
               if (player.role === 'paran') {
-                // Paran's Beam: 5x hitbox, wall-piercing
                 projectile.isBeam = true;
                 projectile.hitboxScale = POWERUP_CONFIG.paranBeamHitboxScale;
               } else {
-                // Guardian: 2x hitbox + 2x speed
                 projectile.hitboxScale = POWERUP_CONFIG.guardianHitboxScale;
                 projectile.vx *= POWERUP_CONFIG.guardianSpeedScale;
                 projectile.vy *= POWERUP_CONFIG.guardianSpeedScale;
@@ -769,52 +782,44 @@ export class GameRoom extends Room<GameState> {
             }
 
             this.state.projectiles.push(projectile);
-
-            // Update cooldown
             player.lastFireTime = this.state.serverTime;
 
-            // Track stats
             const shooterStats = this.state.matchStats.get(sessionId);
             if (shooterStats) shooterStats.shotsFired++;
           }
         }
 
-        // Save position before physics for collision resolution
         const prevX = player.x;
         const prevY = player.y;
 
-        // Apply character-specific physics
-        applyMovementPhysics(player, input, FIXED_DT, {
+        applyMovementPhysics(player, queuedInput, FIXED_DT, {
           acceleration: stats.acceleration,
           drag: stats.drag,
           maxVelocity: effectiveMaxVelocity,
         });
-
-        // Resolve tile collisions after each physics step
         this.resolvePlayerCollision(player, prevX, prevY);
-
-        // Update facing direction
         updateFacingDirection(player);
 
-        // Track last processed input sequence for client reconciliation
         player.lastProcessedSeq = seq;
         processedAny = true;
       }
 
-      // If no inputs this tick (network timing gap), maintain velocity
-      // and just integrate position. Instant stop only triggers from actual
-      // input with no directions, not from missing network frames.
+      // No inputs this tick: maintain velocity and integrate position
       if (!processedAny) {
         const prevX = player.x;
         const prevY = player.y;
         player.x += player.vx * FIXED_DT;
         player.y += player.vy * FIXED_DT;
-        // Resolve tile collisions in no-input path too (prevents clipping during network gaps)
         this.resolvePlayerCollision(player, prevX, prevY);
       }
     });
+  }
 
-    // Paran contact kill: check for Paran-guardian body overlap
+  /**
+   * Check Paran-guardian body overlap for contact kills.
+   * Uses squared distance to avoid Math.sqrt.
+   */
+  private processParanContactKills(): void {
     let paranPlayer: Player | null = null;
     let paranId: string = '';
     this.state.players.forEach((p, id) => {
@@ -824,76 +829,70 @@ export class GameRoom extends Room<GameState> {
       }
     });
 
-    if (paranPlayer) {
-      const paran = paranPlayer as Player; // TypeScript narrowing helper
-      this.state.players.forEach((target, targetId) => {
-        if (target.role === 'paran') return;
-        if (target.health <= 0) return;
-        if (targetId === paranId) return;
+    if (!paranPlayer) return;
+    const paran = paranPlayer as Player;
 
-        const dx = paran.x - target.x;
-        const dy = paran.y - target.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+    this.state.players.forEach((target, targetId) => {
+      if (target.role === 'paran') return;
+      if (target.health <= 0) return;
+      if (targetId === paranId) return;
 
-        if (dist < COMBAT.playerRadius * 2) {
-          // Check invincibility buff on guardian target
-          const guardianInvincible = target.activeBuffs.some(
-            (b) => b.type === PowerupType.INVINCIBILITY && this.state.serverTime < b.expiresAt,
-          );
-          if (guardianInvincible) return; // Skip kill -- guardian is invincible
+      const dx = paran.x - target.x;
+      const dy = paran.y - target.y;
+      const distSq = dx * dx + dy * dy;
 
-          // Contact kill: instant death regardless of HP
-          target.health = 0;
-          // Clear buffs on death
-          target.activeBuffs = [];
-          target.speedMultiplier = 1;
-          // Track stats
-          const paranStats = this.state.matchStats.get(paranId);
-          if (paranStats) paranStats.kills++;
-          const targetStats = this.state.matchStats.get(targetId);
-          if (targetStats) targetStats.deaths++;
+      if (distSq < CONTACT_KILL_DIST_SQ) {
+        if (this.hasActiveBuff(target, PowerupType.INVINCIBILITY)) return;
 
-          // Broadcast kill event for HUD kill feed
-          this.broadcast('kill', {
-            killer: paran.name,
-            victim: target.name,
-            killerRole: paran.role,
-            victimRole: target.role,
-          });
-        }
-      });
-    }
+        target.health = 0;
+        target.activeBuffs = [];
+        target.speedMultiplier = 1;
 
-    // Process projectiles (iterate backwards for safe removal)
+        const paranStats = this.state.matchStats.get(paranId);
+        if (paranStats) paranStats.kills++;
+        const targetStats = this.state.matchStats.get(targetId);
+        if (targetStats) targetStats.deaths++;
+
+        this.broadcast('kill', {
+          killer: paran.name,
+          victim: target.name,
+          killerRole: paran.role,
+          victimRole: target.role,
+        });
+      }
+    });
+  }
+
+  /**
+   * Move projectiles, check lifetime/tile/player collisions.
+   * Uses squared distance for player hit detection.
+   */
+  private processProjectiles(): void {
     for (let i = this.state.projectiles.length - 1; i >= 0; i--) {
       const proj = this.state.projectiles[i];
-      if (!proj) continue; // Safety check for TypeScript strict null checking
+      if (!proj) continue;
 
-      // Move projectile
       proj.x += proj.vx * FIXED_DT;
       proj.y += proj.vy * FIXED_DT;
 
       // Lifetime check
-      if (this.state.serverTime - proj.spawnTime > COMBAT.projectileLifetime) {
+      if (this.state.serverTime - proj.spawnTime > PROJECTILE_LIFETIME) {
         this.state.projectiles.splice(i, 1);
         continue;
       }
 
-      // Tile/obstacle collision check: use sub-rect precision for projectile-vs-wall
+      // Tile/obstacle collision
       const projTile = this.collisionGrid.worldToTile(proj.x, proj.y);
       if (this.collisionGrid.isPointInSolidRect(proj.x, proj.y)) {
         if (proj.isBeam) {
-          // Beam passes through walls/obstacles -- destroy obstacle if destructible
           const obsKey = `${projTile.tileX},${projTile.tileY}`;
           const obs = this.state.obstacles.get(obsKey);
           if (obs && !obs.destroyed) {
-            obs.hp = 0; // Beam instantly destroys any obstacle
+            obs.hp = 0;
             obs.destroyed = true;
             this.collisionGrid.clearTile(projTile.tileX, projTile.tileY);
           }
-          // Do NOT remove the beam projectile -- it passes through
         } else {
-          // Normal projectile: damage obstacle, destroy projectile
           const obsKey = `${projTile.tileX},${projTile.tileY}`;
           const obs = this.state.obstacles.get(obsKey);
           if (obs && !obs.destroyed) {
@@ -903,13 +902,12 @@ export class GameRoom extends Room<GameState> {
               this.collisionGrid.clearTile(projTile.tileX, projTile.tileY);
             }
           }
-          // Destroy projectile on any solid tile contact
           this.state.projectiles.splice(i, 1);
           continue;
         }
       }
 
-      // Safety bounds check (in case projectile escapes tile grid)
+      // Safety bounds check
       if (
         proj.x < 0 ||
         proj.x > this.mapMetadata.width ||
@@ -920,42 +918,34 @@ export class GameRoom extends Room<GameState> {
         continue;
       }
 
-      // Collision with players
+      // Player collision (squared distance)
       let hit = false;
       this.state.players.forEach((target, targetId) => {
-        if (hit && !proj.isBeam) return; // Normal projectiles stop after first hit; beams continue
-        if (targetId === proj.ownerId) return; // No self-hit
-        if (target.health <= 0) return; // Skip dead
+        if (hit && !proj.isBeam) return;
+        if (targetId === proj.ownerId) return;
+        if (target.health <= 0) return;
 
         const dx = proj.x - target.x;
         const dy = proj.y - target.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const distSq = dx * dx + dy * dy;
 
-        // Use enhanced hitbox radius for buffed projectiles
         const effectiveRadius = COMBAT.projectileRadius * (proj.hitboxScale || 1);
-        if (dist < COMBAT.playerRadius + effectiveRadius) {
-          // Check invincibility buff on target
-          const isInvincible = target.activeBuffs.some(
-            (b) => b.type === PowerupType.INVINCIBILITY && this.state.serverTime < b.expiresAt,
-          );
-          if (isInvincible) {
-            // Still consume the projectile (unless beam), but don't apply damage
+        const hitDistSq = (COMBAT.playerRadius + effectiveRadius) ** 2;
+        if (distSq < hitDistSq) {
+          if (this.hasActiveBuff(target, PowerupType.INVINCIBILITY)) {
             hit = true;
             return;
           }
 
-          // Apply damage
           const wasAlive = target.health > 0;
           target.health = Math.max(0, target.health - proj.damage);
           const isDead = target.health === 0;
 
-          // Track stats
           const shooterStats = this.state.matchStats.get(proj.ownerId);
           if (shooterStats) {
             shooterStats.shotsHit++;
             shooterStats.damageDealt += proj.damage;
             if (wasAlive && isDead) {
-              // Clear buffs on death
               target.activeBuffs = [];
               target.speedMultiplier = 1;
 
@@ -963,7 +953,6 @@ export class GameRoom extends Room<GameState> {
               const targetStats = this.state.matchStats.get(targetId);
               if (targetStats) targetStats.deaths++;
 
-              // Broadcast kill event for HUD kill feed
               const shooter = this.state.players.get(proj.ownerId);
               this.broadcast('kill', {
                 killer: shooter?.name || 'Unknown',
@@ -982,14 +971,6 @@ export class GameRoom extends Room<GameState> {
         this.state.projectiles.splice(i, 1);
       }
     }
-
-    // Check win conditions after combat processing
-    this.checkWinConditions();
-
-    // Powerup system: spawn, collect, and update buff timers
-    this.checkPowerupSpawns();
-    this.checkPowerupCollections();
-    this.updateBuffTimers();
   }
 
   private startMatch() {
@@ -1003,13 +984,17 @@ export class GameRoom extends Room<GameState> {
   }
 
   private checkWinConditions() {
-    const players = Array.from(this.state.players.values());
-    const aliveParan = players.find((p) => p.role === 'paran' && p.health > 0);
-    const aliveGuardians = players.filter((p) => p.role !== 'paran' && p.health > 0);
+    let paranAlive = false;
+    let guardianAliveCount = 0;
+    this.state.players.forEach((p) => {
+      if (p.health <= 0) return;
+      if (p.role === 'paran') paranAlive = true;
+      else guardianAliveCount++;
+    });
 
-    if (!aliveParan) {
+    if (!paranAlive) {
       this.endStage('guardians');
-    } else if (aliveGuardians.length === 0) {
+    } else if (guardianAliveCount === 0) {
       this.endStage('paran');
     }
   }

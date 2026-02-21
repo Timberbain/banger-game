@@ -22,6 +22,22 @@ export interface RenderOverlays {
   spawns: SpawnOverlay[];
   invalidCells: Set<number>;
   cursor: { x: number; y: number; tool: string } | null;
+  mirrorX?: boolean;
+  mirrorY?: boolean;
+  mirrorCursors?: { x: number; y: number }[];
+  selection?: { x1: number; y1: number; x2: number; y2: number } | null;
+  pastePreview?: {
+    tiles: number[];
+    groundOverrides: Map<number, number>;
+    width: number;
+    height: number;
+    originX: number;
+    originY: number;
+  } | null;
+  distances?: Map<number, { paran: number; guardian1: number; guardian2: number }>;
+  coverDensity?: Float32Array;
+  sightlines?: Set<number>;
+  sightlineColor?: string;
 }
 
 export interface MapLayers {
@@ -223,6 +239,31 @@ export class CanvasRenderer {
       }
     }
 
+    // Mirror axis guide lines
+    if (overlays.mirrorX || overlays.mirrorY) {
+      ctx.save();
+      ctx.setLineDash([6 / zoom, 4 / zoom]);
+      ctx.strokeStyle = 'rgba(100, 200, 255, 0.4)';
+      ctx.lineWidth = 2 / zoom;
+
+      if (overlays.mirrorX) {
+        const mx = (w / 2) * TILE_SIZE;
+        ctx.beginPath();
+        ctx.moveTo(mx, 0);
+        ctx.lineTo(mx, h * TILE_SIZE);
+        ctx.stroke();
+      }
+      if (overlays.mirrorY) {
+        const my = (h / 2) * TILE_SIZE;
+        ctx.beginPath();
+        ctx.moveTo(0, my);
+        ctx.lineTo(w * TILE_SIZE, my);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
     // Cursor preview (ghost tile)
     if (overlays.cursor) {
       const { x: curX, y: curY, tool } = overlays.cursor;
@@ -238,6 +279,127 @@ export class CanvasRenderer {
         ctx.strokeStyle = tool === 'eraser' ? '#FF4444' : '#66CCFF';
         ctx.lineWidth = 1.5 / zoom;
         ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+      }
+    }
+
+    // Mirror cursor ghosts (dimmer than primary cursor)
+    if (overlays.mirrorCursors && overlays.mirrorCursors.length > 0 && overlays.cursor) {
+      const tool = overlays.cursor.tool;
+      for (const mc of overlays.mirrorCursors) {
+        if (mc.x >= 0 && mc.x < w && mc.y >= 0 && mc.y < h) {
+          const px = mc.x * TILE_SIZE;
+          const py = mc.y * TILE_SIZE;
+
+          ctx.globalAlpha = 0.25;
+          ctx.fillStyle = tool === 'eraser' ? 'rgba(255, 60, 60, 0.5)' : 'rgba(100, 200, 255, 0.5)';
+          ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+          ctx.globalAlpha = 0.5;
+
+          ctx.strokeStyle = tool === 'eraser' ? '#FF4444' : '#66CCFF';
+          ctx.lineWidth = 1 / zoom;
+          ctx.setLineDash([3 / zoom, 3 / zoom]);
+          ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+    }
+
+    // Selection rectangle
+    if (overlays.selection) {
+      const { x1, y1, x2, y2 } = overlays.selection;
+      const sx = Math.min(x1, x2) * TILE_SIZE;
+      const sy = Math.min(y1, y2) * TILE_SIZE;
+      const sw = (Math.abs(x2 - x1) + 1) * TILE_SIZE;
+      const sh = (Math.abs(y2 - y1) + 1) * TILE_SIZE;
+
+      ctx.fillStyle = 'rgba(100, 200, 255, 0.1)';
+      ctx.fillRect(sx, sy, sw, sh);
+
+      ctx.strokeStyle = 'rgba(100, 200, 255, 0.6)';
+      ctx.lineWidth = 2 / zoom;
+      ctx.setLineDash([6 / zoom, 4 / zoom]);
+      ctx.strokeRect(sx, sy, sw, sh);
+      ctx.setLineDash([]);
+    }
+
+    // Paste preview
+    if (overlays.pastePreview) {
+      const { tiles, width: pw, height: ph, originX, originY } = overlays.pastePreview;
+      ctx.globalAlpha = 0.5;
+      for (let py = 0; py < ph; py++) {
+        for (let px = 0; px < pw; px++) {
+          const tileVal = tiles[py * pw + px];
+          if (tileVal === 0) continue;
+          const drawX = (originX + px) * TILE_SIZE;
+          const drawY = (originY + py) * TILE_SIZE;
+          if (tileVal < 0) {
+            // Wall sentinel — draw colored block
+            ctx.fillStyle = tileVal === -1 ? '#556b2f' : tileVal === -2 ? '#8b5c3a' : '#6b4226';
+          } else {
+            ctx.fillStyle = '#6688AA';
+          }
+          ctx.fillRect(drawX, drawY, TILE_SIZE, TILE_SIZE);
+        }
+      }
+      ctx.globalAlpha = 1.0;
+      // Outline
+      ctx.strokeStyle = 'rgba(100, 200, 255, 0.8)';
+      ctx.lineWidth = 2 / zoom;
+      ctx.strokeRect(originX * TILE_SIZE, originY * TILE_SIZE, pw * TILE_SIZE, ph * TILE_SIZE);
+    }
+
+    // Balance analysis: distance overlay
+    if (overlays.distances) {
+      for (let ty = tileMinY; ty <= tileMaxY; ty++) {
+        for (let tx = tileMinX; tx <= tileMaxX; tx++) {
+          const idx = ty * w + tx;
+          const d = overlays.distances.get(idx);
+          if (d === undefined) continue;
+          const minDist = Math.min(d.paran, d.guardian1, d.guardian2);
+          const maxDist = 80;
+          const t = Math.min(minDist / maxDist, 1.0);
+          // Blue (close) → Red (far)
+          const r = Math.floor(t * 255);
+          const b = Math.floor((1 - t) * 255);
+          ctx.fillStyle = `rgba(${r}, 40, ${b}, 0.3)`;
+          ctx.fillRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+
+    // Balance analysis: cover density overlay
+    if (overlays.coverDensity) {
+      for (let ty = tileMinY; ty <= tileMaxY; ty++) {
+        for (let tx = tileMinX; tx <= tileMaxX; tx++) {
+          const idx = ty * w + tx;
+          const density = overlays.coverDensity[idx];
+          if (density === undefined || density < 0) continue;
+          // Green (high cover) → Red (no cover)
+          const r = Math.floor((1 - density) * 200);
+          const g = Math.floor(density * 200);
+          ctx.fillStyle = `rgba(${r}, ${g}, 40, 0.3)`;
+          ctx.fillRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+
+    // Balance analysis: sightline overlay
+    if (overlays.sightlines) {
+      const sColor = overlays.sightlineColor || '#FFCC00';
+      for (let ty = tileMinY; ty <= tileMaxY; ty++) {
+        for (let tx = tileMinX; tx <= tileMaxX; tx++) {
+          const idx = ty * w + tx;
+          if (overlays.sightlines.has(idx)) {
+            ctx.globalAlpha = 0.25;
+            ctx.fillStyle = sColor;
+            ctx.fillRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.globalAlpha = 1.0;
+          } else {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          }
+        }
       }
     }
 

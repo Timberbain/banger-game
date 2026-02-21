@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { ParticleFactory } from '../systems/ParticleFactory';
 import { AudioManager } from '../systems/AudioManager';
-import { Colors, TextStyle, Buttons, Decorative, charColor } from '../ui/designTokens';
+import { Colors, TextStyle, Buttons, charColor } from '../ui/designTokens';
 import { createLayeredButton } from '../ui/createLayeredButton';
+import { drawGoldDivider } from '../ui/UIFactory';
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -127,9 +128,7 @@ export class VictoryScene extends Phaser.Scene {
       .setDepth(1);
 
     // Gold divider above stats
-    const dividerGfx = this.add.graphics();
-    dividerGfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
-    dividerGfx.lineBetween(cx - 350, 225, cx + 350, 225);
+    const dividerGfx = drawGoldDivider(this, cx - 350, 225, cx + 350, 225, 0.7);
     dividerGfx.setDepth(1);
 
     // Stats header -- golden
@@ -217,9 +216,7 @@ export class VictoryScene extends Phaser.Scene {
     });
 
     // Gold divider below stats
-    const dividerGfx2 = this.add.graphics();
-    dividerGfx2.lineStyle(Decorative.divider.thickness, Decorative.divider.color, 0.7);
-    dividerGfx2.lineBetween(cx - 350, yOffset + 5, cx + 350, yOffset + 5);
+    const dividerGfx2 = drawGoldDivider(this, cx - 350, yOffset + 5, cx + 350, yOffset + 5, 0.7);
     dividerGfx2.setDepth(1);
 
     // Per-Stage Breakdown (only if stageResults available)

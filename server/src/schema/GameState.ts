@@ -57,7 +57,7 @@ export class GameState extends Schema {
   @type([Projectile]) projectiles = new ArraySchema<Projectile>();
   @type('number') serverTime: number = 0;
   @type('string') mapName: string = 'hedge_garden';
-  @type('number') tickCount: number = 0;
+  tickCount: number = 0; // server-only, not synced (no @type decorator)
   @type('string') matchState: string = MatchState.WAITING;
   @type('number') matchStartTime: number = 0;
   @type('number') matchEndTime: number = 0;

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { Colors, TextStyle, Buttons, Decorative, Panels, charColor } from '../ui/designTokens';
+import { Colors, TextStyle, Buttons, Panels, charColor } from '../ui/designTokens';
 import { createLayeredButton } from '../ui/createLayeredButton';
+import { drawGoldDivider } from '../ui/UIFactory';
 
 /**
  * HelpScene - Controls tutorial screen with keyboard maps and role descriptions.
@@ -36,9 +37,7 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(title);
 
     // Decorative line under title
-    const gfx = this.add.graphics();
-    gfx.lineStyle(Decorative.divider.thickness, Decorative.divider.color);
-    gfx.lineBetween(cx - 250, 75, cx + 250, 75);
+    const gfx = drawGoldDivider(this, cx - 250, 75, cx + 250, 75, 1);
     this.uiElements.push(gfx);
 
     // --- Controls Section (single line) ---

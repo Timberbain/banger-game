@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Client, Room } from 'colyseus.js';
+import { MessageRouter } from '../systems/MessageRouter';
 import { LOBBY_CONFIG } from '../../../shared/lobby';
 import { CHARACTERS, CHARACTER_DISPLAY } from '../../../shared/characters';
 import { AudioManager } from '../systems/AudioManager';
@@ -8,17 +9,18 @@ import {
   TextStyle,
   Buttons,
   Panels,
-  Decorative,
   Spacing,
   StatBar,
   charColor,
   charColorNum,
 } from '../ui/designTokens';
 import { createLayeredButton } from '../ui/createLayeredButton';
+import { drawGoldDivider } from '../ui/UIFactory';
 
 export class LobbyScene extends Phaser.Scene {
   private client!: Client;
   private room: Room | null = null;
+  private messageRouter: MessageRouter | null = null;
   private currentView: 'menu' | 'lobby' = 'menu';
   private playerName: string = 'Player';
   private selectedRole: string | null = null;
@@ -41,6 +43,10 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   async create() {
+    // Reset stale refs from Phaser scene reuse (constructor skipped on scene.start)
+    this.messageRouter = null;
+    this.room = null;
+
     // Initialize Colyseus client
     this.client = new Client('ws://localhost:2567');
 
@@ -257,6 +263,10 @@ export class LobbyScene extends Phaser.Scene {
     this.selectedRole = null;
     this.matchmakingSelectedRole = null;
     sessionStorage.removeItem('bangerLobbyRoom');
+    if (this.messageRouter) {
+      this.messageRouter.clear();
+      this.messageRouter = null;
+    }
     this.currentView = 'menu';
 
     const cx = this.cameras.main.centerX;
@@ -285,13 +295,7 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(title);
 
     // Decorative gold line under title
-    const lineGfx = this.add.graphics();
-    lineGfx.lineStyle(
-      Decorative.divider.thickness,
-      Decorative.divider.color,
-      Decorative.divider.alpha,
-    );
-    lineGfx.lineBetween(cx - 200, 175, cx + 200, 175);
+    const lineGfx = drawGoldDivider(this, cx - 200, 175, cx + 200, 175);
     this.uiElements.push(lineGfx);
 
     // Menu buttons -- 3 options with layered depth
@@ -521,13 +525,7 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(title);
 
     // Gold divider
-    const divGfx = this.add.graphics();
-    divGfx.lineStyle(
-      Decorative.divider.thickness,
-      Decorative.divider.color,
-      Decorative.divider.alpha,
-    );
-    divGfx.lineBetween(340, 88, 940, 88);
+    const divGfx = drawGoldDivider(this, 340, 88, 940, 88);
     this.uiElements.push(divGfx);
 
     // Team labels
@@ -673,6 +671,10 @@ export class LobbyScene extends Phaser.Scene {
         if (this.room) {
           this.room.leave();
           this.room = null;
+          if (this.messageRouter) {
+            this.messageRouter.clear();
+            this.messageRouter = null;
+          }
         }
         this.showMainMenu();
       },
@@ -775,6 +777,10 @@ export class LobbyScene extends Phaser.Scene {
     this.selectedRole = null;
     this.currentView = 'lobby';
 
+    // Always create fresh MessageRouter bound to current room
+    if (this.messageRouter) this.messageRouter.clear();
+    this.messageRouter = new MessageRouter(this.room);
+
     const cx = this.cameras.main.centerX;
 
     // Solarpunk dark green background
@@ -826,14 +832,8 @@ export class LobbyScene extends Phaser.Scene {
     this.uiElements.push(title);
 
     // Gold divider
-    const divGfx = this.add.graphics();
-    divGfx.lineStyle(
-      Decorative.divider.thickness,
-      Decorative.divider.color,
-      Decorative.divider.alpha,
-    );
-    divGfx.lineBetween(340, 88, 940, 88);
-    this.uiElements.push(divGfx);
+    const divGfx2 = drawGoldDivider(this, 340, 88, 940, 88);
+    this.uiElements.push(divGfx2);
 
     // Team labels
     this.addTeamLabels();
@@ -900,7 +900,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // Listen for role errors
-    this.room.onMessage('roleError', (message: string) => {
+    this.messageRouter!.on('roleError', (message: string) => {
       const errorText = this.add
         .text(cx, 610, message, {
           fontSize: '16px',
@@ -919,7 +919,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // Listen for game ready message
-    this.room.onMessage('gameReady', async (data: { gameRoomId: string }) => {
+    this.messageRouter!.on('gameReady', async (data: { gameRoomId: string }) => {
       console.log('Game ready! Joining game room:', data.gameRoomId);
       sessionStorage.removeItem('bangerLobbyRoom');
 
@@ -947,7 +947,10 @@ export class LobbyScene extends Phaser.Scene {
         this.scene.start('GameScene', { room: gameRoom });
       } catch (e) {
         console.error('Failed to join game room:', e);
-        // Return to menu on error
+        if (this.messageRouter) {
+          this.messageRouter.clear();
+          this.messageRouter = null;
+        }
         this.showMainMenu();
       }
     });
@@ -1142,6 +1145,10 @@ export class LobbyScene extends Phaser.Scene {
         if (this.room) {
           this.room.leave();
           this.room = null;
+          if (this.messageRouter) {
+            this.messageRouter.clear();
+            this.messageRouter = null;
+          }
         }
         sessionStorage.removeItem('bangerLobbyRoom');
         this.showMainMenu();
@@ -1695,6 +1702,11 @@ export class LobbyScene extends Phaser.Scene {
     // Clean up when scene shuts down
     this.clearUI();
     sessionStorage.removeItem('bangerLobbyRoom');
+
+    if (this.messageRouter) {
+      this.messageRouter.clear();
+      this.messageRouter = null;
+    }
 
     if (this.room) {
       try {

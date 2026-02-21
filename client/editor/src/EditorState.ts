@@ -18,7 +18,8 @@ export type Tool =
   | 'ground'
   | 'spawn-paran'
   | 'spawn-guardian1'
-  | 'spawn-guardian2';
+  | 'spawn-guardian2'
+  | 'select';
 
 export interface SpawnPoints {
   paran: { x: number; y: number } | null;
@@ -93,6 +94,9 @@ export class EditorState {
   groundSeed = 42;
   currentTool: Tool = 'wall-hedge';
   selectedGroundTile = 305;
+  mirrorX = false;
+  mirrorY = false;
+  selection: { x1: number; y1: number; x2: number; y2: number } | null = null;
 
   private listeners: ChangeListener[] = [];
 
@@ -165,6 +169,59 @@ export class EditorState {
     const tileValue = TOOL_TO_TILE[tool];
     if (tileValue === undefined) return false;
 
+    const idx = y * this.width + x;
+    if (this.logicalGrid[idx] === tileValue) return false;
+    this.logicalGrid[idx] = tileValue;
+    return true;
+  }
+
+  /** Apply tool at (x,y) plus all mirror positions. Returns true if any tile changed. */
+  applyToolMirrored(x: number, y: number): boolean {
+    let changed = this.applyTool(x, y);
+
+    if (this.mirrorX) {
+      const mx = this.width - 1 - x;
+      changed = this.applyToolAt(mx, y, this.mirrorSpawnTool('x')) || changed;
+    }
+    if (this.mirrorY) {
+      const my = this.height - 1 - y;
+      changed = this.applyToolAt(x, my, this.mirrorSpawnTool('y')) || changed;
+    }
+    if (this.mirrorX && this.mirrorY) {
+      const mx = this.width - 1 - x;
+      const my = this.height - 1 - y;
+      changed = this.applyToolAt(mx, my, this.mirrorSpawnTool('xy')) || changed;
+    }
+    return changed;
+  }
+
+  /** Get the tool to use at a mirror position (swaps guardian spawns) */
+  private mirrorSpawnTool(_axis: string): Tool {
+    const tool = this.currentTool;
+    if (tool === 'spawn-guardian1') return 'spawn-guardian2';
+    if (tool === 'spawn-guardian2') return 'spawn-guardian1';
+    return tool; // paran mirrors to itself, all others unchanged
+  }
+
+  /** Apply a specific tool at (x,y) — used by mirror to apply different spawn tools */
+  private applyToolAt(x: number, y: number, tool: Tool): boolean {
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+
+    if (tool.startsWith('spawn-')) {
+      const key =
+        tool === 'spawn-paran' ? 'paran' : tool === 'spawn-guardian1' ? 'guardian1' : 'guardian2';
+      this.spawnPoints[key] = { x, y };
+      return true;
+    }
+
+    if (tool === 'ground') {
+      const idx = y * this.width + x;
+      this.groundOverrides.set(idx, this.selectedGroundTile);
+      return true;
+    }
+
+    const tileValue = TOOL_TO_TILE[tool];
+    if (tileValue === undefined) return false;
     const idx = y * this.width + x;
     if (this.logicalGrid[idx] === tileValue) return false;
     this.logicalGrid[idx] = tileValue;
@@ -246,6 +303,16 @@ export class EditorState {
       this.collisionOverrides = cloned;
     }
     this.notify();
+  }
+
+  /** Get mirrored cursor positions for rendering ghost previews */
+  getMirrorPositions(x: number, y: number): { x: number; y: number }[] {
+    const positions: { x: number; y: number }[] = [];
+    if (this.mirrorX) positions.push({ x: this.width - 1 - x, y });
+    if (this.mirrorY) positions.push({ x, y: this.height - 1 - y });
+    if (this.mirrorX && this.mirrorY)
+      positions.push({ x: this.width - 1 - x, y: this.height - 1 - y });
+    return positions;
   }
 
   /** Check if a tile value is solid (any wall sentinel or rock canopy 289-296) */

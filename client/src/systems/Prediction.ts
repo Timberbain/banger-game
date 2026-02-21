@@ -4,6 +4,7 @@ import {
   updateFacingDirection,
   InputState,
   PHYSICS,
+  NETWORK,
   ARENA,
 } from '../../../shared/physics';
 import { CHARACTERS, COMBAT } from '../../../shared/characters';
@@ -84,7 +85,7 @@ export class PredictionSystem {
     const prevY = this.localState.y;
 
     // Apply prediction locally (same physics as server)
-    applyMovementPhysics(this.localState, input, 1 / 60, {
+    applyMovementPhysics(this.localState, input, NETWORK.fixedDtSeconds, {
       acceleration: stats.acceleration,
       drag: stats.drag,
       maxVelocity: stats.maxVelocity * this.speedMultiplier,

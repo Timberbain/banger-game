@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Room } from 'colyseus.js';
+import { MessageRouter } from '../systems/MessageRouter';
 import { CHARACTERS } from '../../../shared/characters';
 import { PowerupType } from '../../../shared/powerups';
 import { CollisionGrid } from '../../../shared/collisionGrid';
@@ -30,6 +31,7 @@ interface KillFeedEntry {
 export class HUDScene extends Phaser.Scene {
   // Room reference
   private room: Room | null = null;
+  private messageRouter: MessageRouter | null = null;
   private localSessionId: string = '';
   private localRole: string = '';
 
@@ -117,6 +119,8 @@ export class HUDScene extends Phaser.Scene {
 
   create(data: { room: Room; localSessionId: string; localRole: string }) {
     // Reset ALL member variables for scene reuse (scene.start skips constructor)
+    if (this.messageRouter) this.messageRouter.clear();
+    this.messageRouter = null;
     this.room = null;
     this.localSessionId = '';
     this.localRole = '';
@@ -170,6 +174,7 @@ export class HUDScene extends Phaser.Scene {
 
     // Store references
     this.room = data.room;
+    this.messageRouter = new MessageRouter(this.room);
     this.localSessionId = data.localSessionId;
     this.localRole = data.localRole;
 
@@ -442,7 +447,7 @@ export class HUDScene extends Phaser.Scene {
   private setupKillFeed(): void {
     if (!this.room) return;
 
-    this.room.onMessage(
+    this.messageRouter!.on(
       'kill',
       (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
         this.addKillFeedEntry(data);
@@ -464,7 +469,7 @@ export class HUDScene extends Phaser.Scene {
     );
 
     // Powerup collection: show buff indicator for local player + kill feed announcement
-    this.room.onMessage('powerupCollect', (data: any) => {
+    this.messageRouter!.on('powerupCollect', (data: any) => {
       if (data.playerId === this.localSessionId) {
         this.addBuffIndicator(data.type, data.duration);
       }
@@ -478,7 +483,7 @@ export class HUDScene extends Phaser.Scene {
     });
 
     // Powerup spawn: kill feed announcement
-    this.room.onMessage('powerupSpawn', (data: any) => {
+    this.messageRouter!.on('powerupSpawn', (data: any) => {
       this.addKillFeedEntry({
         killer: data.typeName,
         victim: 'appeared!',
@@ -488,7 +493,7 @@ export class HUDScene extends Phaser.Scene {
     });
 
     // Buff expired: remove indicator for local player
-    this.room.onMessage('buffExpired', (data: any) => {
+    this.messageRouter!.on('buffExpired', (data: any) => {
       if (data.playerId === this.localSessionId) {
         this.removeBuffIndicator(data.type);
       }
@@ -699,7 +704,7 @@ export class HUDScene extends Phaser.Scene {
         }
       }, 2000);
 
-      this.room.onMessage('pong', (data: { t: number }) => {
+      this.messageRouter!.on('pong', (data: { t: number }) => {
         this.currentPing = Date.now() - data.t;
       });
     }
@@ -1355,6 +1360,12 @@ export class HUDScene extends Phaser.Scene {
   // =====================
 
   private onShutdown(): void {
+    // Clear message router callbacks
+    if (this.messageRouter) {
+      this.messageRouter.clear();
+      this.messageRouter = null;
+    }
+
     // Clear ping interval
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
