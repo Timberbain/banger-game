@@ -16,6 +16,7 @@ import {
 } from '../ui/designTokens';
 import { createLayeredButton } from '../ui/createLayeredButton';
 import { drawGoldDivider } from '../ui/UIFactory';
+import { getServerUrl, getApiBaseUrl } from '../config/connection';
 
 export class LobbyScene extends Phaser.Scene {
   private client!: Client;
@@ -48,7 +49,7 @@ export class LobbyScene extends Phaser.Scene {
     this.room = null;
 
     // Initialize Colyseus client
-    this.client = new Client('ws://localhost:2567');
+    this.client = new Client(getServerUrl());
 
     // Get AudioManager from registry (initialized in BootScene)
     this.audioManager = (this.registry.get('audioManager') as AudioManager) || null;
@@ -475,7 +476,7 @@ export class LobbyScene extends Phaser.Scene {
 
     try {
       // Query server for room with this code
-      const response = await fetch(`http://localhost:2567/rooms/find?code=${code}`);
+      const response = await fetch(`${getApiBaseUrl()}/rooms/find?code=${code}`);
 
       if (!response.ok) {
         throw new Error('Room not found');

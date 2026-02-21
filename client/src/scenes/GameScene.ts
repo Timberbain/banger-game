@@ -13,6 +13,7 @@ import { getCollisionShapes } from '../../../shared/tileRegistry';
 import { PowerupType, POWERUP_CONFIG, POWERUP_NAMES } from '../../../shared/powerups';
 import { charColorNum } from '../ui/designTokens';
 import { MapMetadata } from '../../../shared/maps';
+import { getServerUrl } from '../config/connection';
 
 /** Map of role name to projectile spritesheet frame index */
 const PROJECTILE_FRAME: Record<string, number> = {
@@ -261,7 +262,7 @@ export class GameScene extends Phaser.Scene {
     this.statusText.setDepth(100);
 
     // Initialize Colyseus client
-    this.client = new Client('ws://localhost:2567');
+    this.client = new Client(getServerUrl());
 
     // Connect to Colyseus
     try {

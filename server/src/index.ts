@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server, matchMaker } from 'colyseus';
 import { monitor } from '@colyseus/monitor';
 import cors from 'cors';
+import path from 'path';
 import { GameRoom } from './rooms/GameRoom';
 import { LobbyRoom } from './rooms/LobbyRoom';
 import { MatchmakingRoom } from './rooms/MatchmakingRoom';
@@ -10,15 +11,17 @@ import { SERVER_CONFIG } from './config';
 
 const app = express();
 const httpServer = createServer(app);
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Enable CORS for dev (client on port 8080 accessing server on port 2567)
-app.use(cors());
+// CORS: only needed in development (separate client/server ports)
+if (!isProduction) {
+  app.use(cors());
+}
 
 // Latency simulation for testing (dev only)
 const simulateLatency = parseInt(process.env.SIMULATE_LATENCY || '0', 10);
 if (simulateLatency > 0) {
   console.log(`HTTP latency simulation enabled: ${simulateLatency}ms`);
-  // Add delay middleware for HTTP requests
   app.use((req, res, next) => {
     setTimeout(next, simulateLatency);
   });
@@ -29,13 +32,9 @@ const gameServer = new Server({
   server: httpServer,
 });
 
-// Register lobby room
+// Register rooms
 gameServer.define('lobby_room', LobbyRoom);
-
-// Register matchmaking room
 gameServer.define('matchmaking_room', MatchmakingRoom);
-
-// Register game room
 gameServer.define('game_room', GameRoom);
 
 // Health check endpoint
@@ -56,10 +55,7 @@ app.get('/rooms/find', async (req, res) => {
   }
 
   try {
-    // Query all lobby rooms
     const rooms = await matchMaker.query({ name: 'lobby_room' });
-
-    // Find room with matching code in metadata
     const matchingRoom = rooms.find((room) => room.metadata?.roomCode === code);
 
     if (!matchingRoom) {
@@ -73,24 +69,35 @@ app.get('/rooms/find', async (req, res) => {
   }
 });
 
-// Add Colyseus monitor for dev debugging
-app.use('/colyseus', monitor());
+// Colyseus monitor: disabled in production unless explicitly enabled
+if (!isProduction || process.env.ENABLE_MONITOR === '1') {
+  app.use('/colyseus', monitor());
+}
+
+// Serve client static files in production
+const clientDistPath = process.env.CLIENT_DIST_PATH || path.join(__dirname, '../../public');
+app.use(express.static(clientDistPath));
+
+// SPA fallback: serve index.html for unmatched routes (must be after API routes)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
 
 // Process-level error safety net -- prevent unhandled errors from crashing server
 process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception:', err.message);
   console.error(err.stack);
-  // Log but don't exit -- Colyseus rooms should handle their own errors
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[FATAL] Unhandled rejection at:', promise, 'reason:', reason);
-  // Log but don't exit
 });
 
 // Start server
 httpServer.listen(SERVER_CONFIG.port, () => {
-  console.log(`Banger server listening on ws://localhost:${SERVER_CONFIG.port}`);
+  console.log(
+    `Banger server listening on port ${SERVER_CONFIG.port} (${isProduction ? 'production' : 'development'})`,
+  );
 });
 
 export default gameServer;

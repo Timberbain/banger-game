@@ -41,9 +41,12 @@ const PROJECTILE_LIFETIME = COMBAT.projectileLifetime;
 const POWERUP_COLLECTION_DIST_SQ = (COMBAT.playerRadius + POWERUP_CONFIG.collectionRadius) ** 2;
 const POWERUP_MIN_SPAWN_DIST_SQ = POWERUP_CONFIG.minSpawnDistance ** 2;
 
+/** Base directory for map/asset files. Defaults to client/public for dev, overridden in Docker. */
+const MAPS_BASE_DIR = process.env.MAPS_BASE_DIR || path.join(__dirname, '../../../client/public');
+
 /** Discover playable maps from JSON files at module load */
 function discoverMaps(): MapMetadata[] {
-  const mapsDir = path.join(__dirname, '../../../client/public/maps');
+  const mapsDir = path.join(MAPS_BASE_DIR, 'maps');
   const files = fs.readdirSync(mapsDir).filter((f: string) => f.endsWith('.json'));
   const maps: MapMetadata[] = [];
   for (const file of files) {
@@ -130,7 +133,7 @@ export class GameRoom extends Room<GameState> {
    * Shared by onCreate (initial map) and resetStage (new map between stages).
    */
   private loadMap(mapMeta: MapMetadata): void {
-    const mapPath = path.join(__dirname, '../../../client/public', mapMeta.file);
+    const mapPath = path.join(MAPS_BASE_DIR, mapMeta.file);
     const mapJson: TiledMapJSON = JSON.parse(fs.readFileSync(mapPath, 'utf-8'));
     const wallLayer = mapJson.layers.find((l) => l.name === 'Walls')!;
 
