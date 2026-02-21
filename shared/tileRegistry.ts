@@ -5,7 +5,7 @@
  */
 
 // ============================================================
-// Tile ID Layout (unified tileset: 256px wide, 8 cols x 44 rows)
+// Tile ID Layout (unified tileset: 256px wide, 8 cols x 46 rows)
 // ============================================================
 //
 // Rows  0-5:  Hedge canopy       IDs   1- 48
@@ -21,6 +21,7 @@
 // Row  40:    Wood floor+deco     IDs 321-328
 // Row  41:    Plain color+empty   IDs 329-336
 // Rows 42-43: Extra floors        IDs 337-352
+// Rows 44-45: Decorations         IDs 353-364 (12 tiles, 4 empty slots 365-368)
 
 export type WallTheme = 'hedge' | 'brick' | 'wood';
 
@@ -32,7 +33,8 @@ export type TileCategory =
   | 'floor'
   | 'deco'
   | 'plain'
-  | 'empty';
+  | 'empty'
+  | 'decoration';
 
 export interface CollisionShape {
   x: number;
@@ -65,8 +67,8 @@ export const ROCK_FRONT_OFFSET = 8;
 
 export const TILES_PER_THEME = 48;
 export const TILESET_COLUMNS = 8;
-export const TILESET_ROWS = 44;
-export const TOTAL_TILES = TILESET_COLUMNS * TILESET_ROWS; // 352
+export const TILESET_ROWS = 46;
+export const TOTAL_TILES = TILESET_COLUMNS * TILESET_ROWS; // 368
 
 /** Tile ID ranges (all 1-based, matching Tiled firstgid=1) */
 export const TILE_RANGES = {
@@ -86,6 +88,7 @@ export const TILE_RANGES = {
   WOOD_DECO: { min: 325, max: 328 },
   PLAIN_COLOR: { min: 329, max: 334 },
   EXTRA_FLOOR: { min: 337, max: 352 },
+  DECORATION: { min: 353, max: 364 },
 } as const;
 
 /** Rock tile ID → obstacle tier HP mapping */
@@ -259,6 +262,17 @@ export function buildTileRegistry(): Map<number, TileProperties> {
     });
   }
 
+  // Decoration overlay tiles (non-solid, rendered above ground but below walls/entities)
+  for (let id = TILE_RANGES.DECORATION.min; id <= TILE_RANGES.DECORATION.max; id++) {
+    registry.set(id, {
+      category: 'decoration',
+      solid: false,
+      destructible: false,
+      hp: 0,
+      collisionShape: FULL_TILE,
+    });
+  }
+
   cachedRegistry = registry;
   return registry;
 }
@@ -389,4 +403,13 @@ export function isRockCanopy(tileId: number): boolean {
 /** Check if tile ID is any solid canopy (wall or rock) */
 export function isSolidCanopy(tileId: number): boolean {
   return isWallCanopy(tileId) || isRockCanopy(tileId);
+}
+
+/** Get all decoration overlay tile IDs (353-364) */
+export function getDecorationIds(): number[] {
+  const ids: number[] = [];
+  for (let id = TILE_RANGES.DECORATION.min; id <= TILE_RANGES.DECORATION.max; id++) {
+    ids.push(id);
+  }
+  return ids;
 }

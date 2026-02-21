@@ -87,7 +87,22 @@ export function generateGroundLayer(
   return data;
 }
 
-/** Generate all 3 layers. Ground terrain shows through transparent sprite parts. */
+/** Generate decorations layer from sparse overrides → flat array */
+export function generateDecorationsLayer(
+  w: number,
+  h: number,
+  decorationOverrides?: Map<number, number>,
+): number[] {
+  const data = new Array<number>(w * h).fill(0);
+  if (decorationOverrides) {
+    for (const [idx, tileId] of decorationOverrides) {
+      if (idx >= 0 && idx < data.length) data[idx] = tileId;
+    }
+  }
+  return data;
+}
+
+/** Generate all 4 layers. Ground terrain shows through transparent sprite parts. */
 export function generateAllLayers(
   logicalGrid: number[],
   w: number,
@@ -96,10 +111,12 @@ export function generateAllLayers(
   groundSeed: number,
   theme: WallTheme = 'hedge',
   groundOverrides?: Map<number, number>,
-): { ground: number[]; wallFronts: number[]; walls: number[] } {
+  decorationOverrides?: Map<number, number>,
+): { ground: number[]; decorations: number[]; wallFronts: number[]; walls: number[] } {
   const walls = generateWallsLayer(logicalGrid, w, h, rules);
   const wallFronts = generateWallFrontsLayer(walls, w, h);
   const ground = generateGroundLayer(w, h, groundSeed, theme, groundOverrides);
+  const decorations = generateDecorationsLayer(w, h, decorationOverrides);
 
-  return { ground, wallFronts, walls };
+  return { ground, decorations, wallFronts, walls };
 }

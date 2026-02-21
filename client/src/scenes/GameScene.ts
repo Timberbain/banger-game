@@ -81,6 +81,7 @@ export class GameScene extends Phaser.Scene {
   private collisionGrid: CollisionGrid | null = null;
   private wallsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private wallFrontsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+  private decorationsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
   private currentTilemap: Phaser.Tilemaps.Tilemap | null = null;
   private groundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
 
@@ -179,6 +180,7 @@ export class GameScene extends Phaser.Scene {
     this.collisionGrid = null;
     this.wallsLayer = null;
     this.wallFrontsLayer = null;
+    this.decorationsLayer = null;
     this.currentTilemap = null;
     this.groundLayer = null;
     this.spectatorTarget = null;
@@ -2214,6 +2216,10 @@ export class GameScene extends Phaser.Scene {
       this.wallFrontsLayer.destroy();
       this.wallFrontsLayer = null;
     }
+    if (this.decorationsLayer) {
+      this.decorationsLayer.destroy();
+      this.decorationsLayer = null;
+    }
     if (this.groundLayer) {
       this.groundLayer.destroy();
       this.groundLayer = null;
@@ -2393,6 +2399,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     const groundLayer = map.createLayer('Ground', tileset, 0, 0);
+    const decorationsLayer = map.createLayer('Decorations', tileset, 0, 0); // null for old maps
     const wallFrontsLayer = map.createLayer('WallFronts', tileset, 0, 0);
     const wallsLayer = map.createLayer('Walls', tileset, 0, 0);
 
@@ -2406,6 +2413,7 @@ export class GameScene extends Phaser.Scene {
     // Store layer references for obstacle destruction rendering and stage transitions
     this.wallsLayer = wallsLayer;
     this.wallFrontsLayer = wallFrontsLayer;
+    this.decorationsLayer = decorationsLayer;
     this.groundLayer = groundLayer;
 
     // Build collision grid from map data for client prediction

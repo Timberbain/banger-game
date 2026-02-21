@@ -71,6 +71,7 @@ export function importTiledMap(state: EditorState, mapJson: TiledMap, name?: str
   state.height = height;
   state.logicalGrid = new Array(width * height).fill(TILE_EMPTY);
   state.groundOverrides = new Map();
+  state.decorationOverrides = new Map();
   state.spawnPoints = { paran: null, guardian1: null, guardian2: null };
   state.theme = detectTheme(mapJson);
 
@@ -100,6 +101,17 @@ export function importTiledMap(state: EditorState, mapJson: TiledMap, name?: str
       const gt = groundLayer.data[i];
       if (gt > 0) {
         state.groundOverrides.set(i, gt);
+      }
+    }
+  }
+
+  // Import Decorations layer if present (backward compat: old maps skip this)
+  const decorationsLayer = layers.find((l) => l.name === 'Decorations');
+  if (decorationsLayer) {
+    for (let i = 0; i < decorationsLayer.data.length; i++) {
+      const dt = decorationsLayer.data[i];
+      if (dt > 0) {
+        state.decorationOverrides.set(i, dt);
       }
     }
   }

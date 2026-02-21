@@ -275,6 +275,10 @@ body {
   background: var(--char-baran);
   border-radius: 50%;
 }
+.swatch.decoration {
+  background: linear-gradient(135deg, #6b8e23, #daa520);
+  border-radius: 3px;
+}
 .swatch.select {
   background: transparent;
   border: 2px dashed var(--accent-solar);

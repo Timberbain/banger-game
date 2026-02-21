@@ -42,6 +42,7 @@ export interface RenderOverlays {
 
 export interface MapLayers {
   ground: number[];
+  decorations: number[];
   wallFronts: number[];
   walls: number[];
 }
@@ -153,6 +154,7 @@ export class CanvasRenderer {
 
     // Render layers bottom-to-top
     drawLayer(layers.ground, 'ground');
+    drawLayer(layers.decorations, 'ground');
     drawLayer(layers.wallFronts, 'wall');
     drawLayer(layers.walls, 'wall');
 

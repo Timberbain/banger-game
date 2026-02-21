@@ -9,6 +9,7 @@ export interface ClipboardData {
   height: number;
   tiles: number[];
   groundOverrides: Map<number, number>;
+  decorationOverrides: Map<number, number>;
 }
 
 /** Rotate clipboard 90 degrees clockwise */
@@ -17,6 +18,7 @@ export function rotateClipboard90CW(clip: ClipboardData): ClipboardData {
   const newH = clip.width;
   const tiles = new Array(newW * newH);
   const groundOverrides = new Map<number, number>();
+  const decorationOverrides = new Map<number, number>();
 
   for (let y = 0; y < clip.height; y++) {
     for (let x = 0; x < clip.width; x++) {
@@ -27,16 +29,19 @@ export function rotateClipboard90CW(clip: ClipboardData): ClipboardData {
       tiles[dstIdx] = clip.tiles[srcIdx];
       const ground = clip.groundOverrides.get(srcIdx);
       if (ground !== undefined) groundOverrides.set(dstIdx, ground);
+      const deco = clip.decorationOverrides.get(srcIdx);
+      if (deco !== undefined) decorationOverrides.set(dstIdx, deco);
     }
   }
 
-  return { width: newW, height: newH, tiles, groundOverrides };
+  return { width: newW, height: newH, tiles, groundOverrides, decorationOverrides };
 }
 
 /** Flip clipboard horizontally */
 export function flipClipboardH(clip: ClipboardData): ClipboardData {
   const tiles = new Array(clip.width * clip.height);
   const groundOverrides = new Map<number, number>();
+  const decorationOverrides = new Map<number, number>();
 
   for (let y = 0; y < clip.height; y++) {
     for (let x = 0; x < clip.width; x++) {
@@ -46,10 +51,12 @@ export function flipClipboardH(clip: ClipboardData): ClipboardData {
       tiles[dstIdx] = clip.tiles[srcIdx];
       const ground = clip.groundOverrides.get(srcIdx);
       if (ground !== undefined) groundOverrides.set(dstIdx, ground);
+      const deco = clip.decorationOverrides.get(srcIdx);
+      if (deco !== undefined) decorationOverrides.set(dstIdx, deco);
     }
   }
 
-  return { width: clip.width, height: clip.height, tiles, groundOverrides };
+  return { width: clip.width, height: clip.height, tiles, groundOverrides, decorationOverrides };
 }
 
 /** Paste clipboard data onto state at origin position */
@@ -75,6 +82,12 @@ export function pasteClipboard(
       if (ground !== undefined) {
         state.setGroundOverride(tx, ty, ground);
       }
+
+      const dstIdx = ty * state.width + tx;
+      const deco = clip.decorationOverrides.get(srcIdx);
+      if (deco !== undefined) {
+        state.decorationOverrides.set(dstIdx, deco);
+      }
     }
   }
 }
@@ -95,17 +108,21 @@ export function copyRegion(
   const h = maxY - minY + 1;
   const tiles = new Array(w * h);
   const groundOverrides = new Map<number, number>();
+  const decorationOverrides = new Map<number, number>();
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const srcIdx = (minY + y) * state.width + (minX + x);
-      tiles[y * w + x] = state.logicalGrid[srcIdx];
+      const dstIdx = y * w + x;
+      tiles[dstIdx] = state.logicalGrid[srcIdx];
       const ground = state.groundOverrides.get(srcIdx);
-      if (ground !== undefined) groundOverrides.set(y * w + x, ground);
+      if (ground !== undefined) groundOverrides.set(dstIdx, ground);
+      const deco = state.decorationOverrides.get(srcIdx);
+      if (deco !== undefined) decorationOverrides.set(dstIdx, deco);
     }
   }
 
-  return { width: w, height: h, tiles, groundOverrides };
+  return { width: w, height: h, tiles, groundOverrides, decorationOverrides };
 }
 
 /** Clear a region in state (set all tiles to empty) */
@@ -124,6 +141,7 @@ export function clearRegion(
   for (let y = minY; y <= maxY; y++) {
     for (let x = minX; x <= maxX; x++) {
       state.setTile(x, y, TILE_EMPTY);
+      state.decorationOverrides.delete(y * state.width + x);
     }
   }
 }

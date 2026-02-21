@@ -8,6 +8,7 @@ import { TilesetAtlas } from '../TilesetAtlas';
 import {
   getFloorIds,
   getDecoIds,
+  getDecorationIds,
   TILE_RANGES,
   type WallTheme,
 } from '../../../../shared/tileRegistry';
@@ -46,6 +47,7 @@ export class TilePalette {
     this.atlas = atlas;
     this.bindToolButtons();
     this.buildGroundPalette();
+    this.buildDecorationPalette();
   }
 
   private bindToolButtons(): void {
@@ -77,6 +79,7 @@ export class TilePalette {
       light: 'Light Obstacle',
       eraser: 'Eraser',
       ground: 'Ground',
+      decoration: 'Decoration',
       'spawn-paran': 'Paran Spawn',
       'spawn-guardian1': 'Guardian 1 Spawn',
       'spawn-guardian2': 'Guardian 2 Spawn',
@@ -125,6 +128,56 @@ export class TilePalette {
       btn.addEventListener('click', () => {
         this.state.currentTool = 'ground';
         this.state.selectedGroundTile = tileId;
+        container.querySelectorAll('.ground-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.updateActiveButton();
+        this.updateStatusTool();
+      });
+
+      container.appendChild(btn);
+    }
+  }
+
+  buildDecorationPalette(): void {
+    const container = document.getElementById('decoration-palette');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const tileIds = getDecorationIds();
+
+    for (const tileId of tileIds) {
+      const btn = document.createElement('button');
+      btn.className = 'ground-btn';
+      btn.title = `Decoration tile ${tileId}`;
+      btn.dataset.decoId = String(tileId);
+
+      // Draw tile preview on a small canvas
+      const preview = document.createElement('canvas');
+      preview.width = 32;
+      preview.height = 32;
+      const ctx = preview.getContext('2d')!;
+
+      const bitmap = this.atlas.getTile(tileId);
+      if (bitmap) {
+        ctx.drawImage(bitmap, 0, 0, 32, 32);
+      } else {
+        ctx.fillStyle = '#6b8e23';
+        ctx.fillRect(0, 0, 32, 32);
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(tileId), 16, 20);
+      }
+
+      btn.style.backgroundImage = `url(${preview.toDataURL()})`;
+
+      if (tileId === this.state.selectedDecorationTile) {
+        btn.classList.add('active');
+      }
+
+      btn.addEventListener('click', () => {
+        this.state.currentTool = 'decoration';
+        this.state.selectedDecorationTile = tileId;
         container.querySelectorAll('.ground-btn').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         this.updateActiveButton();

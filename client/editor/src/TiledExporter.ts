@@ -60,6 +60,7 @@ export function exportTiledJSON(state: EditorState, rules: AutoTileRule[]): obje
     groundSeed,
     theme as 'hedge' | 'brick' | 'wood',
     groundOverrides,
+    state.decorationOverrides,
   );
 
   const collisionOverrides = serializeCollisionOverrides(state.collisionOverrides);
@@ -116,7 +117,7 @@ export function exportTiledJSON(state: EditorState, rules: AutoTileRule[]): obje
     type: 'map',
     version: '1.10',
     infinite: false,
-    nextlayerid: 4,
+    nextlayerid: 5,
     nextobjectid: 1,
     properties,
     tilesets: [
@@ -125,7 +126,7 @@ export function exportTiledJSON(state: EditorState, rules: AutoTileRule[]): obje
         columns: 8,
         image: '../tilesets/arena_unified.png',
         imagewidth: 256,
-        imageheight: 1408,
+        imageheight: 1472,
         margin: 0,
         name: 'arena_unified',
         spacing: 0,
@@ -140,6 +141,18 @@ export function exportTiledJSON(state: EditorState, rules: AutoTileRule[]): obje
         height,
         id: 1,
         name: 'Ground',
+        opacity: 1,
+        type: 'tilelayer',
+        visible: true,
+        width,
+        x: 0,
+        y: 0,
+      },
+      {
+        data: layers.decorations,
+        height,
+        id: 4,
+        name: 'Decorations',
         opacity: 1,
         type: 'tilelayer',
         visible: true,

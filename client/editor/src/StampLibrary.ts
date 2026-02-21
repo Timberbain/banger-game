@@ -26,6 +26,7 @@ const BUILT_IN_STAMPS: Stamp[] = [
       height: 3,
       tiles: [M, M, M, M, H, M, M, M, M],
       groundOverrides: new Map(),
+      decorationOverrides: new Map(),
     },
   },
   {
@@ -36,6 +37,7 @@ const BUILT_IN_STAMPS: Stamp[] = [
       height: 3,
       tiles: [W, E, E, W, E, E, W, W, W],
       groundOverrides: new Map(),
+      decorationOverrides: new Map(),
     },
   },
   {
@@ -46,6 +48,7 @@ const BUILT_IN_STAMPS: Stamp[] = [
       height: 4,
       tiles: [W, E, W, W, E, W, W, E, W, W, W, W],
       groundOverrides: new Map(),
+      decorationOverrides: new Map(),
     },
   },
   {
@@ -56,6 +59,7 @@ const BUILT_IN_STAMPS: Stamp[] = [
       height: 5,
       tiles: [W, W, E, E, E, E, E, E, W, W],
       groundOverrides: new Map(),
+      decorationOverrides: new Map(),
     },
   },
   {
@@ -66,6 +70,7 @@ const BUILT_IN_STAMPS: Stamp[] = [
       height: 5,
       tiles: [W, W, E, W, W, W, E, E, E, W, W, E, E, E, W, W, E, E, E, W, W, W, W, W, W],
       groundOverrides: new Map(),
+      decorationOverrides: new Map(),
     },
   },
 ];
@@ -84,6 +89,7 @@ function loadCustomStamps(): Stamp[] {
         height: number;
         tiles: number[];
         groundOverrides?: [number, number][];
+        decorationOverrides?: [number, number][];
       };
     }>;
     return parsed.map((s) => ({
@@ -94,6 +100,7 @@ function loadCustomStamps(): Stamp[] {
         height: s.data.height,
         tiles: s.data.tiles,
         groundOverrides: new Map(s.data.groundOverrides || []),
+        decorationOverrides: new Map(s.data.decorationOverrides || []),
       },
     }));
   } catch {
@@ -110,6 +117,7 @@ function saveCustomStamps(stamps: Stamp[]): void {
       height: s.data.height,
       tiles: s.data.tiles,
       groundOverrides: Array.from(s.data.groundOverrides.entries()),
+      decorationOverrides: Array.from(s.data.decorationOverrides.entries()),
     },
   }));
   localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));

@@ -47,7 +47,12 @@ let collisionEditor: CollisionEditor;
 let rules: AutoTileRule[] = [];
 
 // Cached layer data for rendering
-let layers = { ground: [] as number[], wallFronts: [] as number[], walls: [] as number[] };
+let layers = {
+  ground: [] as number[],
+  decorations: [] as number[],
+  wallFronts: [] as number[],
+  walls: [] as number[],
+};
 let validationResult: ValidationResult = {
   perimeter: false,
   connectivity: false,
@@ -71,6 +76,7 @@ function scheduleRegenerate(): void {
       state.groundSeed,
       state.theme,
       state.groundOverrides,
+      state.decorationOverrides,
     );
     validationResult = validate(state);
     propPanel.update();
@@ -189,6 +195,7 @@ function buildStampGrid(): void {
         ...stamp.data,
         tiles: [...stamp.data.tiles],
         groundOverrides: new Map(stamp.data.groundOverrides),
+        decorationOverrides: new Map(stamp.data.decorationOverrides),
       });
     });
     if (!stamp.builtIn) {
@@ -366,6 +373,7 @@ const TOOL_HOTKEYS: Record<string, Tool> = {
   l: 'light',
   e: 'eraser',
   g: 'ground',
+  f: 'decoration',
   '1': 'spawn-paran',
   '2': 'spawn-guardian1',
   '3': 'spawn-guardian2',
@@ -381,6 +389,7 @@ const TOOL_NAMES: Record<string, string> = {
   light: 'Light Obstacle',
   eraser: 'Eraser',
   ground: 'Ground',
+  decoration: 'Decoration',
   'spawn-paran': 'Paran Spawn',
   'spawn-guardian1': 'Guardian 1 Spawn',
   'spawn-guardian2': 'Guardian 2 Spawn',
@@ -455,6 +464,7 @@ function handleKeyDown(e: KeyboardEvent): void {
         ...clipboard,
         tiles: [...clipboard.tiles],
         groundOverrides: new Map(clipboard.groundOverrides),
+        decorationOverrides: new Map(clipboard.decorationOverrides),
       });
     }
     return;
@@ -596,6 +606,7 @@ function renderLoop(): void {
 
 async function onLoad(): Promise<void> {
   palette.buildGroundPalette();
+  palette.buildDecorationPalette();
   toolbar.syncThemeSelect();
   scheduleRegenerate();
 }
@@ -634,6 +645,14 @@ async function init(): Promise<void> {
   if (toolbar.restoreFromLocalStorage()) {
     palette.buildGroundPalette();
     renderer.collisionOverrides = state.collisionOverrides;
+  }
+
+  // Wire scatter mode checkbox
+  const chkScatter = document.getElementById('chk-scatter') as HTMLInputElement;
+  if (chkScatter) {
+    chkScatter.addEventListener('change', () => {
+      state.scatterMode = chkScatter.checked;
+    });
   }
 
   // Wire overlay buttons

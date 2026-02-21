@@ -127,6 +127,7 @@ export class Toolbar {
       height: this.state.height,
       grid: this.state.logicalGrid,
       overrides: Array.from(this.state.groundOverrides.entries()),
+      decorations: Array.from(this.state.decorationOverrides.entries()),
       collisionOverrides: collisionArr,
       spawns: this.state.spawnPoints,
       theme: this.state.theme,
@@ -147,6 +148,7 @@ export class Toolbar {
       this.state.height = data.height;
       this.state.logicalGrid = data.grid;
       this.state.groundOverrides = new Map(data.overrides);
+      this.state.decorationOverrides = new Map(data.decorations || []);
       this.state.spawnPoints = data.spawns;
       this.state.theme = data.theme;
       this.state.mapName = data.mapName;

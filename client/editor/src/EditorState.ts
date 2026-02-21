@@ -3,7 +3,7 @@
  * Single source of truth for the arena being edited.
  */
 
-import { TILE_RANGES, type CollisionShape } from '../../../shared/tileRegistry';
+import { TILE_RANGES, getDecorationIds, type CollisionShape } from '../../../shared/tileRegistry';
 
 export type Theme = 'hedge' | 'brick' | 'wood';
 
@@ -16,6 +16,7 @@ export type Tool =
   | 'light'
   | 'eraser'
   | 'ground'
+  | 'decoration'
   | 'spawn-paran'
   | 'spawn-guardian1'
   | 'spawn-guardian2'
@@ -86,6 +87,7 @@ export class EditorState {
   height: number;
   logicalGrid: number[];
   groundOverrides: Map<number, number>;
+  decorationOverrides: Map<number, number>;
   collisionOverrides: Map<string, CollisionShape>;
   theme: Theme = 'hedge';
   mapName = 'custom_arena';
@@ -94,6 +96,8 @@ export class EditorState {
   groundSeed = 42;
   currentTool: Tool = 'wall-hedge';
   selectedGroundTile = 305;
+  selectedDecorationTile = 353;
+  scatterMode = false;
   mirrorX = false;
   mirrorY = false;
   selection: { x1: number; y1: number; x2: number; y2: number } | null = null;
@@ -105,6 +109,7 @@ export class EditorState {
     this.height = height;
     this.logicalGrid = new Array(width * height).fill(TILE_EMPTY);
     this.groundOverrides = new Map();
+    this.decorationOverrides = new Map();
     this.collisionOverrides = new Map();
     this.prefillGreenGround();
     this.fillPerimeter();
@@ -166,6 +171,24 @@ export class EditorState {
       return true;
     }
 
+    if (tool === 'decoration') {
+      const idx = y * this.width + x;
+      if (this.scatterMode) {
+        // Scatter mode: skip ~40% of placements for natural sparse scatter
+        if (Math.random() < 0.4) return false;
+        const decoIds = getDecorationIds();
+        this.decorationOverrides.set(idx, decoIds[Math.floor(Math.random() * decoIds.length)]);
+      } else {
+        this.decorationOverrides.set(idx, this.selectedDecorationTile);
+      }
+      return true;
+    }
+
+    if (tool === 'eraser') {
+      const idx = y * this.width + x;
+      this.decorationOverrides.delete(idx);
+    }
+
     const tileValue = TOOL_TO_TILE[tool];
     if (tileValue === undefined) return false;
 
@@ -220,6 +243,23 @@ export class EditorState {
       return true;
     }
 
+    if (tool === 'decoration') {
+      const idx = y * this.width + x;
+      if (this.scatterMode) {
+        if (Math.random() < 0.4) return false;
+        const decoIds = getDecorationIds();
+        this.decorationOverrides.set(idx, decoIds[Math.floor(Math.random() * decoIds.length)]);
+      } else {
+        this.decorationOverrides.set(idx, this.selectedDecorationTile);
+      }
+      return true;
+    }
+
+    if (tool === 'eraser') {
+      const idx = y * this.width + x;
+      this.decorationOverrides.delete(idx);
+    }
+
     const tileValue = TOOL_TO_TILE[tool];
     if (tileValue === undefined) return false;
     const idx = y * this.width + x;
@@ -248,6 +288,7 @@ export class EditorState {
     this.height = height;
     this.logicalGrid = new Array(width * height).fill(TILE_EMPTY);
     this.groundOverrides = new Map();
+    this.decorationOverrides = new Map();
     this.collisionOverrides = new Map();
     this.prefillGreenGround();
     this.spawnPoints = { paran: null, guardian1: null, guardian2: null };
@@ -262,6 +303,7 @@ export class EditorState {
   snapshot(): {
     grid: number[];
     overrides: Map<number, number>;
+    decorationOverrides: Map<number, number>;
     spawns: SpawnPoints;
     collisionOverrides: Map<string, CollisionShape>;
   } {
@@ -272,6 +314,7 @@ export class EditorState {
     return {
       grid: [...this.logicalGrid],
       overrides: new Map(this.groundOverrides),
+      decorationOverrides: new Map(this.decorationOverrides),
       spawns: {
         paran: this.spawnPoints.paran ? { ...this.spawnPoints.paran } : null,
         guardian1: this.spawnPoints.guardian1 ? { ...this.spawnPoints.guardian1 } : null,
@@ -285,11 +328,13 @@ export class EditorState {
   restore(snap: {
     grid: number[];
     overrides: Map<number, number>;
+    decorationOverrides?: Map<number, number>;
     spawns: SpawnPoints;
     collisionOverrides?: Map<string, CollisionShape>;
   }): void {
     this.logicalGrid = [...snap.grid];
     this.groundOverrides = new Map(snap.overrides);
+    this.decorationOverrides = new Map(snap.decorationOverrides || []);
     this.spawnPoints = {
       paran: snap.spawns.paran ? { ...snap.spawns.paran } : null,
       guardian1: snap.spawns.guardian1 ? { ...snap.spawns.guardian1 } : null,

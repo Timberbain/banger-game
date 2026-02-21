@@ -2,17 +2,17 @@
  * TilesetAtlas -- Loads and slices the unified tileset PNG into individual
  * ImageBitmaps for efficient tile-by-tile rendering on an HTML Canvas.
  *
- * The unified tileset is 256x1408 pixels (8 columns x 44 rows of 32x32 tiles,
- * 352 tiles total). Tile IDs are 1-based in the map data, so tile ID N maps to
+ * The unified tileset is 256x1472 pixels (8 columns x 46 rows of 32x32 tiles,
+ * 368 tiles total). Tile IDs are 1-based in the map data, so tile ID N maps to
  * internal array index N-1. Tile ID 0 means "empty / no tile".
  *
  * Tileset lives at /tilesets/arena_unified.png.
  */
 
 const COLS = 8;
-const ROWS = 44;
+const ROWS = 46;
 const TILE_PX = 32;
-const TOTAL_TILES = COLS * ROWS; // 352
+const TOTAL_TILES = COLS * ROWS; // 368
 
 export class TilesetAtlas {
   /** Indexed by tile ID minus one. tiles[0] = tile ID 1, etc. */
@@ -22,7 +22,7 @@ export class TilesetAtlas {
   loaded = false;
 
   /**
-   * Fetch the unified tileset and slice it into 352 individual ImageBitmaps.
+   * Fetch the unified tileset and slice it into 368 individual ImageBitmaps.
    */
   async load(): Promise<void> {
     const url = '/tilesets/arena_unified.png';
