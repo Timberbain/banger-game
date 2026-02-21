@@ -746,12 +746,12 @@ def generate_map_json(theme, layout_fn, output_path, rules, seed=42, rock_seed=1
                 "firstgid": 1,
                 "columns": 8,
                 "image": "../tilesets/arena_unified.png",
-                "imagewidth": 256,
-                "imageheight": 1408,
-                "margin": 0,
+                "imagewidth": 272,
+                "imageheight": 1564,
+                "margin": 1,
                 "name": "arena_unified",
-                "spacing": 0,
-                "tilecount": 352,
+                "spacing": 2,
+                "tilecount": 368,
                 "tilewidth": TILE,
                 "tileheight": TILE
             }

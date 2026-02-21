@@ -10,6 +10,8 @@ import {
 // ============================================================
 
 const TILE_SIZE = 32;
+const TILE_MARGIN = 1;
+const TILE_SPACING = 2;
 
 // ============================================================
 // DOM refs
@@ -80,15 +82,23 @@ function updateZoomStatus(): void {
 function screenToTile(sx: number, sy: number): { col: number; row: number } {
   const worldX = (sx - panX) / zoom;
   const worldY = (sy - panY) / zoom;
+  const stride = TILE_SIZE + TILE_SPACING;
   return {
-    col: Math.floor(worldX / TILE_SIZE),
-    row: Math.floor(worldY / TILE_SIZE),
+    col: Math.floor((worldX - TILE_MARGIN) / stride),
+    row: Math.floor((worldY - TILE_MARGIN) / stride),
   };
 }
 
+function tileX(col: number): number {
+  return TILE_MARGIN + col * (TILE_SIZE + TILE_SPACING);
+}
+function tileY(row: number): number {
+  return TILE_MARGIN + row * (TILE_SIZE + TILE_SPACING);
+}
+
 function fitToView(): void {
-  const tilesetW = TILESET_COLUMNS * TILE_SIZE;
-  const tilesetH = TILESET_ROWS * TILE_SIZE;
+  const tilesetW = tileX(TILESET_COLUMNS - 1) + TILE_SIZE + TILE_MARGIN;
+  const tilesetH = tileY(TILESET_ROWS - 1) + TILE_SIZE + TILE_MARGIN;
   const margin = 20;
   const fitZoom = Math.min(
     (canvas.width - margin * 2) / tilesetW,
@@ -170,10 +180,10 @@ function jumpToRange(rangeName: string): void {
 
   const startRow = Math.floor((range.min - 1) / TILESET_COLUMNS);
   const endRow = Math.floor((range.max - 1) / TILESET_COLUMNS);
-  const y1 = startRow * TILE_SIZE;
-  const y2 = (endRow + 1) * TILE_SIZE;
-  const x1 = 0;
-  const x2 = TILESET_COLUMNS * TILE_SIZE;
+  const y1 = tileY(startRow);
+  const y2 = tileY(endRow) + TILE_SIZE;
+  const x1 = tileX(0);
+  const x2 = tileX(TILESET_COLUMNS - 1) + TILE_SIZE;
   const regionW = x2 - x1;
   const regionH = y2 - y1;
 
@@ -269,7 +279,7 @@ function render(): void {
       const row = Math.floor(index / TILESET_COLUMNS);
       const shape = props.collisionShape;
       ctx.fillStyle = 'rgba(204, 51, 51, 0.3)';
-      ctx.fillRect(col * TILE_SIZE + shape.x, row * TILE_SIZE + shape.y, shape.w, shape.h);
+      ctx.fillRect(tileX(col) + shape.x, tileY(row) + shape.y, shape.w, shape.h);
     });
   }
 
@@ -277,18 +287,20 @@ function render(): void {
   if (gridCheckbox.checked) {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1 / zoom;
-    const tilesetW = TILESET_COLUMNS * TILE_SIZE;
-    const tilesetH = TILESET_ROWS * TILE_SIZE;
+    const tilesetW = tileX(TILESET_COLUMNS - 1) + TILE_SIZE + TILE_MARGIN;
+    const tilesetH = tileY(TILESET_ROWS - 1) + TILE_SIZE + TILE_MARGIN;
     for (let col = 0; col <= TILESET_COLUMNS; col++) {
+      const x = col < TILESET_COLUMNS ? tileX(col) : tileX(col - 1) + TILE_SIZE;
       ctx.beginPath();
-      ctx.moveTo(col * TILE_SIZE + 0.5 / zoom, 0);
-      ctx.lineTo(col * TILE_SIZE + 0.5 / zoom, tilesetH);
+      ctx.moveTo(x + 0.5 / zoom, 0);
+      ctx.lineTo(x + 0.5 / zoom, tilesetH);
       ctx.stroke();
     }
     for (let row = 0; row <= TILESET_ROWS; row++) {
+      const y = row < TILESET_ROWS ? tileY(row) : tileY(row - 1) + TILE_SIZE;
       ctx.beginPath();
-      ctx.moveTo(0, row * TILE_SIZE + 0.5 / zoom);
-      ctx.lineTo(tilesetW, row * TILE_SIZE + 0.5 / zoom);
+      ctx.moveTo(0, y + 0.5 / zoom);
+      ctx.lineTo(tilesetW, y + 0.5 / zoom);
       ctx.stroke();
     }
   }
@@ -298,12 +310,7 @@ function render(): void {
     ctx.strokeStyle = '#f2da78';
     ctx.lineWidth = 3 / zoom;
     ctx.setLineDash([6 / zoom, 4 / zoom]);
-    ctx.strokeRect(
-      pinnedCol * TILE_SIZE + 1,
-      pinnedRow * TILE_SIZE + 1,
-      TILE_SIZE - 2,
-      TILE_SIZE - 2,
-    );
+    ctx.strokeRect(tileX(pinnedCol) + 1, tileY(pinnedRow) + 1, TILE_SIZE - 2, TILE_SIZE - 2);
     ctx.setLineDash([]);
   }
 
@@ -312,12 +319,7 @@ function render(): void {
     // Gold border
     ctx.strokeStyle = '#d4a84a';
     ctx.lineWidth = 2 / zoom;
-    ctx.strokeRect(
-      hoverCol * TILE_SIZE + 1,
-      hoverRow * TILE_SIZE + 1,
-      TILE_SIZE - 2,
-      TILE_SIZE - 2,
-    );
+    ctx.strokeRect(tileX(hoverCol) + 1, tileY(hoverRow) + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 
     // Collision shape fill for solid tiles
     const tileId = hoverRow * TILESET_COLUMNS + hoverCol + 1;
@@ -325,12 +327,7 @@ function render(): void {
     if (props?.solid) {
       const shape = props.collisionShape;
       ctx.fillStyle = 'rgba(212, 168, 74, 0.25)';
-      ctx.fillRect(
-        hoverCol * TILE_SIZE + shape.x,
-        hoverRow * TILE_SIZE + shape.y,
-        shape.w,
-        shape.h,
-      );
+      ctx.fillRect(tileX(hoverCol) + shape.x, tileY(hoverRow) + shape.y, shape.w, shape.h);
     }
   }
 

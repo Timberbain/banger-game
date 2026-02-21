@@ -37,8 +37,8 @@ export class TilesetAtlas {
     // Slice the composite image into individual 32x32 tiles.
     const promises: Promise<ImageBitmap>[] = [];
     for (let i = 0; i < TOTAL_TILES; i++) {
-      const sx = (i % COLS) * TILE_PX;
-      const sy = Math.floor(i / COLS) * TILE_PX;
+      const sx = 1 + (i % COLS) * (TILE_PX + 2);
+      const sy = 1 + Math.floor(i / COLS) * (TILE_PX + 2);
       promises.push(createImageBitmap(source, sx, sy, TILE_PX, TILE_PX));
     }
 
