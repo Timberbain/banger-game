@@ -36,6 +36,10 @@ export class LobbyScene extends Phaser.Scene {
   private tooltipElements: Phaser.GameObjects.GameObject[] = [];
   private tooltipVisible: boolean = false;
 
+  // Online player count
+  private onlineCountText: Phaser.GameObjects.Text | null = null;
+  private onlineCountTimer: Phaser.Time.TimerEvent | null = null;
+
   // Audio
   private audioManager: AudioManager | null = null;
 
@@ -298,6 +302,37 @@ export class LobbyScene extends Phaser.Scene {
     // Decorative gold line under title
     const lineGfx = drawGoldDivider(this, cx - 200, 175, cx + 200, 175);
     this.uiElements.push(lineGfx);
+
+    // Online player count indicator
+    this.onlineCountText = this.add
+      .text(cx, 202, '- ONLINE', {
+        fontSize: '14px',
+        color: Colors.gold.primary,
+        fontFamily: 'monospace',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(this.onlineCountText);
+
+    const fetchOnlineCount = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/players/online`);
+        const data = await res.json();
+        if (this.onlineCountText && this.onlineCountText.scene) {
+          this.onlineCountText.setText(`${data.count} ONLINE`);
+        }
+      } catch {
+        // Silent fail — keep previous text
+      }
+    };
+
+    fetchOnlineCount();
+    this.onlineCountTimer = this.time.addEvent({
+      delay: 10000,
+      callback: fetchOnlineCount,
+      loop: true,
+    });
 
     // Menu buttons -- 3 options with layered depth
     const menuItems = [
@@ -1687,6 +1722,13 @@ export class LobbyScene extends Phaser.Scene {
       el.destroy();
     });
     this.uiElements = [];
+
+    // Stop online count polling
+    if (this.onlineCountTimer) {
+      this.onlineCountTimer.remove();
+      this.onlineCountTimer = null;
+    }
+    this.onlineCountText = null;
 
     // Remove HTML input if exists
     if (this.htmlInput) {

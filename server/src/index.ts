@@ -46,6 +46,20 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Active player count for lobby display
+app.get('/players/online', async (req, res) => {
+  try {
+    const rooms = await matchMaker.query({});
+    let total = 0;
+    for (const room of rooms) {
+      total += room.clients;
+    }
+    res.json({ count: total });
+  } catch {
+    res.json({ count: 0 });
+  }
+});
+
 // Room code lookup endpoint for private lobbies
 app.get('/rooms/find', async (req, res) => {
   const code = (req.query.code as string)?.toUpperCase();
