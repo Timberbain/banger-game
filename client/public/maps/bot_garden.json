@@ -16,12 +16,12 @@
     {
       "name": "mapName",
       "type": "string",
-      "value": "bot_guarden"
+      "value": "bot_garden"
     },
     {
       "name": "displayName",
       "type": "string",
-      "value": "Botanical Guarden"
+      "value": "Botanical Garden"
     },
     {
       "name": "wallTheme",
