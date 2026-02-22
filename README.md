@@ -38,15 +38,33 @@ The other half of the guardian duo. Same responsive controls as Faran, complemen
 
 **Momentum system** — Paran's acceleration physics create a high-risk, high-reward loop. Building speed is slow, but once moving at full velocity, Paran is devastating. One wall clip resets everything.
 
-**Stage rotation** — Matches cycle through multiple arenas, keeping positioning fresh and preventing either side from settling into patterns.
+**Best-of-3 stages** — Matches play out across 3 unique arenas with iris wipe transitions between stages. First to 2 wins takes the match.
+
+**Powerup system** — Speed Boost, Invincibility, and Power Shot spawn on the map (server-authoritative, max 2 active). Adds tactical decision-making to every engagement.
+
+**Minimap** — Toggle with M key. Shows player positions, active powerups, and death markers.
+
+**Music & audio** — Lobby loop with random in-game track selection and smooth crossfade transitions. Procedural SFX via jsfxr alongside WAV music.
+
+**Reconnection** — 60-second grace period with automatic reconnect (3 retries). Drop from a match and rejoin without losing your spot.
 
 ## Arenas
 
-| Arena          | Theme       | Description                             |
-| -------------- | ----------- | --------------------------------------- |
-| Hedge Garden   | Hedge walls | Organic corridors with tight turns      |
-| Brick Fortress | Brick walls | Structured layouts with long sightlines |
-| Timber Yard    | Wood walls  | Open spaces with scattered cover        |
+All arenas are 1600x1216px (50x38 tiles) with sub-tile collision masks.
+
+| Arena            | Theme       | Description                             |
+| ---------------- | ----------- | --------------------------------------- |
+| Hedge Garden     | Hedge walls | Organic corridors with tight turns      |
+| Brick Fortress   | Brick walls | Structured layouts with long sightlines |
+| Timber Yard      | Wood walls  | Open spaces with scattered cover        |
+| Botanical Garden | Hedge walls | Dense hedge maze with branching paths   |
+
+## Features
+
+- HD viewport (1280x720) with smooth camera follow
+- HUD overlay with heart-based health, round counter, kill feed, and buff indicators
+- Active player count displayed on lobby menu
+- Collision debug overlay (F3)
 
 ## Tech Stack
 
@@ -57,6 +75,7 @@ The other half of the guardian duo. Same responsive controls as Faran, complemen
 | Shared     | Pure TypeScript (physics, collision, characters) |
 | Networking | 60Hz server-authoritative with client prediction |
 | Audio      | jsfxr (procedural SFX) + WAV music               |
+| PWA        | Installable with web manifest and icons          |
 | Deployment | Docker single-container                          |
 
 ## Getting Started
@@ -92,7 +111,7 @@ banger-game/
 
 ## Deployment
 
-The included `Dockerfile` produces a single container that serves both the game client and WebSocket server on port 3000. Built with multi-stage builds for minimal image size.
+The included `Dockerfile` produces a single container that serves both the game client and WebSocket server on port 3000. Built with multi-stage builds on Node 22-slim for minimal image size.
 
 ```bash
 docker build -t banger .
