@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Client, Room } from 'colyseus.js';
 import { MessageRouter } from '../systems/MessageRouter';
 import { LOBBY_CONFIG } from '../../../shared/lobby';
-import { CHARACTERS, CHARACTER_DISPLAY } from '../../../shared/characters';
+import { CHARACTER_DISPLAY } from '../../../shared/characters';
 import { AudioManager } from '../systems/AudioManager';
 import {
   Colors,
@@ -10,7 +10,6 @@ import {
   Buttons,
   Panels,
   Spacing,
-  StatBar,
   charColor,
   charColorNum,
 } from '../ui/designTokens';
@@ -652,11 +651,15 @@ export class LobbyScene extends Phaser.Scene {
     // Background
     this.addSceneBg();
 
-    // Character sprite showing selected role
-    const roleSprite = this.add.sprite(cx, 230, preferredRole);
-    roleSprite.play(`${preferredRole}-idle`);
-    roleSprite.setScale(3);
-    this.uiElements.push(roleSprite);
+    // Portrait aura glow
+    const aura = this.add.graphics();
+    aura.fillStyle(charColorNum(preferredRole), Panels.characterCard.portraitAuraAlpha);
+    aura.fillCircle(cx, 220, Panels.characterCard.portraitAuraRadius);
+    this.uiElements.push(aura);
+
+    // Character portrait
+    const portrait = this.add.image(cx, 220, `portrait-${preferredRole}`);
+    this.uiElements.push(portrait);
 
     // Role name
     const roleName = preferredRole.charAt(0).toUpperCase() + preferredRole.slice(1);
@@ -1247,7 +1250,7 @@ export class LobbyScene extends Phaser.Scene {
 
   // ─── SHARED UI HELPERS ───────────────────────────────
 
-  /** Create a single character panel with sprite, stats, and description */
+  /** Create a single character panel with portrait, aura glow, and description */
   private createCharacterPanel(
     role: string,
     cx: number,
@@ -1262,15 +1265,9 @@ export class LobbyScene extends Phaser.Scene {
     const height = isParan
       ? Panels.characterCard.paran.height
       : Panels.characterCard.guardian.height;
-    const cy = 310;
-    const spriteY = isParan ? 195 : 200;
-    const spriteScale = isParan
-      ? Panels.characterCard.paranSpriteScale
-      : Panels.characterCard.guardianSpriteScale;
-    const nameSize = isParan ? '22px' : '20px';
+    const cy = 330;
     const borderColor = charColorNum(role);
     const display = CHARACTER_DISPLAY[role];
-    const stats = CHARACTERS[role];
 
     // Panel background
     const panel = this.add.rectangle(cx, cy, width, height, Panels.card.bg);
@@ -1278,16 +1275,33 @@ export class LobbyScene extends Phaser.Scene {
     panel.setInteractive({ useHandCursor: true });
     elements.push(panel);
 
-    // Character sprite (idle animation)
-    const sprite = this.add.sprite(cx, spriteY, role);
-    sprite.play(`${role}-idle`);
-    sprite.setScale(spriteScale);
-    elements.push(sprite);
+    // Colored aura glow behind portrait
+    const aura = this.add.graphics();
+    aura.fillStyle(charColorNum(role), Panels.characterCard.portraitAuraAlpha);
+    aura.fillCircle(cx, 235, Panels.characterCard.portraitAuraRadius);
+    elements.push(aura);
+
+    // Portrait image (200x200 native — pixel-perfect)
+    const portrait = this.add.image(cx, 235, `portrait-${role}`);
+    elements.push(portrait);
+
+    // Gold Art Deco divider with accent dots at endpoints
+    const dividerY = 345;
+    const divHalfW = (width - 40) / 2;
+    const divGfx = drawGoldDivider(this, cx - divHalfW, dividerY, cx + divHalfW, dividerY);
+    elements.push(divGfx);
+
+    // Accent dots at divider endpoints
+    const dotGfx = this.add.graphics();
+    dotGfx.fillStyle(Colors.gold.primaryNum, 0.7);
+    dotGfx.fillCircle(cx - divHalfW, dividerY, 2.5);
+    dotGfx.fillCircle(cx + divHalfW, dividerY, 2.5);
+    elements.push(dotGfx);
 
     // Character name
     const nameText = this.add
-      .text(cx, 275, role.charAt(0).toUpperCase() + role.slice(1), {
-        fontSize: nameSize,
+      .text(cx, 367, role.charAt(0).toUpperCase() + role.slice(1), {
+        fontSize: '22px',
         color: charColor(role),
         fontFamily: 'monospace',
         fontStyle: 'bold',
@@ -1299,7 +1313,7 @@ export class LobbyScene extends Phaser.Scene {
 
     // Tagline
     const tagText = this.add
-      .text(cx, 295, display.tagline, {
+      .text(cx, 387, display.tagline, {
         fontSize: '12px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
@@ -1310,24 +1324,9 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
     elements.push(tagText);
 
-    // Stat bars (5 stats between y=320 and y=420)
-    const statDefs = [
-      { label: 'HP', value: stats.maxHealth, max: StatBar.maxValues.hp },
-      { label: 'SPD', value: stats.maxVelocity, max: StatBar.maxValues.speed },
-      { label: 'ACC', value: stats.acceleration, max: StatBar.maxValues.accel },
-      { label: 'ROF', value: 1000 / stats.fireRate, max: StatBar.maxValues.fireRate },
-      { label: 'DMG', value: stats.damage, max: StatBar.maxValues.damage },
-    ];
-
-    statDefs.forEach((stat, i) => {
-      const y = 320 + i * 25;
-      const barElements = this.createStatBar(cx, y, stat.label, stat.value, stat.max, role);
-      barElements.forEach((el) => elements.push(el));
-    });
-
     // Ability text
     const abilityText = this.add
-      .text(cx, 450, display.ability, {
+      .text(cx, 410, display.ability, {
         fontSize: '11px',
         color: charColor(role),
         fontFamily: 'monospace',
@@ -1340,7 +1339,7 @@ export class LobbyScene extends Phaser.Scene {
 
     // Risk/team text
     const riskText = this.add
-      .text(cx, 467, display.risk, {
+      .text(cx, 427, display.risk, {
         fontSize: '11px',
         color: Colors.text.secondary,
         fontFamily: 'monospace',
@@ -1363,67 +1362,27 @@ export class LobbyScene extends Phaser.Scene {
 
     // Update function for selection/availability state
     const update = (isSelected: boolean, isAvailable: boolean) => {
-      const allEls = [panel, sprite, nameText, tagText, abilityText, riskText];
+      const allEls = [panel, portrait, nameText, tagText, abilityText, riskText];
 
       if (isSelected) {
         panel.setStrokeStyle(Panels.card.selectedWidth, Panels.card.selectedBorder);
         allEls.forEach((el) => el.setAlpha(1));
+        aura.setAlpha(1);
         panel.setInteractive({ useHandCursor: true });
       } else if (!isAvailable) {
         panel.setStrokeStyle(Panels.card.borderWidth, borderColor);
         allEls.forEach((el) => el.setAlpha(Panels.card.disabledAlpha));
+        aura.setAlpha(Panels.card.disabledAlpha);
         panel.disableInteractive();
       } else {
         panel.setStrokeStyle(Panels.card.borderWidth, borderColor);
         allEls.forEach((el) => el.setAlpha(1));
+        aura.setAlpha(1);
         panel.setInteractive({ useHandCursor: true });
       }
     };
 
     return { elements, update };
-  }
-
-  /** Create a horizontal stat bar row: label + background + fill */
-  private createStatBar(
-    cx: number,
-    y: number,
-    label: string,
-    value: number,
-    max: number,
-    role: string,
-  ): Phaser.GameObjects.GameObject[] {
-    const elements: Phaser.GameObjects.GameObject[] = [];
-    const barWidth = StatBar.width;
-    const barHeight = StatBar.height;
-    const fillRatio = Math.min(1, value / max);
-
-    // Label (left-aligned within panel)
-    const labelText = this.add
-      .text(cx - 65, y, label, {
-        fontSize: StatBar.labelSize,
-        color: Colors.text.secondary,
-        fontFamily: StatBar.font,
-        stroke: '#000000',
-        strokeThickness: 1,
-      })
-      .setOrigin(0, 0.5);
-    elements.push(labelText);
-
-    // Bar background
-    const barBg = this.add.rectangle(cx - 25, y, barWidth, barHeight, StatBar.bg);
-    barBg.setOrigin(0, 0.5);
-    elements.push(barBg);
-
-    // Bar fill
-    const fillWidth = fillRatio * barWidth;
-    if (fillWidth > 0) {
-      const barFill = this.add.rectangle(cx - 25, y, fillWidth, barHeight, charColorNum(role));
-      barFill.setOrigin(0, 0.5);
-      barFill.setAlpha(0.85);
-      elements.push(barFill);
-    }
-
-    return elements;
   }
 
   /** Add team labels above the character panels */

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Colors, TextStyle, Buttons, Panels, charColor } from '../ui/designTokens';
+import { Colors, TextStyle, Buttons, Panels, charColor, charColorNum } from '../ui/designTokens';
 import { createLayeredButton } from '../ui/createLayeredButton';
 import { drawGoldDivider } from '../ui/UIFactory';
 
@@ -83,31 +83,25 @@ export class HelpScene extends Phaser.Scene {
     roles.forEach((r, index) => {
       const x = roleStartX + index * roleSpacing;
 
-      // Panel background (280 x 260)
-      const panel = this.add.rectangle(x, rolesY + 130, 280, 260, Colors.bg.deepNum);
+      // Panel background (280 x 340)
+      const panel = this.add.rectangle(x, rolesY + 170, 280, 340, Colors.bg.deepNum);
       panel.setStrokeStyle(Panels.card.borderWidth, Panels.card.border);
       this.uiElements.push(panel);
 
-      // Character sprite (idle animation)
-      try {
-        const sprite = this.add.sprite(x, rolesY + 45, r.role);
-        sprite.play(`${r.role}-idle`);
-        sprite.setScale(2);
-        this.uiElements.push(sprite);
-      } catch (_e) {
-        // Fallback: colored circle if sprite not available
-        const circle = this.add.circle(
-          x,
-          rolesY + 45,
-          16,
-          Phaser.Display.Color.HexStringToColor(charColor(r.role)).color,
-        );
-        this.uiElements.push(circle);
-      }
+      // Portrait aura glow
+      const aura = this.add.graphics();
+      aura.fillStyle(charColorNum(r.role), Panels.characterCard.portraitAuraAlpha);
+      aura.fillCircle(x, rolesY + 55, 52);
+      this.uiElements.push(aura);
+
+      // Character portrait (scaled down to fit help panel)
+      const portrait = this.add.image(x, rolesY + 55, `portrait-${r.role}`);
+      portrait.setScale(0.55);
+      this.uiElements.push(portrait);
 
       // Role name
       const nameText = this.add
-        .text(x, rolesY + 85, r.name, {
+        .text(x, rolesY + 120, r.name, {
           fontSize: '18px',
           color: charColor(r.role),
           fontFamily: 'monospace',
@@ -120,7 +114,7 @@ export class HelpScene extends Phaser.Scene {
 
       // Role tagline
       const taglineText = this.add
-        .text(x, rolesY + 105, r.tagline, {
+        .text(x, rolesY + 140, r.tagline, {
           fontSize: '13px',
           color: Colors.text.secondary,
           fontFamily: 'monospace',
@@ -132,7 +126,7 @@ export class HelpScene extends Phaser.Scene {
       // Playful description lines
       r.lines.forEach((line, lineIdx) => {
         const descText = this.add
-          .text(x, rolesY + 128 + lineIdx * 28, line, {
+          .text(x, rolesY + 163 + lineIdx * 28, line, {
             fontSize: '13px',
             color: Colors.text.secondary,
             fontFamily: 'monospace',
@@ -144,7 +138,7 @@ export class HelpScene extends Phaser.Scene {
     });
 
     // --- Win Conditions Section ---
-    const winY = 510;
+    const winY = 550;
     const winTitle = this.add
       .text(cx, winY, 'Win Conditions', {
         ...TextStyle.heroHeading,
@@ -185,7 +179,7 @@ export class HelpScene extends Phaser.Scene {
     this.uiElements.push(tipText);
 
     // --- Back Button --- layered
-    const backHandle = createLayeredButton(this, cx, 640, 'Back to Lobby', {
+    const backHandle = createLayeredButton(this, cx, 680, 'Back to Lobby', {
       size: 'md',
       bgNum: Buttons.primary.bgNum,
       hoverNum: Buttons.primary.hoverNum,
