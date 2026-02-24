@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server, matchMaker } from 'colyseus';
+import { WebSocketTransport } from '@colyseus/ws-transport';
 import { monitor } from '@colyseus/monitor';
 import cors from 'cors';
 import path from 'path';
@@ -29,7 +30,9 @@ if (simulateLatency > 0) {
 
 // Create Colyseus server
 const gameServer = new Server({
-  server: httpServer,
+  transport: new WebSocketTransport({
+    server: httpServer,
+  }),
 });
 
 // Register rooms

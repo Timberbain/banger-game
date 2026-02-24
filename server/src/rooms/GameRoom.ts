@@ -779,6 +779,7 @@ export class GameRoom extends Room<GameState> {
                 projectile.hitboxScale = POWERUP_CONFIG.paranBeamHitboxScale;
               } else {
                 projectile.hitboxScale = POWERUP_CONFIG.guardianHitboxScale;
+                projectile.damage *= POWERUP_CONFIG.guardianDamageScale;
                 projectile.vx *= POWERUP_CONFIG.guardianSpeedScale;
                 projectile.vy *= POWERUP_CONFIG.guardianSpeedScale;
               }

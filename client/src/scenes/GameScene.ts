@@ -1244,7 +1244,11 @@ export class GameScene extends Phaser.Scene {
         if (projectile.isBeam) {
           this.audioManager.playMultipleWAV(['earthquake', 'lightning']);
         } else if (ownerPlayer.role !== 'paran') {
-          this.audioManager.stopAndPlayRandomWAV(['laser_1', 'laser_4', 'laser_5']);
+          if (projectile.hitboxScale > 1) {
+            this.audioManager.stopAndPlayRandomWAV(['fire_1', 'fire_2', 'fire_3']);
+          } else {
+            this.audioManager.stopAndPlayRandomWAV(['laser_1', 'laser_4', 'laser_5']);
+          }
         } else {
           this.audioManager.playSFX('paran_shoot');
         }

@@ -50,6 +50,8 @@ export const POWERUP_CONFIG = {
   guardianHitboxScale: 2,
   /** Guardian projectile speed scale during projectile buff */
   guardianSpeedScale: 2,
+  /** Guardian damage scale during projectile buff */
+  guardianDamageScale: 2,
   /** Paran beam hitbox scale during projectile buff */
   paranBeamHitboxScale: 5,
   /** Paran beam cooldown multiplier (2x longer cooldown) */
