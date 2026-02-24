@@ -317,26 +317,13 @@ export const Panels = {
     padding: Spacing.md,
   },
   characterCard: {
-    guardian: { width: 280, height: 380 },
-    paran: { width: 320, height: 380 },
+    guardian: { width: 280, height: 400 },
+    paran: { width: 320, height: 400 },
+    portraitSize: 200,
+    portraitAuraRadius: 95,
+    portraitAuraAlpha: 0.18,
     guardianSpriteScale: 3,
     paranSpriteScale: 3.5,
-  },
-} as const;
-
-export const StatBar = {
-  width: 100,
-  height: 8,
-  bg: Colors.bg.elevatedNum,
-  labelSize: '11px',
-  font: 'monospace',
-  /** Stat max values for normalization */
-  maxValues: {
-    hp: 150,
-    speed: 400,
-    accel: 800,
-    fireRate: 5, // shots per second
-    damage: 40,
   },
 } as const;
 

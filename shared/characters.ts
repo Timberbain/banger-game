@@ -16,18 +16,18 @@ export interface CharacterStats {
 export const CHARACTERS: Record<string, CharacterStats> = {
   faran: {
     maxHealth: 50,
-    acceleration: 800,
+    acceleration: 3000,
     maxVelocity: 110,
-    drag: 0.8,
+    drag: 0,
     damage: 10,
     fireRate: 200, // 5 shots/sec
     projectileSpeed: 400,
   },
   baran: {
     maxHealth: 50,
-    acceleration: 800,
+    acceleration: 3000,
     maxVelocity: 110,
-    drag: 0.8,
+    drag: 0,
     damage: 10,
     fireRate: 200, // 5 shots/sec
     projectileSpeed: 400,

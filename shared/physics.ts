@@ -42,6 +42,12 @@ export function getSpeedSquared(vx: number, vy: number): number {
   return vx * vx + vy * vy;
 }
 
+/** Move value toward target by at most `step`. */
+function moveToward(current: number, target: number, step: number): number {
+  if (Math.abs(target - current) <= step) return target;
+  return current + Math.sign(target - current) * step;
+}
+
 /**
  * Apply acceleration-based physics to a player
  * Mutates player object in place
@@ -113,23 +119,47 @@ export function applyMovementPhysics(
       player.vy = inputDirY * currentSpeed;
     }
   } else {
-    // Guardian behavior: normalize diagonal movement (divide by sqrt(2) when both axes active)
-    if (ax !== 0 && ay !== 0) {
-      const normalizeFactor = 1 / Math.sqrt(2);
-      ax *= normalizeFactor;
-      ay *= normalizeFactor;
+    // Guardian: compute input direction
+    let dirX = 0;
+    let dirY = 0;
+    if (input.left) dirX -= 1;
+    if (input.right) dirX += 1;
+    if (input.up) dirY -= 1;
+    if (input.down) dirY += 1;
+
+    // Diagonal normalization
+    if (dirX !== 0 && dirY !== 0) {
+      const n = 1 / Math.sqrt(2);
+      dirX *= n;
+      dirY *= n;
     }
 
-    // Instant stop when no input (like humans running and stopping)
-    const hasInput = ax !== 0 || ay !== 0;
+    const hasInput = dirX !== 0 || dirY !== 0;
     if (!hasInput) {
       player.vx = 0;
       player.vy = 0;
       return;
     }
+
+    // Aim follows input direction instantly (no velocity lag)
+    player.angle = Math.atan2(dirY, dirX);
+
+    // Target velocity = input direction * max speed
+    const targetVx = dirX * maxVelocity;
+    const targetVy = dirY * maxVelocity;
+
+    // Accelerate toward target (no drag)
+    const step = acceleration * dt;
+    player.vx = moveToward(player.vx, targetVx, step);
+    player.vy = moveToward(player.vy, targetVy, step);
+
+    // Integrate position
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    return; // Skip shared accel/drag path (Paran only)
   }
 
-  // Integrate velocity
+  // Paran: integrate velocity with acceleration and drag
   player.vx += ax * dt;
   player.vy += ay * dt;
 
@@ -160,7 +190,15 @@ export function applyMovementPhysics(
  *
  * @param player - Object with { vx, vy, angle }
  */
-export function updateFacingDirection(player: { vx: number; vy: number; angle: number }): void {
+export function updateFacingDirection(player: {
+  vx: number;
+  vy: number;
+  angle: number;
+  role?: string;
+}): void {
+  // Guardians use input-based facing (set in applyMovementPhysics)
+  if (player.role && player.role !== 'paran') return;
+
   const speed = getSpeed(player.vx, player.vy);
 
   // Only update facing if moving above threshold

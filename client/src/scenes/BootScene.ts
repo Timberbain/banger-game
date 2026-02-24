@@ -37,6 +37,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image('victory-guardian', 'images/victory-guardian-splash.png');
     this.load.image('victory-paran', 'images/victory-paran-splash.png');
 
+    // Character portraits (200x200 pixel art for character select panels)
+    this.load.image('portrait-paran', 'images/paran.png');
+    this.load.image('portrait-faran', 'images/faran.png');
+    this.load.image('portrait-baran', 'images/baran.png');
+
     // Powerup potion sprites (16x16 pixel art icons)
     // Color mapping: Red=Speed, Blue=Invincibility, Green=Projectile
     this.load.image('potion_speed', 'icons/potion-red.png');
