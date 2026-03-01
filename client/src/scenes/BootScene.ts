@@ -61,6 +61,13 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // Fade out the HTML loading screen — Phaser splash is now rendered underneath
+    const loader = document.getElementById('loading-screen');
+    if (loader) {
+      loader.classList.add('hidden');
+      loader.addEventListener('transitionend', () => loader.remove());
+    }
+
     // Initialize AudioManager and generate all SFX from jsfxr
     // Audio context will be unlocked by user click on "Click to Start" below
     const audioManager = new AudioManager();

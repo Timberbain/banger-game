@@ -12,13 +12,13 @@ const config: Phaser.Types.Core.GameConfig = {
   width: 1280,
   height: 720,
   parent: 'game-container',
-  backgroundColor: '#1a1a2e',
+  backgroundColor: '#101E14',
   pixelArt: true,
   roundPixels: true,
   scene: [BootScene, LobbyScene, GameScene, HUDScene, VictoryScene, HelpScene, StageIntroScene],
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
 };
 
