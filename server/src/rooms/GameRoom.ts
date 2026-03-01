@@ -299,8 +299,8 @@ export class GameRoom extends Room<GameState> {
     player.vy = 0;
     player.health = stats.maxHealth;
     player.name = options?.name
-      ? String(options.name).substring(0, 20)
-      : client.sessionId.substring(0, 20);
+      ? String(options.name).substring(0, 12)
+      : client.sessionId.substring(0, 12);
     player.angle = 0;
     player.role = role;
     player.lastProcessedSeq = 0;
@@ -860,6 +860,8 @@ export class GameRoom extends Room<GameState> {
         this.broadcast('kill', {
           killer: paran.name,
           victim: target.name,
+          killerId: paranId,
+          victimId: targetId,
           killerRole: paran.role,
           victimRole: target.role,
         });
@@ -961,6 +963,8 @@ export class GameRoom extends Room<GameState> {
               this.broadcast('kill', {
                 killer: shooter?.name || 'Unknown',
                 victim: target.name,
+                killerId: proj.ownerId,
+                victimId: targetId,
                 killerRole: shooter?.role || 'unknown',
                 victimRole: target.role,
               });

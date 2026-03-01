@@ -449,21 +449,27 @@ export class HUDScene extends Phaser.Scene {
 
     this.messageRouter!.on(
       'kill',
-      (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
+      (data: {
+        killer: string;
+        victim: string;
+        killerId: string;
+        victimId: string;
+        killerRole: string;
+        victimRole: string;
+      }) => {
         this.addKillFeedEntry(data);
 
         // Add minimap death marker at victim's last position
         if (this.room) {
-          this.room.state.players.forEach((player: any) => {
-            if (player.name === data.victim || player.role === data.victimRole) {
-              this.minimapDeathMarkers.push({
-                x: player.x,
-                y: player.y,
-                color: 0xff0000,
-                time: Date.now(),
-              });
-            }
-          });
+          const player = this.room.state.players.get(data.victimId);
+          if (player) {
+            this.minimapDeathMarkers.push({
+              x: player.x,
+              y: player.y,
+              color: 0xff0000,
+              time: Date.now(),
+            });
+          }
         }
       },
     );

@@ -33,7 +33,7 @@ export class MatchmakingRoom extends Room<MatchmakingState> {
   onJoin(client: Client, options?: MatchmakingRoomJoinOptions) {
     const player = new QueuePlayer();
     player.preferredRole = options?.preferredRole || 'faran';
-    player.name = options?.name || client.sessionId.substring(0, 20);
+    player.name = String(options?.name || client.sessionId).substring(0, 12);
 
     // Validate role
     if (!VALID_ROLES.includes(player.preferredRole as any)) {

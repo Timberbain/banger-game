@@ -740,18 +740,23 @@ export class GameScene extends Phaser.Scene {
       // Kill event: spawn gravestone at death location
       this.messageRouter.on(
         'kill',
-        (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
+        (data: {
+          killer: string;
+          victim: string;
+          killerId: string;
+          victimId: string;
+          killerRole: string;
+          victimRole: string;
+        }) => {
           if (!this.room) return;
-          // Find victim's position from state
-          this.room.state.players.forEach((player: any) => {
-            if (player.name === data.victim) {
-              const gravestone = this.add.image(player.x, player.y, 'icon_gravestone');
-              gravestone.setDisplaySize(32, 32);
-              gravestone.setDepth(5); // Below players (10), above ground (0)
-              gravestone.setTint(charColorNum(data.victimRole));
-              this.gravestoneSprites.push(gravestone);
-            }
-          });
+          const player = this.room.state.players.get(data.victimId);
+          if (player) {
+            const gravestone = this.add.image(player.x, player.y, 'icon_gravestone');
+            gravestone.setDisplaySize(32, 32);
+            gravestone.setDepth(5); // Below players (10), above ground (0)
+            gravestone.setTint(charColorNum(data.victimRole));
+            this.gravestoneSprites.push(gravestone);
+          }
         },
       );
     } catch (e) {
@@ -2117,17 +2122,23 @@ export class GameScene extends Phaser.Scene {
     // Kill event: spawn gravestone at death location (reconnect path)
     this.messageRouter.on(
       'kill',
-      (data: { killer: string; victim: string; killerRole: string; victimRole: string }) => {
+      (data: {
+        killer: string;
+        victim: string;
+        killerId: string;
+        victimId: string;
+        killerRole: string;
+        victimRole: string;
+      }) => {
         if (!this.room) return;
-        this.room.state.players.forEach((player: any) => {
-          if (player.name === data.victim) {
-            const gravestone = this.add.image(player.x, player.y, 'icon_gravestone');
-            gravestone.setDisplaySize(32, 32);
-            gravestone.setDepth(5);
-            gravestone.setTint(charColorNum(data.victimRole));
-            this.gravestoneSprites.push(gravestone);
-          }
-        });
+        const player = this.room.state.players.get(data.victimId);
+        if (player) {
+          const gravestone = this.add.image(player.x, player.y, 'icon_gravestone');
+          gravestone.setDisplaySize(32, 32);
+          gravestone.setDepth(5);
+          gravestone.setTint(charColorNum(data.victimRole));
+          this.gravestoneSprites.push(gravestone);
+        }
       },
     );
   }

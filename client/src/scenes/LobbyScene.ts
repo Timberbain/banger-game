@@ -29,6 +29,7 @@ export class LobbyScene extends Phaser.Scene {
   // UI elements storage for cleanup
   private uiElements: Phaser.GameObjects.GameObject[] = [];
   private htmlInput: HTMLInputElement | null = null;
+  private nameEditInput: HTMLInputElement | null = null;
   private characterPanelUpdaters: (() => void)[] = [];
 
   // Controls tooltip
@@ -57,9 +58,14 @@ export class LobbyScene extends Phaser.Scene {
     // Get AudioManager from registry (initialized in BootScene)
     this.audioManager = (this.registry.get('audioManager') as AudioManager) || null;
 
-    // Set default player name (could be from localStorage later)
-    this.playerName =
-      localStorage.getItem('playerName') || `Player${Math.floor(Math.random() * 1000)}`;
+    // Set player name from localStorage, or generate and persist a new one
+    const storedName = localStorage.getItem('playerName');
+    if (storedName) {
+      this.playerName = storedName;
+    } else {
+      this.playerName = `Player${Math.floor(Math.random() * 1000)}`;
+      localStorage.setItem('playerName', this.playerName);
+    }
 
     // Check for active session before showing menu
     await this.checkReconnection();
@@ -333,27 +339,158 @@ export class LobbyScene extends Phaser.Scene {
       loop: true,
     });
 
+    // Player name display (click-to-edit)
+    const nameText = this.add
+      .text(cx - 10, 242, this.playerName, {
+        ...TextStyle.heroHeading,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(nameText);
+
+    const pencilText = this.add
+      .text(cx + nameText.width / 2 + 8, 242, '\u270E', {
+        fontSize: '16px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0, 0.5);
+    this.uiElements.push(pencilText);
+
+    // Make name + pencil clickable
+    nameText.setInteractive({ useHandCursor: true });
+    pencilText.setInteractive({ useHandCursor: true });
+
+    const startNameEdit = () => {
+      if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+      nameText.setVisible(false);
+      pencilText.setVisible(false);
+      if (charCountText) charCountText.setVisible(true);
+
+      // Create HTML input for name editing
+      this.nameEditInput = document.createElement('input');
+      this.nameEditInput.type = 'text';
+      this.nameEditInput.maxLength = 12;
+      this.nameEditInput.value = this.playerName;
+
+      // Position input over the canvas at the name's location
+      const canvas = this.game.canvas;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = rect.width / this.cameras.main.width;
+      const scaleY = rect.height / this.cameras.main.height;
+      const inputWidth = 240;
+
+      this.nameEditInput.style.position = 'absolute';
+      this.nameEditInput.style.left = `${rect.left + cx * scaleX - (inputWidth * scaleX) / 2}px`;
+      this.nameEditInput.style.top = `${rect.top + 242 * scaleY - 18 * scaleY}px`;
+      this.nameEditInput.style.width = `${inputWidth * scaleX}px`;
+      this.nameEditInput.style.height = `${36 * scaleY}px`;
+      this.nameEditInput.style.fontSize = `${20 * scaleY}px`;
+      this.nameEditInput.style.padding = `${4 * scaleY}px ${8 * scaleX}px`;
+      this.nameEditInput.style.textAlign = 'center';
+      this.nameEditInput.style.fontFamily = 'monospace';
+      this.nameEditInput.style.border = `2px solid ${Colors.gold.brass}`;
+      this.nameEditInput.style.backgroundColor = Colors.bg.surface;
+      this.nameEditInput.style.color = Colors.gold.primary;
+      this.nameEditInput.style.outline = 'none';
+      this.nameEditInput.style.zIndex = '1000';
+      this.nameEditInput.style.borderRadius = '0';
+      this.nameEditInput.style.boxSizing = 'border-box';
+      document.body.appendChild(this.nameEditInput);
+
+      // Update character count on input
+      const updateCount = () => {
+        if (this.nameEditInput && charCountText) {
+          charCountText.setText(`${this.nameEditInput.value.length}/12`);
+        }
+      };
+      this.nameEditInput.addEventListener('input', updateCount);
+      updateCount();
+
+      // Disable Phaser keyboard capture while editing
+      this.nameEditInput.addEventListener('focus', () => {
+        if (this.input.keyboard) {
+          this.input.keyboard.enabled = false;
+          this.input.keyboard.disableGlobalCapture();
+        }
+      });
+      this.nameEditInput.addEventListener('blur', () => {
+        if (this.input.keyboard) {
+          this.input.keyboard.enabled = true;
+          this.input.keyboard.enableGlobalCapture();
+        }
+      });
+
+      const confirmEdit = () => {
+        if (!this.nameEditInput) return;
+        const newName = this.nameEditInput.value.trim();
+        if (newName.length > 0) {
+          this.playerName = newName;
+          localStorage.setItem('playerName', this.playerName);
+        }
+        // Null reference BEFORE removeChild to prevent re-entrant blur handler
+        const inputEl = this.nameEditInput;
+        this.nameEditInput = null;
+        document.body.removeChild(inputEl);
+        // Restore Phaser text
+        nameText.setText(this.playerName);
+        nameText.setVisible(true);
+        pencilText.setVisible(true);
+        pencilText.setX(cx + nameText.width / 2 - 2);
+        if (charCountText) charCountText.setVisible(false);
+      };
+
+      this.nameEditInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          confirmEdit();
+        }
+      });
+      this.nameEditInput.addEventListener('blur', confirmEdit);
+
+      this.nameEditInput.focus();
+      this.nameEditInput.select();
+    };
+
+    nameText.on('pointerdown', startNameEdit);
+    pencilText.on('pointerdown', startNameEdit);
+
+    // Character count (hidden until editing)
+    const charCountText = this.add
+      .text(cx + 135, 242, `${this.playerName.length}/12`, {
+        fontSize: '12px',
+        color: Colors.text.secondary,
+        fontFamily: 'monospace',
+      })
+      .setOrigin(0, 0.5)
+      .setVisible(false);
+    this.uiElements.push(charCountText);
+
+    // Gold divider under name
+    const nameDivider = drawGoldDivider(this, cx - 120, 265, cx + 120, 265);
+    this.uiElements.push(nameDivider);
+
     // Menu buttons -- 3 options with layered depth
     const menuItems = [
       {
         text: 'Create Private Room',
         bgNum: Colors.accent.vineNum,
         hoverNum: Colors.accent.vineHoverNum,
-        y: 280,
+        y: 310,
         handler: () => this.createPrivateRoom(),
       },
       {
         text: 'Join Private Room',
         bgNum: Colors.accent.vineNum,
         hoverNum: Colors.accent.vineHoverNum,
-        y: 370,
+        y: 400,
         handler: () => this.showJoinInput(),
       },
       {
         text: 'Find Match',
         bgNum: Colors.accent.solarNum,
         hoverNum: Colors.accent.skyNum,
-        y: 460,
+        y: 490,
         handler: () => this.showRoleSelectForMatchmaking(),
       },
     ];
@@ -372,7 +509,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // Volume controls at bottom of menu
-    this.createVolumeControls(600);
+    this.createVolumeControls(620);
   }
 
   private async createPrivateRoom() {
@@ -1107,8 +1244,14 @@ export class LobbyScene extends Phaser.Scene {
 
         // Player name or waiting
         if (playerName) {
+          // Truncate display name to fit before the ready icon (70px at 13px monospace ≈ 8 chars)
+          const maxNameChars = 8;
+          const displayName =
+            playerName.length > maxNameChars
+              ? playerName.substring(0, maxNameChars - 1) + '\u2026'
+              : playerName;
           const nameText = this.add
-            .text(slot.x + 2, 558, playerName, {
+            .text(slot.x + 2, 558, displayName, {
               fontSize: '13px',
               color: Colors.text.primary,
               fontFamily: 'monospace',
@@ -1689,10 +1832,23 @@ export class LobbyScene extends Phaser.Scene {
     }
     this.onlineCountText = null;
 
-    // Remove HTML input if exists
+    // Remove HTML inputs if they exist
     if (this.htmlInput) {
       document.body.removeChild(this.htmlInput);
       this.htmlInput = null;
+    }
+    if (this.nameEditInput) {
+      // Null reference BEFORE removeChild — removing a focused element triggers
+      // blur synchronously, which calls confirmEdit. Without this guard,
+      // confirmEdit would double-removeChild (throws) and touch destroyed Phaser objects.
+      const nameInput = this.nameEditInput;
+      this.nameEditInput = null;
+      document.body.removeChild(nameInput);
+      // Re-enable keyboard (blur handler may not run cleanly after DOM removal)
+      if (this.input.keyboard) {
+        this.input.keyboard.enabled = true;
+        this.input.keyboard.enableGlobalCapture();
+      }
     }
 
     // Clear tooltip state

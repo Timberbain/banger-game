@@ -132,11 +132,11 @@ export class LobbyRoom extends Room<LobbyState> {
   onJoin(client: Client, options?: LobbyRoomJoinOptions) {
     const player = new LobbyPlayer();
 
-    // Set player name (truncate to 20 chars, fallback to sessionId prefix)
+    // Set player name (truncate to 12 chars, fallback to sessionId prefix)
     if (options?.name) {
-      player.name = String(options.name).substring(0, 20);
+      player.name = String(options.name).substring(0, 12);
     } else {
-      player.name = client.sessionId.substring(0, 20);
+      player.name = client.sessionId.substring(0, 12);
     }
 
     player.connected = true;
