@@ -7,6 +7,7 @@ import { AudioManager } from '../systems/AudioManager';
 import {
   Colors,
   TextStyle,
+  Type,
   Buttons,
   Panels,
   Spacing,
@@ -510,6 +511,14 @@ export class LobbyScene extends Phaser.Scene {
 
     // Volume controls at bottom of menu
     this.createVolumeControls(620);
+
+    const copyrightText = this.add
+      .text(cx, 705, '\u00A9 2026 Timberbain', {
+        ...Type.small,
+        color: Colors.gold.dark,
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(copyrightText);
   }
 
   private async createPrivateRoom() {

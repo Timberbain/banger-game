@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
-import { Colors, TextStyle, Decorative } from '../ui/designTokens';
+import { Colors, TextStyle, Type, Decorative } from '../ui/designTokens';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -259,7 +259,7 @@ export class BootScene extends Phaser.Scene {
 
     // Subtitle
     this.add
-      .text(this.cameras.main.centerX, this.cameras.main.centerY, 'Asymmetric Arena Combat', {
+      .text(this.cameras.main.centerX, this.cameras.main.centerY, 'Unfair by Design', {
         fontSize: '18px',
         color: Colors.text.primary,
         fontFamily: 'monospace',
@@ -287,6 +287,14 @@ export class BootScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1,
     });
+
+    // Copyright label (brass nameplate)
+    this.add
+      .text(this.cameras.main.centerX, 705, '\u00A9 2026 Timberbain', {
+        ...Type.small,
+        color: Colors.gold.dark,
+      })
+      .setOrigin(0.5);
 
     // Wait for user click to transition (unlocks audio context)
     this.input.once('pointerdown', () => {
