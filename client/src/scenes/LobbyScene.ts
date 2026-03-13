@@ -18,6 +18,63 @@ import { createLayeredButton } from '../ui/createLayeredButton';
 import { drawGoldDivider } from '../ui/UIFactory';
 import { getServerUrl, getApiBaseUrl } from '../config/connection';
 
+const RANDOM_NAMES = [
+  'Bo Noodle',
+  'Al Wiggle',
+  'Tim Tofu',
+  'Jo Wobble',
+  'Lou Pickle',
+  'Ed Bloop',
+  'Max Muffin',
+  'Oz Pudding',
+  'Ben Snort',
+  'Cal Jelly',
+  'Mo Tater',
+  'Sid Noodle',
+  'Ray Pickle',
+  'Pip Waffle',
+  'Gus Bloop',
+  'Bo Biscuit',
+  'Kit Tofu',
+  'Ted Wobble',
+  'Al Bongo',
+  'Bo Snarf',
+  'Cy Pickle',
+  'Dee Waffle',
+  'Eli Zany',
+  'Fay Noodle',
+  'Gil Tofu',
+  'Hal Bloop',
+  'Ike Muffin',
+  'Jay Jelly',
+  'Kip Tater',
+  'Lee Snort',
+  'Moe Wobble',
+  'Ned Zippy',
+  'Oli Bongo',
+  'Pat Pickle',
+  'Quin Tofu',
+  'Rex Noodle',
+  'Sam Waffle',
+  'Tex Jelly',
+  'Uli Bloop',
+  'Val Snarf',
+  'Wes Muffin',
+  'Yan Pickle',
+  'Zed Tater',
+  'Bo Dingus',
+  'Al Dork',
+  'Tim Blip',
+  'Jo Zonk',
+  'Lou Plop',
+  'Ed Boing',
+  'Max Oops',
+  'Oz Snip',
+  'Ben Zap',
+  'Cal Bonk',
+  'Brent Bice',
+];
+
 export class LobbyScene extends Phaser.Scene {
   private client!: Client;
   private room: Room | null = null;
@@ -64,7 +121,7 @@ export class LobbyScene extends Phaser.Scene {
     if (storedName) {
       this.playerName = storedName;
     } else {
-      this.playerName = `Player${Math.floor(Math.random() * 1000)}`;
+      this.playerName = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
       localStorage.setItem('playerName', this.playerName);
     }
 
@@ -687,7 +744,7 @@ export class LobbyScene extends Phaser.Scene {
 
   // ─── MATCHMAKING ─────────────────────────────────────
 
-  private showRoleSelectForMatchmaking() {
+  private async showRoleSelectForMatchmaking() {
     this.clearUI();
     this.matchmakingSelectedRole = null;
 
@@ -723,6 +780,9 @@ export class LobbyScene extends Phaser.Scene {
     ];
 
     const panelUpdaters: Array<() => void> = [];
+
+    // Queue count texts placeholder — created after panels below
+    const queueCountTexts: Record<string, Phaser.GameObjects.Text> = {};
 
     // Queue button (accent style, initially disabled)
     const queueHandle = createLayeredButton(this, 1060, 650, 'Select role', {
@@ -760,7 +820,7 @@ export class LobbyScene extends Phaser.Scene {
     // Random role toggle button
     const randomBg = this.add.graphics();
     const randomLabel = this.add
-      .text(cx, 560, '?  Random Role', {
+      .text(cx, 600, '?  Random Role', {
         fontSize: '18px',
         fontFamily: 'monospace',
         fontStyle: 'bold',
@@ -771,26 +831,39 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.uiElements.push(randomBg, randomLabel);
 
+    // Random queue count text
+    const randomCountText = this.add
+      .text(cx, 635, '0 in queue', {
+        fontSize: '14px',
+        fontFamily: 'monospace',
+        color: Colors.gold.primary,
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5)
+      .setAlpha(0.8);
+    this.uiElements.push(randomCountText);
+
     const drawRandomBtn = (selected: boolean) => {
       const w = 200;
       const h = 36;
       randomBg.clear();
       if (selected) {
         randomBg.fillStyle(Colors.gold.darkNum, 0.4);
-        randomBg.fillRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+        randomBg.fillRoundedRect(cx - w / 2, 600 - h / 2, w, h, 6);
         randomBg.lineStyle(2, Colors.gold.primaryNum, 1);
-        randomBg.strokeRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+        randomBg.strokeRoundedRect(cx - w / 2, 600 - h / 2, w, h, 6);
       } else {
         randomBg.fillStyle(Colors.bg.elevatedNum, 0.6);
-        randomBg.fillRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+        randomBg.fillRoundedRect(cx - w / 2, 600 - h / 2, w, h, 6);
         randomBg.lineStyle(1, Colors.gold.darkNum, 0.5);
-        randomBg.strokeRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+        randomBg.strokeRoundedRect(cx - w / 2, 600 - h / 2, w, h, 6);
       }
     };
     drawRandomBtn(false);
 
     const randomHitArea = this.add
-      .rectangle(cx, 560, 200, 36)
+      .rectangle(cx, 600, 200, 36)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         if (this.audioManager) this.audioManager.playWAVSFX('select_1');
@@ -822,6 +895,23 @@ export class LobbyScene extends Phaser.Scene {
       });
     });
 
+    // Queue count texts beneath each character panel (created after panels for correct z-order)
+    // Panel center y=330, height=400, so bottom edge is y=530
+    panelConfigs.forEach((cfg) => {
+      const countText = this.add
+        .text(cfg.cx, 545, '0 in queue', {
+          fontSize: '14px',
+          fontFamily: 'monospace',
+          color: charColor(cfg.role),
+          stroke: '#000000',
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setAlpha(0.8);
+      this.uiElements.push(countText);
+      queueCountTexts[cfg.role] = countText;
+    });
+
     // VS markers
     this.addVsMarkers();
 
@@ -833,13 +923,42 @@ export class LobbyScene extends Phaser.Scene {
       textColor: Colors.text.secondary,
       onClick: () => {
         if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+        if (this.room) {
+          this.room.leave();
+          this.room = null;
+        }
         this.showMainMenu();
       },
     });
     backHandle.elements.forEach((el) => this.uiElements.push(el));
+
+    // Join matchmaking room early to see live queue counts
+    try {
+      const matchmakingRoom = await this.client.joinOrCreate('matchmaking_room', {
+        preferredRole: 'browsing',
+        name: this.playerName,
+      });
+      this.room = matchmakingRoom;
+
+      // Listen for queue count updates via server message
+      matchmakingRoom.onMessage('queueCounts', (data: any) => {
+        const p = data.paranCount || 0;
+        const f = data.faranCount || 0;
+        const b = data.baranCount || 0;
+        const r = data.randomCount || 0;
+        if (queueCountTexts['paran']?.active) queueCountTexts['paran'].setText(`${p} in queue`);
+        if (queueCountTexts['faran']?.active) queueCountTexts['faran'].setText(`${f} in queue`);
+        if (queueCountTexts['baran']?.active) queueCountTexts['baran'].setText(`${b} in queue`);
+        if (randomCountText?.active) randomCountText.setText(`${r} in queue`);
+      });
+    } catch (e) {
+      console.error('Failed to join matchmaking for browsing:', e);
+    }
   }
 
   private async joinMatchmaking(preferredRole: string) {
+    // Grab the existing browsing room connection before clearing UI
+    const matchmakingRoom = this.room;
     this.clearUI();
 
     const cx = this.cameras.main.centerX;
@@ -934,24 +1053,20 @@ export class LobbyScene extends Phaser.Scene {
     });
     cancelHandle.elements.forEach((el) => this.uiElements.push(el));
 
-    try {
-      // Join the matchmaking room (shared instance for all queuing players)
-      const matchmakingRoom = await this.client.joinOrCreate('matchmaking_room', {
-        preferredRole,
-        name: this.playerName,
-      });
+    // If we already have a browsing connection, transition it to queued
+    if (matchmakingRoom) {
+      matchmakingRoom.send('setRole', preferredRole);
 
-      // Track queue sizes from state
-      const updateQueueText = () => {
-        const state = matchmakingRoom.state as any;
-        const p = state.paranCount || 0;
-        const g = state.guardianCount || 0;
-        const r = state.randomCount || 0;
-        queueText.setText(`In queue: ${p} Paran, ${g} Guardian, ${r} Flex`);
-      };
-      (matchmakingRoom.state as any).listen('paranCount', updateQueueText);
-      (matchmakingRoom.state as any).listen('guardianCount', updateQueueText);
-      (matchmakingRoom.state as any).listen('randomCount', updateQueueText);
+      // Track queue sizes via server message
+      matchmakingRoom.onMessage('queueCounts', (data: any) => {
+        const p = data.paranCount || 0;
+        const f = data.faranCount || 0;
+        const b = data.baranCount || 0;
+        const r = data.randomCount || 0;
+        if (queueText?.active) {
+          queueText.setText(`In queue: ${p} Paran, ${f} Faran, ${b} Baran, ${r} Flex`);
+        }
+      });
 
       // Listen for match found
       matchmakingRoom.onMessage(
@@ -962,6 +1077,7 @@ export class LobbyScene extends Phaser.Scene {
 
           // Leave matchmaking room
           matchmakingRoom.leave();
+          this.room = null;
 
           // Show transition message
           this.clearUI();
@@ -1012,14 +1128,97 @@ export class LobbyScene extends Phaser.Scene {
         cancelHandle.face.y = cancelHandle.face.y; // keep position
         spinnerInterval.destroy();
         matchmakingRoom.leave();
+        this.room = null;
         this.showMainMenu();
       });
-    } catch (e) {
-      console.error('Failed to join matchmaking:', e);
-      spinnerInterval.destroy();
-      statusText.setText('Failed to join matchmaking');
-      statusText.setColor(Colors.status.danger);
-      this.time.delayedCall(3000, () => this.showMainMenu());
+    } else {
+      // Fallback: no browsing connection, join fresh
+      try {
+        const newRoom = await this.client.joinOrCreate('matchmaking_room', {
+          preferredRole,
+          name: this.playerName,
+        });
+        this.room = newRoom;
+
+        // Track queue sizes via server message
+        newRoom.onMessage('queueCounts', (data: any) => {
+          const p = data.paranCount || 0;
+          const f = data.faranCount || 0;
+          const b = data.baranCount || 0;
+          const r = data.randomCount || 0;
+          if (queueText?.active) {
+            queueText.setText(`In queue: ${p} Paran, ${f} Faran, ${b} Baran, ${r} Flex`);
+          }
+        });
+
+        // Listen for match found
+        newRoom.onMessage(
+          'matchFound',
+          async (data: { lobbyRoomId: string; assignedRole: string }) => {
+            console.log('Match found! Joining lobby:', data.lobbyRoomId);
+            spinnerInterval.destroy();
+
+            // Leave matchmaking room
+            newRoom.leave();
+            this.room = null;
+
+            // Show transition message
+            this.clearUI();
+            this.addSceneBg();
+            this.addStatusText(
+              cx,
+              this.cameras.main.centerY,
+              'Match found! Joining lobby...',
+              Colors.status.success,
+            );
+
+            try {
+              // Join the lobby that matchmaking created
+              this.room = await this.client.joinById(data.lobbyRoomId, {
+                name: this.playerName,
+                fromMatchmaking: true,
+                preferredRole: data.assignedRole,
+              });
+
+              console.log('Joined matchmaking lobby:', this.room.id);
+              this.showLobbyView();
+
+              this.time.delayedCall(100, () => {
+                if (this.room && data.assignedRole) {
+                  this.selectRole(data.assignedRole);
+                }
+              });
+            } catch (e) {
+              console.error('Failed to join matchmaking lobby:', e);
+              this.clearUI();
+              this.addSceneBg();
+              this.addStatusText(
+                cx,
+                this.cameras.main.centerY,
+                'Failed to join lobby',
+                Colors.status.danger,
+              );
+              this.time.delayedCall(3000, () => this.showMainMenu());
+            }
+          },
+        );
+
+        // Update cancel to also leave matchmaking room
+        cancelHandle.face.removeAllListeners('pointerdown');
+        cancelHandle.face.on('pointerdown', () => {
+          cancelHandle.face.y = cancelHandle.face.y; // keep position
+          spinnerInterval.destroy();
+          newRoom.leave();
+          this.room = null;
+          this.showMainMenu();
+        });
+      } catch (e) {
+        console.error('Failed to join matchmaking:', e);
+        spinnerInterval.destroy();
+        statusText.setText('Failed to join matchmaking');
+        statusText.setColor(Colors.status.danger);
+        this.time.delayedCall(3000, () => this.showMainMenu());
+      }
     }
   }
 

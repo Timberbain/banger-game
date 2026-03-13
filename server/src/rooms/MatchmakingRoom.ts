@@ -11,7 +11,8 @@ export class QueuePlayer extends Schema {
 export class MatchmakingState extends Schema {
   @type({ map: QueuePlayer }) players = new MapSchema<QueuePlayer>();
   @type('number') paranCount: number = 0;
-  @type('number') guardianCount: number = 0;
+  @type('number') faranCount: number = 0;
+  @type('number') baranCount: number = 0;
   @type('number') randomCount: number = 0;
 }
 
@@ -27,6 +28,17 @@ export class MatchmakingRoom extends Room<MatchmakingState> {
     this.matchCheckInterval = this.clock.setInterval(() => {
       this.tryFormMatch();
     }, 1000);
+
+    // Allow browsing players to switch role when they click Queue
+    this.onMessage('setRole', (client, role: string) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      if (!MATCHMAKING_ROLES.includes(role as any) || role === 'browsing') {
+        role = 'random';
+      }
+      player.preferredRole = role;
+      this.updateCounts();
+    });
 
     console.log('MatchmakingRoom created');
   }
@@ -55,20 +67,27 @@ export class MatchmakingRoom extends Room<MatchmakingState> {
 
   private updateCounts() {
     let paranCount = 0;
-    let guardianCount = 0;
+    let faranCount = 0;
+    let baranCount = 0;
     let randomCount = 0;
     this.state.players.forEach((player) => {
       if (player.preferredRole === 'paran') {
         paranCount++;
+      } else if (player.preferredRole === 'faran') {
+        faranCount++;
+      } else if (player.preferredRole === 'baran') {
+        baranCount++;
       } else if (player.preferredRole === 'random') {
         randomCount++;
-      } else {
-        guardianCount++;
       }
     });
     this.state.paranCount = paranCount;
-    this.state.guardianCount = guardianCount;
+    this.state.faranCount = faranCount;
+    this.state.baranCount = baranCount;
     this.state.randomCount = randomCount;
+
+    // Broadcast count changes to all clients via message
+    this.broadcast('queueCounts', { paranCount, faranCount, baranCount, randomCount });
   }
 
   private async tryFormMatch() {
@@ -82,7 +101,7 @@ export class MatchmakingRoom extends Room<MatchmakingState> {
         paranPool.push(sessionId);
       } else if (player.preferredRole === 'random') {
         randomPool.push(sessionId);
-      } else {
+      } else if (player.preferredRole !== 'browsing') {
         guardianPool.push(sessionId);
       }
     });
