@@ -13,6 +13,8 @@ export const LOBBY_CONFIG = {
 
 export const VALID_ROLES = ['paran', 'faran', 'baran'] as const;
 
+export const MATCHMAKING_ROLES = [...VALID_ROLES, 'random'] as const;
+
 export const ROLE_LIMITS = {
   paran: 1,
   faran: 1,

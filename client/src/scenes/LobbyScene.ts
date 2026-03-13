@@ -757,10 +757,60 @@ export class LobbyScene extends Phaser.Scene {
       }
     };
 
+    // Random role toggle button
+    const randomBg = this.add.graphics();
+    const randomLabel = this.add
+      .text(cx, 560, '?  Random Role', {
+        fontSize: '18px',
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        color: Colors.gold.primary,
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+    this.uiElements.push(randomBg, randomLabel);
+
+    const drawRandomBtn = (selected: boolean) => {
+      const w = 200;
+      const h = 36;
+      randomBg.clear();
+      if (selected) {
+        randomBg.fillStyle(Colors.gold.darkNum, 0.4);
+        randomBg.fillRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+        randomBg.lineStyle(2, Colors.gold.primaryNum, 1);
+        randomBg.strokeRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+      } else {
+        randomBg.fillStyle(Colors.bg.elevatedNum, 0.6);
+        randomBg.fillRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+        randomBg.lineStyle(1, Colors.gold.darkNum, 0.5);
+        randomBg.strokeRoundedRect(cx - w / 2, 560 - h / 2, w, h, 6);
+      }
+    };
+    drawRandomBtn(false);
+
+    const randomHitArea = this.add
+      .rectangle(cx, 560, 200, 36)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        if (this.audioManager) this.audioManager.playWAVSFX('select_1');
+        if (this.matchmakingSelectedRole === 'random') {
+          this.matchmakingSelectedRole = null;
+        } else {
+          this.matchmakingSelectedRole = 'random';
+        }
+        panelUpdaters.forEach((fn) => fn());
+        drawRandomBtn(this.matchmakingSelectedRole === 'random');
+        updateQueueButton();
+      });
+    this.uiElements.push(randomHitArea);
+
     panelConfigs.forEach((cfg) => {
       const result = this.createCharacterPanel(cfg.role, cfg.cx, () => {
         if (this.audioManager) this.audioManager.playWAVSFX('select_1');
         this.matchmakingSelectedRole = this.matchmakingSelectedRole === cfg.role ? null : cfg.role;
+        // Deselect random when picking a character
+        drawRandomBtn(false);
         panelUpdaters.forEach((fn) => fn());
         updateQueueButton();
       });
@@ -803,12 +853,30 @@ export class LobbyScene extends Phaser.Scene {
     aura.fillCircle(cx, 220, Panels.characterCard.portraitAuraRadius);
     this.uiElements.push(aura);
 
-    // Character portrait
-    const portrait = this.add.image(cx, 220, `portrait-${preferredRole}`);
-    this.uiElements.push(portrait);
+    if (preferredRole === 'random') {
+      // Show "?" graphic in gold for random
+      const questionMark = this.add
+        .text(cx, 220, '?', {
+          fontSize: '96px',
+          fontFamily: 'monospace',
+          fontStyle: 'bold',
+          color: Colors.gold.primary,
+          stroke: Colors.gold.dark,
+          strokeThickness: 6,
+        })
+        .setOrigin(0.5);
+      this.uiElements.push(questionMark);
+    } else {
+      // Character portrait
+      const portrait = this.add.image(cx, 220, `portrait-${preferredRole}`);
+      this.uiElements.push(portrait);
+    }
 
     // Role name
-    const roleName = preferredRole.charAt(0).toUpperCase() + preferredRole.slice(1);
+    const roleName =
+      preferredRole === 'random'
+        ? 'Random'
+        : preferredRole.charAt(0).toUpperCase() + preferredRole.slice(1);
     const roleLabel = this.add
       .text(cx, 290, `Queuing as ${roleName}`, {
         fontSize: '18px',
@@ -874,14 +942,16 @@ export class LobbyScene extends Phaser.Scene {
       });
 
       // Track queue sizes from state
-      (matchmakingRoom.state as any).listen('paranCount', (value: number) => {
-        const guardianCount = (matchmakingRoom.state as any).guardianCount || 0;
-        queueText.setText(`In queue: ${value} Paran, ${guardianCount} Guardian`);
-      });
-      (matchmakingRoom.state as any).listen('guardianCount', (value: number) => {
-        const paranCount = (matchmakingRoom.state as any).paranCount || 0;
-        queueText.setText(`In queue: ${paranCount} Paran, ${value} Guardian`);
-      });
+      const updateQueueText = () => {
+        const state = matchmakingRoom.state as any;
+        const p = state.paranCount || 0;
+        const g = state.guardianCount || 0;
+        const r = state.randomCount || 0;
+        queueText.setText(`In queue: ${p} Paran, ${g} Guardian, ${r} Flex`);
+      };
+      (matchmakingRoom.state as any).listen('paranCount', updateQueueText);
+      (matchmakingRoom.state as any).listen('guardianCount', updateQueueText);
+      (matchmakingRoom.state as any).listen('randomCount', updateQueueText);
 
       // Listen for match found
       matchmakingRoom.onMessage(

@@ -97,6 +97,7 @@ export function charColor(role: string): string {
     paran: Colors.char.paran,
     faran: Colors.char.faran,
     baran: Colors.char.baran,
+    random: Colors.gold.primary,
   };
   return map[role] || Colors.text.primary;
 }
@@ -107,6 +108,7 @@ export function charColorNum(role: string): number {
     paran: Colors.char.paranNum,
     faran: Colors.char.faranNum,
     baran: Colors.char.baranNum,
+    random: Colors.gold.primaryNum,
   };
   return map[role] || 0xffffff;
 }
